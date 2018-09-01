@@ -1,0 +1,9 @@
+{
+    "DB_HOST": "localhost",
+    "DB_PORT": "3306",
+    "DB_USER": "root",
+    "DB_PASSWORD": "Kris0007",
+    "DB_SCHEMA": "key_val_store",
+    "DB_CONNECTION_LIMIT": "10",
+    "PORT": "3000"
+}

@@ -1,0 +1,9 @@
+{
+    "DB_HOST": "mysql.crr48xcex9fa.ap-southeast-1.rds.amazonaws.com",
+    "DB_PORT": "3306",
+    "DB_USER": "root",
+    "DB_PASSWORD": "Kris0007",
+    "DB_SCHEMA": "VaultDragon",
+    "DB_CONNECTION_LIMIT": "10",
+    "PORT": "3000"
+}

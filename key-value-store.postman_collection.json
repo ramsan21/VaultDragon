@@ -1,0 +1,101 @@
+{
+	"info": {
+		"_postman_id": "3c8a1777-e08e-47e8-bb2b-c51d62cfffbb",
+		"name": "key-value-store",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create Key",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"mynewKey\":\"mynewValue\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/v1/object",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"v1",
+						"object"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Key",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"mynewKey\":\"mynewValue\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/v1/object/mynewKey",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"v1",
+						"object",
+						"mynewKey"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Key By Timestamp",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"mynewKey\":\"mynewValue\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/v1/object/mynewKey",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"v1",
+						"object",
+						"mynewKey"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
