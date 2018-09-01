@@ -5,5 +5,5 @@
     "DB_PASSWORD": "Kris0007",
     "DB_SCHEMA": "VaultDragon",
     "DB_CONNECTION_LIMIT": "10",
-    "PORT": "3000"
+    "PORT": "80"
 }

@@ -28,5 +28,13 @@
   "main": "app.js",
   "directories": {
     "test": "test"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ramsan21/VaultDragon.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ramsan21/VaultDragon/issues"
+  },
+  "homepage": "https://github.com/ramsan21/VaultDragon#readme"
 }
