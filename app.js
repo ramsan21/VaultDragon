@@ -19,7 +19,7 @@ var connection = mysql.createConnection({
   if(!err) {
     console.log("Database is connected ...");  
   } else {
-    console.log("Error connecting database ..." + err.message);  
+    console.log("Error connecting database ..." + err.message + " " + err.stack);  
   }
   connection.end();
   });
