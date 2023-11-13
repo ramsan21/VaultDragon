@@ -63,3 +63,9 @@ public class DataMigrationController {
     }
 }
 
+spring.datasource.prod.url=jdbc:oracle:thin:@//production-host:1521/production-service
+spring.datasource.prod.username=production-username
+spring.datasource.prod.password=production-password
+spring.datasource.prod.driver-class-name=oracle.jdbc.OracleDriver
+
+
