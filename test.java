@@ -3,69 +3,67 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
-public class DataMigrationService {
-    
+public class DynamicInsertService {
+
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    public void generateAndExecuteInsert(String tableName, String whereClause, List<Object> values) {
-        // Generate the insert statement
-        String insertStatement = generateInsertStatement(tableName, values);
+    public String generateInsertStatement(String selectStatement, String tableName) {
+        String query = selectStatement.replace("select *", "select * from " + tableName);
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(query);
 
-        // Append the WHERE clause if provided
-        if (whereClause != null && !whereClause.isEmpty()) {
-            insertStatement += " WHERE " + whereClause;
+        if (rows.isEmpty()) {
+            return "No rows returned from the select statement.";
         }
 
-        // Execute the insert statement
-        jdbcTemplate.update(insertStatement, values.toArray());
+        Map<String, Object> firstRow = rows.get(0);
+        StringBuilder insertStatement = new StringBuilder("INSERT INTO ");
+        insertStatement.append(tableName).append(" (");
+
+        firstRow.forEach((columnName, value) -> insertStatement.append(columnName).append(", "));
+
+        insertStatement.delete(insertStatement.length() - 2, insertStatement.length()); // Remove the last comma and space
+        insertStatement.append(") VALUES (");
+
+        firstRow.forEach((columnName, value) -> {
+            insertStatement.append(getFormattedValue(value)).append(", ");
+        });
+
+        insertStatement.delete(insertStatement.length() - 2, insertStatement.length()); // Remove the last comma and space
+        insertStatement.append(")");
+
+        return insertStatement.toString();
     }
 
-    private String generateInsertStatement(String tableName, List<Object> values) {
-        // Assuming columns are named column1, column2, ...
-        String columns = "column" + String.join(", column", String.valueOf(values.size()).split("(?!^)"));
-
-        // Generate the insert statement
-        return "INSERT INTO " + tableName + " (" + columns + ") VALUES (" + generatePlaceholder(values.size()) + ")";
-    }
-
-    private String generatePlaceholder(int count) {
-        // Generate placeholders for the prepared statement
-        return String.join(", ", String.valueOf(count).split("(?!^)")).replaceAll("\\d", "?");
+    private String getFormattedValue(Object value) {
+        if (value == null) {
+            return "NULL";
+        } else if (value instanceof Number) {
+            return value.toString();
+        } else {
+            // Handle other data types (string, date, etc.)
+            return "'" + value.toString() + "'";
+        }
     }
 }
 
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Arrays;
-
 @RestController
-public class DataMigrationController {
+public class DynamicInsertController {
 
     @Autowired
-    private DataMigrationService dataMigrationService;
+    private DynamicInsertService dynamicInsertService;
 
-    @PostMapping("/api/migrate")
-    public ResponseEntity<String> migrateTableData(@RequestParam String tableName, @RequestParam String whereClause) {
-        // Assuming values list for the insert
-        List<Object> values = Arrays.asList("value1", "value2", "value3");
-
-        // Execute the dynamic insert
-        dataMigrationService.generateAndExecuteInsert(tableName, whereClause, values);
-
-        return ResponseEntity.ok("Data migration completed");
+    @PostMapping("/api/generate-insert")
+    public String generateInsertStatement(@RequestParam String selectStatement, @RequestParam String tableName) {
+        return dynamicInsertService.generateInsertStatement(selectStatement, tableName);
     }
 }
-
-spring.datasource.prod.url=jdbc:oracle:thin:@//production-host:1521/production-service
-spring.datasource.prod.username=production-username
-spring.datasource.prod.password=production-password
-spring.datasource.prod.driver-class-name=oracle.jdbc.OracleDriver
-
-
