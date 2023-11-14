@@ -1,3 +1,42 @@
+import java.util.List;
+
+public class DynamicInsertRequest {
+    private List<TableWhereClause> tables;
+
+    // Getters and setters
+
+    public List<TableWhereClause> getTables() {
+        return tables;
+    }
+
+    public void setTables(List<TableWhereClause> tables) {
+        this.tables = tables;
+    }
+}
+
+public class TableWhereClause {
+    private String tableName;
+    private String whereClause;
+
+    // Getters and setters
+
+    public String getTableName() {
+        return tableName;
+    }
+
+    public void setTableName(String tableName) {
+        this.tableName = tableName;
+    }
+
+    public String getWhereClause() {
+        return whereClause;
+    }
+
+    public void setWhereClause(String whereClause) {
+        this.whereClause = whereClause;
+    }
+}
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +63,6 @@ public class DynamicInsertController {
     }
 }
 
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -39,18 +77,21 @@ public class DynamicInsertService {
     private JdbcTemplate jdbcTemplate;
 
     public String generateInsertStatements(DynamicInsertRequest request) {
-        String selectQuery = "SELECT * FROM " + request.getTableName() + " WHERE " + request.getWhereClause();
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(selectQuery);
-
-        if (rows.isEmpty()) {
-            return "No rows returned from the select statement.";
-        }
-
         StringBuilder insertStatements = new StringBuilder();
 
-        for (Map<String, Object> row : rows) {
-            String insertStatement = generateInsertStatement(request.getTableName(), row);
-            insertStatements.append(insertStatement).append("\n");
+        for (TableWhereClause tableClause : request.getTables()) {
+            String tableName = tableClause.getTableName();
+            String whereClause = tableClause.getWhereClause();
+
+            String selectQuery = "SELECT * FROM " + tableName + " WHERE " + whereClause;
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(selectQuery);
+
+            if (!rows.isEmpty()) {
+                for (Map<String, Object> row : rows) {
+                    String insertStatement = generateInsertStatement(tableName, row);
+                    insertStatements.append(insertStatement).append("\n");
+                }
+            }
         }
 
         return insertStatements.toString();
@@ -86,27 +127,5 @@ public class DynamicInsertService {
         } else {
             return "'" + value.toString() + "'";
         }
-    }
-}
-public class DynamicInsertRequest {
-    private String tableName;
-    private String whereClause;
-
-    // Getters and setters
-
-    public String getTableName() {
-        return tableName;
-    }
-
-    public void setTableName(String tableName) {
-        this.tableName = tableName;
-    }
-
-    public String getWhereClause() {
-        return whereClause;
-    }
-
-    public void setWhereClause(String whereClause) {
-        this.whereClause = whereClause;
     }
 }
