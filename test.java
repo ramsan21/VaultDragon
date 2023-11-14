@@ -1,4 +1,31 @@
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/dynamic-insert")
+public class DynamicInsertController {
+
+    @Autowired
+    private DynamicInsertService dynamicInsertService;
+
+    @PostMapping
+    public ResponseEntity<String> generateInsertStatements(@RequestBody DynamicInsertRequest request) {
+        try {
+            String result = dynamicInsertService.generateInsertStatements(request);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error generating insert statements: " + e.getMessage());
+        }
+    }
+}
+
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -11,26 +38,41 @@ public class DynamicInsertService {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    public String generateInsertStatement(String selectStatement, String tableName) {
-        String query = selectStatement.replace("select *", "select * from " + tableName);
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(query);
+    public String generateInsertStatements(DynamicInsertRequest request) {
+        String selectQuery = "SELECT * FROM " + request.getTableName() + " WHERE " + request.getWhereClause();
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(selectQuery);
 
         if (rows.isEmpty()) {
             return "No rows returned from the select statement.";
         }
 
-        Map<String, Object> firstRow = rows.get(0);
+        StringBuilder insertStatements = new StringBuilder();
+
+        for (Map<String, Object> row : rows) {
+            String insertStatement = generateInsertStatement(request.getTableName(), row);
+            insertStatements.append(insertStatement).append("\n");
+        }
+
+        return insertStatements.toString();
+    }
+
+    private String generateInsertStatement(String tableName, Map<String, Object> row) {
+        List<String> columnNames = jdbcTemplate.queryForList(
+                "SELECT column_name FROM all_tab_columns WHERE table_name = ?", String.class, tableName);
+
         StringBuilder insertStatement = new StringBuilder("INSERT INTO ");
         insertStatement.append(tableName).append(" (");
 
-        firstRow.forEach((columnName, value) -> insertStatement.append(columnName).append(", "));
+        for (String columnName : columnNames) {
+            insertStatement.append(columnName).append(", ");
+        }
 
         insertStatement.delete(insertStatement.length() - 2, insertStatement.length()); // Remove the last comma and space
         insertStatement.append(") VALUES (");
 
-        firstRow.forEach((columnName, value) -> {
-            insertStatement.append(getFormattedValue(value)).append(", ");
-        });
+        for (String columnName : columnNames) {
+            insertStatement.append(getFormattedValue(columnName, row.get(columnName))).append(", ");
+        }
 
         insertStatement.delete(insertStatement.length() - 2, insertStatement.length()); // Remove the last comma and space
         insertStatement.append(")");
@@ -38,32 +80,33 @@ public class DynamicInsertService {
         return insertStatement.toString();
     }
 
-    private String getFormattedValue(Object value) {
+    private String getFormattedValue(String columnName, Object value) {
         if (value == null) {
             return "NULL";
-        } else if (value instanceof Number) {
-            return value.toString();
         } else {
-            // Handle other data types (string, date, etc.)
             return "'" + value.toString() + "'";
         }
     }
 }
+public class DynamicInsertRequest {
+    private String tableName;
+    private String whereClause;
 
+    // Getters and setters
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+    public String getTableName() {
+        return tableName;
+    }
 
-@RestController
-public class DynamicInsertController {
+    public void setTableName(String tableName) {
+        this.tableName = tableName;
+    }
 
-    @Autowired
-    private DynamicInsertService dynamicInsertService;
+    public String getWhereClause() {
+        return whereClause;
+    }
 
-    @PostMapping("/api/generate-insert")
-    public String generateInsertStatement(@RequestParam String selectStatement, @RequestParam String tableName) {
-        return dynamicInsertService.generateInsertStatement(selectStatement, tableName);
+    public void setWhereClause(String whereClause) {
+        this.whereClause = whereClause;
     }
 }
