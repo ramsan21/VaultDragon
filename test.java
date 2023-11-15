@@ -1,26 +1,28 @@
-import requests
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
-def api_request(url):
-    response = requests.get(url)
-    # Process the response as needed
-    return response.json()
+@Service
+public class ApiService {
 
-# The API URL you want to call
-api_url = "https://api.example.com/endpoint"
+    private final RestTemplate restTemplate;
 
-# Number of parallel requests
-num_requests = 5
+    @Autowired
+    public ApiService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
-with ThreadPoolExecutor(max_workers=num_requests) as executor:
-    # Using list comprehension to create a list of futures
-    futures = [executor.submit(api_request, api_url) for _ in range(num_requests)]
+    public String makePostApiCall(String apiUrl, String requestBody) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
 
-    # Using as_completed to iterate over completed futures
-    for future in as_completed(futures):
-        try:
-            result = future.result()
-            # Process the result as needed
-            print(result)
-        except Exception as e:
-            print(f"Error: {e}")
+        HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
+
+        return restTemplate.postForObject(apiUrl, requestEntity, String.class);
+    }
+}
+
+
