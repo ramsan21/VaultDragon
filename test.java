@@ -5,6 +5,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.concurrent.CompletableFuture;
+
 @Service
 public class ApiService {
 
@@ -15,13 +17,15 @@ public class ApiService {
         this.restTemplate = restTemplate;
     }
 
-    public String makePostApiCall(String apiUrl, String requestBody) {
+    public CompletableFuture<String> makePostApiCallAsync(String apiUrl, String requestBody) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
 
-        return restTemplate.postForObject(apiUrl, requestEntity, String.class);
+        return CompletableFuture.supplyAsync(() ->
+                restTemplate.postForObject(apiUrl, requestEntity, String.class)
+        );
     }
 }
 
@@ -30,6 +34,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/example")
@@ -42,18 +50,32 @@ public class ExampleController {
         this.apiService = apiService;
     }
 
-    @PostMapping("/make-multiple-post-calls")
-    public void makeMultiplePostApiCalls(@RequestBody String requestBody) {
+    @PostMapping("/make-concurrent-post-calls")
+    public void makeConcurrentPostApiCalls(@RequestBody String requestBody) {
         String apiUrl = "https://api.example.com/endpoint";
 
         int numberOfCalls = 5;
 
-        for (int i = 0; i < numberOfCalls; i++) {
-            String result = apiService.makePostApiCall(apiUrl, requestBody);
-            System.out.println("Result of POST API call " + (i + 1) + ": " + result);
-        }
+        // Create a list of CompletableFuture for concurrent API calls
+        List<CompletableFuture<String>> futures = 
+            Stream.range(0, numberOfCalls)
+                .mapToObj(i -> apiService.makePostApiCallAsync(apiUrl, requestBody))
+                .collect(Collectors.toList());
+
+        // Combine all futures into a single CompletableFuture
+        CompletableFuture<Void> allOf = CompletableFuture.allOf(
+                futures.toArray(new CompletableFuture[0])
+        );
+
+        // Wait for all CompletableFuture to complete
+        allOf.join();
+
+        // Collect results if needed
+        List<String> results = futures.stream()
+                .map(CompletableFuture::join)
+                .collect(Collectors.toList());
+
+        // Process results as needed
+        results.forEach(result -> System.out.println("Result: " + result));
     }
 }
-
-
-
