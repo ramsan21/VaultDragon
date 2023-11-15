@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -57,25 +58,26 @@ public class ExampleController {
         int numberOfCalls = 5;
 
         // Create a list of CompletableFuture for concurrent API calls
-        List<CompletableFuture<String>> futures = 
-            Stream.range(0, numberOfCalls)
-                .mapToObj(i -> apiService.makePostApiCallAsync(apiUrl, requestBody))
-                .collect(Collectors.toList());
+        List<CompletableFuture<String>> futures = new ArrayList<>();
+        for (int i = 0; i < numberOfCalls; i++) {
+            futures.add(apiService.makePostApiCallAsync(apiUrl, requestBody));
+        }
 
-        // Combine all futures into a single CompletableFuture
+        // Wait for all CompletableFuture to complete
         CompletableFuture<Void> allOf = CompletableFuture.allOf(
                 futures.toArray(new CompletableFuture[0])
         );
 
-        // Wait for all CompletableFuture to complete
+        // Join and collect results
         allOf.join();
 
-        // Collect results if needed
+        // Process results as needed
         List<String> results = futures.stream()
                 .map(CompletableFuture::join)
                 .collect(Collectors.toList());
 
-        // Process results as needed
+        // Print results
         results.forEach(result -> System.out.println("Result: " + result));
     }
 }
+
