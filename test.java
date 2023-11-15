@@ -25,4 +25,35 @@ public class ApiService {
     }
 }
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/example")
+public class ExampleController {
+
+    private final ApiService apiService;
+
+    @Autowired
+    public ExampleController(ApiService apiService) {
+        this.apiService = apiService;
+    }
+
+    @PostMapping("/make-multiple-post-calls")
+    public void makeMultiplePostApiCalls(@RequestBody String requestBody) {
+        String apiUrl = "https://api.example.com/endpoint";
+
+        int numberOfCalls = 5;
+
+        for (int i = 0; i < numberOfCalls; i++) {
+            String result = apiService.makePostApiCall(apiUrl, requestBody);
+            System.out.println("Result of POST API call " + (i + 1) + ": " + result);
+        }
+    }
+}
+
+
 
