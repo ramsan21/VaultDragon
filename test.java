@@ -1,83 +1,70 @@
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class ApiService {
 
-    private final RestTemplate restTemplate;
+    public void makeApiCallsConcurrently() {
+        try {
+            // Create a HttpClient with SSL verification disabled
+            CloseableHttpClient httpClient = HttpClients.custom()
+                    .setSSLSocketFactory(new SSLConnectionSocketFactory(SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER))
+                    .build();
 
-    @Autowired
-    public ApiService(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
-    }
+            // Make the first API call
+            String firstApiUrl = "https://your-first-api-url"; // Replace with your actual API URL
+            HttpPost firstApiRequest = new HttpPost(firstApiUrl);
+            HttpResponse firstApiResponse = httpClient.execute(firstApiRequest);
 
-    public CompletableFuture<String> makePostApiCallAsync(String apiUrl, String requestBody) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
+            // TODO: Handle the response of the first API call as needed
+            System.out.println("First API call response code: " + firstApiResponse.getStatusLine().getStatusCode());
 
-        HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
+            // Close the HttpClient after the first API call
+            httpClient.close();
 
-        return CompletableFuture.supplyAsync(() ->
-                restTemplate.postForObject(apiUrl, requestEntity, String.class)
-        );
-    }
-}
+            // Now, make 10 concurrent API calls
+            ExecutorService executorService = Executors.newFixedThreadPool(10);
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+            for (int i = 0; i < 10; i++) {
+                executorService.submit(() -> {
+                    try {
+                        CloseableHttpClient concurrentHttpClient = HttpClients.custom()
+                                .setSSLSocketFactory(new SSLConnectionSocketFactory(SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER))
+                                .build();
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
+                        String concurrentApiUrl = "https://your-concurrent-api-url"; // Replace with your actual API URL
+                        HttpPost concurrentApiRequest = new HttpPost(concurrentApiUrl);
 
-@RestController
-@RequestMapping("/example")
-public class ExampleController {
+                        // Execute the concurrent request
+                        HttpResponse concurrentApiResponse = concurrentHttpClient.execute(concurrentApiRequest);
 
-    private final ApiService apiService;
+                        // TODO: Handle the response of the concurrent API call as needed
+                        System.out.println("Concurrent API call response code: " + concurrentApiResponse.getStatusLine().getStatusCode());
 
-    @Autowired
-    public ExampleController(ApiService apiService) {
-        this.apiService = apiService;
-    }
+                        // Close the HttpClient for the concurrent request
+                        concurrentHttpClient.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+            }
 
-    @PostMapping("/make-concurrent-post-calls")
-    public void makeConcurrentPostApiCalls(@RequestBody String requestBody) {
-        String apiUrl = "https://api.example.com/endpoint";
+            // Shutdown the executor service and wait for all tasks to finish
+            executorService.shutdown();
+            executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 
-        int numberOfCalls = 5;
-
-        // Create a list of CompletableFuture for concurrent API calls
-        List<CompletableFuture<String>> futures = new ArrayList<>();
-        for (int i = 0; i < numberOfCalls; i++) {
-            futures.add(apiService.makePostApiCallAsync(apiUrl, requestBody));
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-
-        // Wait for all CompletableFuture to complete
-        CompletableFuture<Void> allOf = CompletableFuture.allOf(
-                futures.toArray(new CompletableFuture[0])
-        );
-
-        // Join and collect results
-        allOf.join();
-
-        // Process results as needed
-        List<String> results = futures.stream()
-                .map(CompletableFuture::join)
-                .collect(Collectors.toList());
-
-        // Print results
-        results.forEach(result -> System.out.println("Result: " + result));
     }
 }
-
