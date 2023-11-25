@@ -1,5 +1,8 @@
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
@@ -22,7 +25,7 @@ public class ApiController {
         this.restTemplate = restTemplate;
     }
 
-    @GetMapping("/call-api-multiple-times")
+    @PostMapping("/call-api-multiple-times")
     public List<String> callApiMultipleTimes() throws ExecutionException, InterruptedException {
         int numberOfCalls = 10;
 
@@ -34,9 +37,24 @@ public class ApiController {
 
         for (int i = 0; i < numberOfCalls; i++) {
             // Asynchronously call the API using CompletableFuture
-            CompletableFuture<String> future = CompletableFuture.supplyAsync(() ->
-                    restTemplate.getForObject("https://api.example.com", String.class), executorService);
-            
+            CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+                // Replace this URL with the actual URL for your POST request
+                String apiUrl = "https://api.example.com/postEndpoint";
+                
+                // Replace this with your actual request payload
+                String payload = "{\"key\":\"value\"}";
+
+                // Create headers
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+
+                // Create the request entity with headers and payload
+                HttpEntity<String> requestEntity = new HttpEntity<>(payload, headers);
+
+                // Make the POST request and return the response
+                return restTemplate.postForObject(apiUrl, requestEntity, String.class);
+            }, executorService);
+
             // Add the CompletableFuture to the list
             futures.add(future);
         }
