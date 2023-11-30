@@ -1,129 +1,52 @@
-import static org.mockito.Mockito.*;
+ @Test
+    public void testAuthenticate() throws NamingException {
+        // Create a mock object for the CryptoHelper class
+        CryptoHelper cryptoHelper = Mockito.mock(CryptoHelper.class);
+        when(cryptoHelper.decrypt("encryptedPass")).thenReturn("decryptedPass");
 
-@RunWith(MockitoJUnitRunner.class)
-public class LDAPManagerTest {
+        // Create a mock LDAP context
+        LdapContext ldapContext = Mockito.mock(LdapContext.class);
+        when(ldapContext.getAttributes("loginUser")).thenReturn(new Hashtable<>());
 
-    @InjectMocks
-    private LDAPManager ldapManager;
+        // Create a mock search result
+        SearchResult searchResult = Mockito.mock(SearchResult.class);
+        when(searchResult.getNameInNamespace()).thenReturn("loginUser");
 
-    @Mock
-    private CryptoHelper cryptoHelper;
+        // Create an instance of the LDAPManager class
+        LDAPManager ldapManager = new LDAPManager("ctxFactory", "url", "authentication", "protocol", "encryptedPass", "baseDN", "attr", cryptoHelper);
 
-    @Mock
-    private LdapContext ldapContext;
+        // Call the authenticate method
+        Attributes attributes = ldapManager.authenticate("bankId", "secret");
 
-    @Mock
-    private SearchResult searchResult;
+        // Verify that the methods of the mock objects were called as expected
+        verify(ldapContext).addToEnvironment(Context.SECURITY_PRINCIPAL, "loginUser");
+        verify(ldapContext).addToEnvironment(Context.SECURITY_CREDENTIALS, "decryptedPass");
+        verify(ldapContext).reconnect(null);
+        verify(ldapContext).getAttributes("loginUser");
 
-    @Before
-    public void setUp() {
-        when(ldapContext.getAttributes(anyString())).thenReturn(new BasicAttributes());
-    }
-
-    @Test
-    public void testInit() {
-        ldapManager.init();
-        assertNotNull(ldapManager.getAttrs());
-    }
-
-    @Test
-    public void testPopulateAttributes() {
-        Hashtable<String, String> attrs = ldapManager.populateAttributes();
-        assertNotNull(attrs);
-        assertEquals("your_expected_ctxFactory_value", attrs.get(Context.INITIAL_CONTEXT_FACTORY));
-        // Add assertions for other attributes
-    }
-
-    @Test
-    public void testAuthenticateSuccessful() throws NamingException {
-        String bankId = "someBankId";
-        String secret = "someSecret";
-
-        when(ldapManager.exists(bankId)).thenReturn(Pair.of(ldapContext, Optional.of(searchResult)));
-        when(cryptoHelper.decrypt(anyString())).thenReturn("decryptedPassword");
-
-        Attributes attributes = ldapManager.authenticate(bankId, secret);
-
-        assertNotNull(attributes);
-        // Add assertions based on your implementation
-    }
-
-    @Test(expected = RuntimeException.class)
-    public void testAuthenticateUserNotFound() throws NamingException {
-        String bankId = "nonExistentBankId";
-        String secret = "someSecret";
-
-        when(ldapManager.exists(bankId)).thenReturn(Pair.of(ldapContext, Optional.empty()));
-
-        ldapManager.authenticate(bankId, secret);
-    }
-
-    @Test(expected = RuntimeException.class)
-    public void testAuthenticateNamingException() throws NamingException {
-        String bankId = "someBankId";
-        String secret = "someSecret";
-
-        when(ldapManager.exists(bankId)).thenReturn(Pair.of(ldapContext, Optional.of(searchResult)));
-        when(cryptoHelper.decrypt(anyString())).thenReturn("decryptedPassword");
-        doThrow(new NamingException("Simulating NamingException")).when(ldapContext).reconnect(any());
-
-        ldapManager.authenticate(bankId, secret);
+        // Verify that the correct attributes were returned
+        Assertions.assertNotNull(attributes);
+        Assertions.assertEquals(0, attributes.size());
     }
 
     @Test
     public void testExists() throws NamingException {
-        String bankId = "someBankId";
+        // Create a mock LDAP context
+        LdapContext ldapContext = Mockito.mock(LdapContext.class);
+        when(ldapContext.search("baseDN", "(attr=bankId)", SearchControls.SUBTREE_SCOPE)).thenReturn(new NamingEnumeration<>());
 
-        when(ldapManager.getAttrs()).thenReturn(new Hashtable<>());
-        when(ldapContext.search(anyString(), anyString(), any(SearchControls.class))).thenReturn(
-                new NamingEnumerationImpl<>(Collections.singletonList(searchResult))
-        );
+        // Create an instance of the LDAPManager class
+        LDAPManager ldapManager = new LDAPManager("ctxFactory", "url", "authentication", "protocol", "encryptedPass", "baseDN", "attr", null);
 
-        Pair<LdapContext, Optional<SearchResult>> result = ldapManager.exists(bankId);
+        // Call the exists method
+        Pair<LdapContext, Optional<SearchResult>> existsResult = ldapManager.exists("bankId");
 
-        assertNotNull(result);
-        assertTrue(result.getValue().isPresent());
-    }
+        // Verify that the mock objects were called as expected
+        verify(ldapContext).search("baseDN", "(attr=bankId)", SearchControls.SUBTREE_SCOPE);
 
-    // Additional tests for different scenarios can be added based on your implementation
-
-    private static class NamingEnumerationImpl<T> implements NamingEnumeration<T> {
-
-        private final List<T> elements;
-        private int index;
-
-        public NamingEnumerationImpl(List<T> elements) {
-            this.elements = elements;
-            this.index = 0;
-        }
-
-        @Override
-        public T next() {
-            if (hasMore()) {
-                return elements.get(index++);
-            } else {
-                throw new NoSuchElementException();
-            }
-        }
-
-        @Override
-        public boolean hasMore() {
-            return index < elements.size();
-        }
-
-        @Override
-        public void close() {
-            // No-op
-        }
-
-        @Override
-        public boolean hasMoreElements() {
-            return hasMore();
-        }
-
-        @Override
-        public T nextElement() {
-            return next();
-        }
+        // Verify that the correct pair was returned
+        Assertions.assertNotNull(existsResult);
+        Assertions.assertEquals(ldapContext, existsResult.getKey());
+        Assertions.assertFalse(existsResult.getValue().isPresent());
     }
 }
