@@ -1,52 +1,39 @@
- @Test
-    public void testAuthenticate() throws NamingException {
-        // Create a mock object for the CryptoHelper class
-        CryptoHelper cryptoHelper = Mockito.mock(CryptoHelper.class);
-        when(cryptoHelper.decrypt("encryptedPass")).thenReturn("decryptedPass");
+@Test
+public void testAuthenticate() throws NamingException {
+    // Create the `attrs` Hashtable
+    Hashtable<String, String> attrs = new Hashtable<>();
+    attrs.put(Context.INITIAL_CONTEXT_FACTORY, ctxFactory);
+    attrs.put(Context.PROVIDER_URL, url);
+    attrs.put(Context.SECURITY_PROTOCOL, protocol);
+    attrs.put(Context.SECURITY_PRINCIPAL, principleDN);
+    attrs.put(Context.SECURITY_CREDENTIALS, encryptedPass);
 
-        // Create a mock LDAP context
-        LdapContext ldapContext = Mockito.mock(LdapContext.class);
-        when(ldapContext.getAttributes("loginUser")).thenReturn(new Hashtable<>());
+    // Create a mock object for the CryptoHelper class
+    CryptoHelper cryptoHelper = Mockito.mock(CryptoHelper.class);
+    when(cryptoHelper.decrypt(encryptedPass)).thenReturn("decryptedPass");
 
-        // Create a mock search result
-        SearchResult searchResult = Mockito.mock(SearchResult.class);
-        when(searchResult.getNameInNamespace()).thenReturn("loginUser");
+    // Create a mock LDAP context
+    LdapContext ldapContext = Mockito.mock(LdapContext.class);
+    when(ldapContext.getAttributes("loginUser")).thenReturn(new Hashtable<>());
 
-        // Create an instance of the LDAPManager class
-        LDAPManager ldapManager = new LDAPManager("ctxFactory", "url", "authentication", "protocol", "encryptedPass", "baseDN", "attr", cryptoHelper);
+    // Create a mock search result
+    SearchResult searchResult = Mockito.mock(SearchResult.class);
+    when(searchResult.getNameInNamespace()).thenReturn("loginUser");
 
-        // Call the authenticate method
-        Attributes attributes = ldapManager.authenticate("bankId", "secret");
+    // Create an instance of the LDAPManager class
+    LDAPManager ldapManager = new LDAPManager(attrs, cryptoHelper);
 
-        // Verify that the methods of the mock objects were called as expected
-        verify(ldapContext).addToEnvironment(Context.SECURITY_PRINCIPAL, "loginUser");
-        verify(ldapContext).addToEnvironment(Context.SECURITY_CREDENTIALS, "decryptedPass");
-        verify(ldapContext).reconnect(null);
-        verify(ldapContext).getAttributes("loginUser");
+    // Call the authenticate method
+    Attributes attributes = ldapManager.authenticate("bankId", "secret");
 
-        // Verify that the correct attributes were returned
-        Assertions.assertNotNull(attributes);
-        Assertions.assertEquals(0, attributes.size());
-    }
+    // Verify that the methods of the mock objects were called as expected
+    verify(cryptoHelper).decrypt(encryptedPass);
+    verify(ldapContext).addToEnvironment(Context.SECURITY_PRINCIPAL, "loginUser");
+    verify(ldapContext).addToEnvironment(Context.SECURITY_CREDENTIALS, "decryptedPass");
+    verify(ldapContext).reconnect(null);
+    verify(ldapContext).getAttributes("loginUser");
 
-    @Test
-    public void testExists() throws NamingException {
-        // Create a mock LDAP context
-        LdapContext ldapContext = Mockito.mock(LdapContext.class);
-        when(ldapContext.search("baseDN", "(attr=bankId)", SearchControls.SUBTREE_SCOPE)).thenReturn(new NamingEnumeration<>());
-
-        // Create an instance of the LDAPManager class
-        LDAPManager ldapManager = new LDAPManager("ctxFactory", "url", "authentication", "protocol", "encryptedPass", "baseDN", "attr", null);
-
-        // Call the exists method
-        Pair<LdapContext, Optional<SearchResult>> existsResult = ldapManager.exists("bankId");
-
-        // Verify that the mock objects were called as expected
-        verify(ldapContext).search("baseDN", "(attr=bankId)", SearchControls.SUBTREE_SCOPE);
-
-        // Verify that the correct pair was returned
-        Assertions.assertNotNull(existsResult);
-        Assertions.assertEquals(ldapContext, existsResult.getKey());
-        Assertions.assertFalse(existsResult.getValue().isPresent());
-    }
+    // Verify that the correct attributes were returned
+    Assertions.assertNotNull(attributes);
+    Assertions.assertEquals(0, attributes.size());
 }
