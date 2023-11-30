@@ -1,82 +1,129 @@
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
+import static org.mockito.Mockito.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+@RunWith(MockitoJUnitRunner.class)
+public class LDAPManagerTest {
 
-@RestController
-@RequestMapping("/api-caller")
-public class ApiController {
+    @InjectMocks
+    private LDAPManager ldapManager;
 
-    private final RestTemplate restTemplate;
+    @Mock
+    private CryptoHelper cryptoHelper;
 
-    @Autowired
-    public ApiController(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    @Mock
+    private LdapContext ldapContext;
+
+    @Mock
+    private SearchResult searchResult;
+
+    @Before
+    public void setUp() {
+        when(ldapContext.getAttributes(anyString())).thenReturn(new BasicAttributes());
     }
 
-    @PostMapping("/call-api-multiple-times")
-    public List<String> callApiMultipleTimes() throws ExecutionException, InterruptedException {
-        int numberOfCalls = 10;
+    @Test
+    public void testInit() {
+        ldapManager.init();
+        assertNotNull(ldapManager.getAttrs());
+    }
 
-        // Create an ExecutorService with a fixed thread pool
-        ExecutorService executorService = Executors.newFixedThreadPool(numberOfCalls);
+    @Test
+    public void testPopulateAttributes() {
+        Hashtable<String, String> attrs = ldapManager.populateAttributes();
+        assertNotNull(attrs);
+        assertEquals("your_expected_ctxFactory_value", attrs.get(Context.INITIAL_CONTEXT_FACTORY));
+        // Add assertions for other attributes
+    }
 
-        // List to store CompletableFuture instances
-        List<CompletableFuture<String>> futures = new ArrayList<>();
+    @Test
+    public void testAuthenticateSuccessful() throws NamingException {
+        String bankId = "someBankId";
+        String secret = "someSecret";
 
-        for (int i = 0; i < numberOfCalls; i++) {
-            // Asynchronously call the API using CompletableFuture
-            CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
-                // Replace this URL with the actual URL for your POST request
-                String apiUrl = "https://api.example.com/postEndpoint";
-                
-                // Replace this with your actual request payload
-                String payload = "{\"key\":\"value\"}";
+        when(ldapManager.exists(bankId)).thenReturn(Pair.of(ldapContext, Optional.of(searchResult)));
+        when(cryptoHelper.decrypt(anyString())).thenReturn("decryptedPassword");
 
-                // Create headers
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_JSON);
+        Attributes attributes = ldapManager.authenticate(bankId, secret);
 
-                // Create the request entity with headers and payload
-                HttpEntity<String> requestEntity = new HttpEntity<>(payload, headers);
+        assertNotNull(attributes);
+        // Add assertions based on your implementation
+    }
 
-                // Make the POST request and return the response
-                return restTemplate.postForObject(apiUrl, requestEntity, String.class);
-            }, executorService);
+    @Test(expected = RuntimeException.class)
+    public void testAuthenticateUserNotFound() throws NamingException {
+        String bankId = "nonExistentBankId";
+        String secret = "someSecret";
 
-            // Add the CompletableFuture to the list
-            futures.add(future);
+        when(ldapManager.exists(bankId)).thenReturn(Pair.of(ldapContext, Optional.empty()));
+
+        ldapManager.authenticate(bankId, secret);
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void testAuthenticateNamingException() throws NamingException {
+        String bankId = "someBankId";
+        String secret = "someSecret";
+
+        when(ldapManager.exists(bankId)).thenReturn(Pair.of(ldapContext, Optional.of(searchResult)));
+        when(cryptoHelper.decrypt(anyString())).thenReturn("decryptedPassword");
+        doThrow(new NamingException("Simulating NamingException")).when(ldapContext).reconnect(any());
+
+        ldapManager.authenticate(bankId, secret);
+    }
+
+    @Test
+    public void testExists() throws NamingException {
+        String bankId = "someBankId";
+
+        when(ldapManager.getAttrs()).thenReturn(new Hashtable<>());
+        when(ldapContext.search(anyString(), anyString(), any(SearchControls.class))).thenReturn(
+                new NamingEnumerationImpl<>(Collections.singletonList(searchResult))
+        );
+
+        Pair<LdapContext, Optional<SearchResult>> result = ldapManager.exists(bankId);
+
+        assertNotNull(result);
+        assertTrue(result.getValue().isPresent());
+    }
+
+    // Additional tests for different scenarios can be added based on your implementation
+
+    private static class NamingEnumerationImpl<T> implements NamingEnumeration<T> {
+
+        private final List<T> elements;
+        private int index;
+
+        public NamingEnumerationImpl(List<T> elements) {
+            this.elements = elements;
+            this.index = 0;
         }
 
-        // Combine all CompletableFuture instances into a single CompletableFuture
-        CompletableFuture<Void> allOf = CompletableFuture.allOf(
-                futures.toArray(new CompletableFuture[0]));
-
-        // Wait for all CompletableFuture instances to complete
-        allOf.get();
-
-        // Retrieve results from CompletableFuture instances
-        List<String> results = new ArrayList<>();
-        for (CompletableFuture<String> future : futures) {
-            // Retrieve the result from each CompletableFuture
-            String result = future.get();
-            results.add(result);
+        @Override
+        public T next() {
+            if (hasMore()) {
+                return elements.get(index++);
+            } else {
+                throw new NoSuchElementException();
+            }
         }
 
-        // Shutdown the ExecutorService
-        executorService.shutdown();
+        @Override
+        public boolean hasMore() {
+            return index < elements.size();
+        }
 
-        return results;
+        @Override
+        public void close() {
+            // No-op
+        }
+
+        @Override
+        public boolean hasMoreElements() {
+            return hasMore();
+        }
+
+        @Override
+        public T nextElement() {
+            return next();
+        }
     }
 }
