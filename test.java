@@ -1,39 +1,75 @@
-@Test
-public void testAuthenticate() throws NamingException {
-    // Create the `attrs` Hashtable
-    Hashtable<String, String> attrs = new Hashtable<>();
-    attrs.put(Context.INITIAL_CONTEXT_FACTORY, ctxFactory);
-    attrs.put(Context.PROVIDER_URL, url);
-    attrs.put(Context.SECURITY_PROTOCOL, protocol);
-    attrs.put(Context.SECURITY_PRINCIPAL, principleDN);
-    attrs.put(Context.SECURITY_CREDENTIALS, encryptedPass);
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import static org.mockito.Mockito.*;
 
-    // Create a mock object for the CryptoHelper class
-    CryptoHelper cryptoHelper = Mockito.mock(CryptoHelper.class);
-    when(cryptoHelper.decrypt(encryptedPass)).thenReturn("decryptedPass");
+import java.util.HashMap;
+import java.util.Map;
 
-    // Create a mock LDAP context
-    LdapContext ldapContext = Mockito.mock(LdapContext.class);
-    when(ldapContext.getAttributes("loginUser")).thenReturn(new Hashtable<>());
+public class APIActivationHelperTest {
 
-    // Create a mock search result
-    SearchResult searchResult = Mockito.mock(SearchResult.class);
-    when(searchResult.getNameInNamespace()).thenReturn("loginUser");
+    @Mock
+    private CadmClient cadmClient;
 
-    // Create an instance of the LDAPManager class
-    LDAPManager ldapManager = new LDAPManager(attrs, cryptoHelper);
+    @Mock
+    private APIRegistrationRepository repository;
 
-    // Call the authenticate method
-    Attributes attributes = ldapManager.authenticate("bankId", "secret");
+    @Mock
+    private KeyHelper keyHelper;
 
-    // Verify that the methods of the mock objects were called as expected
-    verify(cryptoHelper).decrypt(encryptedPass);
-    verify(ldapContext).addToEnvironment(Context.SECURITY_PRINCIPAL, "loginUser");
-    verify(ldapContext).addToEnvironment(Context.SECURITY_CREDENTIALS, "decryptedPass");
-    verify(ldapContext).reconnect(null);
-    verify(ldapContext).getAttributes("loginUser");
+    @Mock
+    private SymmCipherHandler handler;
 
-    // Verify that the correct attributes were returned
-    Assertions.assertNotNull(attributes);
-    Assertions.assertEquals(0, attributes.size());
+    @InjectMocks
+    private APIActivationHelper apiActivationHelper;
+
+    @BeforeEach
+    public void setup() throws Exception {
+        MockitoAnnotations.openMocks(this);
+        when(keyHelper.getStorageSecretKey()).thenReturn("mockedSecretKey");
+    }
+
+    @Test
+    public void testActivate() {
+        Map<String, String> data = new HashMap<>();
+        data.put("groupId", "testGroupId");
+        data.put("tp", "testTp");
+        data.put("publicKey", "testPublicKey");
+        data.put("webhook", "testWebhook");
+
+        when(cadmClient.patchGroup("testGroupId", any())).thenReturn(true);
+
+        apiActivationHelper.activate(data);
+
+        // Add assertions here based on your implementation and expected behavior
+    }
+
+    @Test
+    public void testDelete() {
+        String groupId = "testGroupId";
+        String tp = "testTp";
+
+        when(repository.findById("testTp")).thenReturn(Optional.of(new APIRegistration()));
+
+        String result = apiActivationHelper.delete(groupId, tp);
+
+        // Add assertions here based on your implementation and expected behavior
+    }
+
+    @Test
+    public void testEncryptAndDecryptData() throws GeneralSecurityException {
+        Map<String, String> data = new HashMap<>();
+        data.put("key1", "value1");
+        data.put("key2", "value2");
+
+        when(handler.encrypt(any())).thenReturn("mockedEncryptedData".getBytes());
+        when(handler.decrypt(any())).thenReturn("mockedDecryptedData".getBytes());
+
+        String encryptedData = apiActivationHelper.encryptData(data);
+        Map<String, String> decryptedData = apiActivationHelper.decryptData(encryptedData);
+
+        // Add assertions here based on your implementation and expected behavior
+    }
 }
