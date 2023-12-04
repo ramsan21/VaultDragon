@@ -1,168 +1,59 @@
-import org.apache.hc.client5.http.classic.methods.*;
-import org.apache.hc.client5.http.classic.methods.expect.ExpectContinueStrategy;
-import org.apache.hc.client5.http.classic.methods.expect.NoopExpectContinueStrategy;
-import org.apache.hc.client5.http.classic.methods.http.*;
-import org.apache.hc.client5.http.classic.methods.http2.*;
-import org.apache.hc.client5.http.classic.methods.http2.push.PushConsumerRegistry;
-import org.apache.hc.client5.http.classic.methods.http2.push.PushConsumerTargetRegistry;
-import org.apache.hc.client5.http.classic.methods.http2.push.PushPromiseConsumerRegistry;
-import org.apache.hc.client5.http.classic.methods.http2.push.PushPromiseConsumerTargetRegistry;
-import org.apache.hc.client5.http.classic.methods.http2.push.PushStream;
-import org.apache.hc.client5.http.classic.methods.http2.push.PushStreamRegistry;
-import org.apache.hc.client5.http.classic.methods.nio.entity.EntityAsyncRequestConsumerSupportBase;
-import org.apache.hc.client5.http.classic.methods.nio.entity.EntityAsyncResponseConsumerSupportBase;
-import org.apache.hc.client5.http.classic.methods.nio.entity.EntityEnclosingRequestBase;
-import org.apache.hc.client5.http.classic.methods.uri.*;
-import org.apache.hc.client5.http.classic.methods.http.entity.*;
-import org.apache.hc.client5.http.classic.methods.http.entity.mime.*;
-import org.apache.hc.client5.http.classic.methods.http.entity.mime.content.*;
-import org.apache.hc.client5.http.classic.methods.http.entity.mime.content.multipart.*;
-import org.apache.hc.client5.http.classic.methods.http.entity.mime.content.multipart.FileBody;
-import org.apache.hc.client5.http.classic.methods.http.entity.mime.content.multipart.InputStreamBody;
-import org.apache.hc.client5.http.classic.methods.http.entity.mime.content.multipart.StringBody;
-import org.apache.hc.client5.http.classic.methods.http.entity.mime.content.src.ByteSourceEntity;
-import org.apache.hc.client5.http.classic.methods.http.entity.mime.content.src.FilePathByteSourceEntity;
-import org.apache.hc.client5.http.classic.methods.http.entity.mime.content.src.InputStreamByteSourceEntity;
-import org.apache.hc.client5.http.classic.methods.http.entity.mime.content.src.StringByteSourceEntity;
-import org.apache.hc.client5.http.classic.protocol.*;
-import org.apache.hc.client5.http.classic.ssl.*;
-import org.apache.hc.client5.http.config.*;
-import org.apache.hc.client5.http.cookie.*;
-import org.apache.hc.client5.http.cookie.Cookie;
-import org.apache.hc.client5.http.entity.mime.*;
-import org.apache.hc.client5.http.entity.mime.content.*;
-import org.apache.hc.client5.http.entity.mime.content.src.*;
-import org.apache.hc.client5.http.impl.*;
-import org.apache.hc.client5.http.impl.async.*;
-import org.apache.hc.client5.http.impl.classic.*;
-import org.apache.hc.client5.http.impl.cookie.*;
-import org.apache.hc.client5.http.impl.io.*;
-import org.apache.hc.client5.http.io.*;
-import org.apache.hc.client5.http.io.entity.*;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.*;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-public class CadmClientTest {
-
-    private CadmClient cadmClient;
-
-    @BeforeEach
-    void setUp() {
-        cadmClient = new CadmClient();
-    }
-
-    @Test
-    void testBuildHttpsClientWithoutSSL() throws Exception {
-        // Mock TrustStrategy
-        TrustStrategy mockTrustStrategy = mock(TrustStrategy.class);
-        when(mockTrustStrategy.isTrusted(any(), any())).thenReturn(true);
-
-        // Mock SSLContextBuilder
-        SSLContextBuilder mockBuilder = mock(SSLContextBuilder.class);
-        when(mockBuilder.setProtocol(any())).thenReturn(mockBuilder);
-        when(mockBuilder.loadTrustMaterial(any(), any())).thenReturn(mockBuilder);
-        when(mockBuilder.build()).thenReturn(mock(SSLContext.class));
-
-        // Mock SSLConnectionSocketFactory
-        SSLConnectionSocketFactory mockSocketFactory = mock(SSLConnectionSocketFactory.class);
-        when(mockSocketFactory.getSchemeRegistry()).thenReturn(mock(SchemeRegistry.class));
-
-        // Mock RegistryBuilder
-        RegistryBuilder<ConnectionSocketFactory> mockRegistryBuilder = mock(RegistryBuilder.class);
-        when(mockRegistryBuilder.register(anyString(), any())).thenReturn(mockRegistryBuilder);
-        when(mockRegistryBuilder.register(anyString(), any())).thenReturn(mockRegistryBuilder);
-
-        // Mock PoolingHttClientConnectionManager
-        PoolingHttClientConnectionManager mockConnectionManager = mock(PoolingHttClientConnectionManager.class);
-        when(mockConnectionManager.setMaxTotal(anyInt())).thenReturn(mockConnectionManager);
-        when(mockConnectionManager.setDefaultMaxPerRoute(anyInt())).thenReturn(mockConnectionManager);
-
-        // Mock HttpClientBuilder
-        HttpClientBuilder mockClientBuilder = mock(HttpClientBuilder.class);
-        when(mockClientBuilder.setConnectionManager(any())).thenReturn(mockClientBuilder);
-        when(mockClientBuilder.build()).thenReturn(mock(CloseableHttpClient.class));
-
-        // Mock HttpClients
-        HttpClients mockHttpClients = mock(HttpClients.class);
-        when(mockHttpClients.custom()).thenReturn(mockClientBuilder);
-
-        // Set up the mocks in your CadmClient instance
-        cadmClient.setTrustStrategy(mockTrustStrategy);
-        cadmClient.setSslContextBuilder(mockBuilder);
-        cadmClient.setSslConnectionSocketFactory(mockSocketFactory);
-        cadmClient.setRegistryBuilder(mockRegistryBuilder);
-        cadmClient.setConnectionManager(mockConnectionManager);
-        cadmClient.setClientBuilder(mockClientBuilder);
-        cadmClient.setHttpClients(mockHttpClients);
-
-        // Invoke the method
-        CloseableHttpClient result = cadmClient.buildHttpsClientWithoutSSL();
-
-        // Verify that the method under test was called with the expected arguments
-        verify(mockBuilder, times(1)).setProtocol("TLSv1.2");
-        verify(mockRegistryBuilder, times(2)).register(anyString(), any());
-        verify(mockConnectionManager, times(1)).setMaxTotal(40);
-        verify(mockConnectionManager, times(1)).setDefaultMaxPerRoute(5);
-        verify(mockClientBuilder, times(1)).setConnectionManager(mockConnectionManager);
-
-        // Perform assertions
-        // Add more assertions based on your specific implementation and expected behavior
-        // For example, assert that the result is not null
-        assertNotNull(result);
-    }
-
-    @Test
-    void testInit() {
-        // Mock HttpComponentsClientHttpRequestFactory
-        HttpComponentsClientHttpRequestFactory mockRequestFactory =
-                mock(HttpComponentsClientHttpRequestFactory.class);
-
-        // Mock CadmClient dependencies
-        cadmClient.setRequestFactory(mockRequestFactory);
-
-        // Invoke the method
-        cadmClient.init();
-
-        // Verify that the method under test was called with the expected arguments
-        verify(mockRequestFactory, times(1)).setHttpClient(any(CloseableHttpClient.class));
-        verify(mockRequestFactory, times(1)).setConnectTimeout(5_000);
-        verify(mockRequestFactory, times(1)).setConnectionRequestTimeout(5_000);
-
-        // Add more assertions based on your specific implementation and expected behavior
-        // For example, assert that the restTemplate field is not null
-        assertNotNull(cadmClient.getRestTemplate());
-    }
-}
-
 @Test
-    void testInit() {
-        // Mock HttpComponentsClientHttpRequestFactory
-        HttpComponentsClientHttpRequestFactory mockRequestFactory =
-                mock(HttpComponentsClientHttpRequestFactory.class);
+    public void testPatchGroupWithSuccess() {
+        String groupId = "testGroupId";
+        ApiBankingDetail detail = ApiBankingDetail.builder()
+                .apiBankingEnabled("Y")
+                .certificateFingerprint("abcd123")
+                .publicKey("guLKd™701WosszKjgpz3Ig==")
+                .webhookUr1("testurl")
+                .build();
 
-        // Mock CloseableHttpResponse
-        CloseableHttpResponse mockHttpResponse = mock(CloseableHttpResponse.class);
+        ResponseEntity<CADMGroupDetail> groupResponseEntity = new ResponseEntity<>(CADMGroupDetail.builder()
+                .groupId("COPEXTGP")
+                .groupName("COPExternalUsers")
+                .countryCode("SG | SINGAPORE")
+                .s2bmarketSegment("K Global Corporate")
+                .contactNo("12345")
+                .ngClientFlag("N")
+                .build(), HttpStatus.OK);
 
-        // Mock CloseableHttpClient
-        try {
-            when(httpClient.execute(any(HttpUriRequest.class))).thenReturn(mockHttpResponse);
-        } catch (Exception e) {
-            e.printStackTrace(); // Handle the exception as needed
-        }
+        ResponseEntity<Map> responseResponseEntity = new ResponseEntity<>(HttpStatus.OK);
 
-        // Set up the mocks in your CadmClient instance
-        // In this case, assuming that your CadmClient initializes its RestTemplate internally
-        cadmClient.setHttpClient(httpClient);
+        when(restTemplate.getForEntity(url + GROUP_API + "/" + groupId, CADMGroupDetail.class)).thenReturn(groupResponseEntity);
+        when(restTemplate.postForEntity(url + GROUP_API, any(HttpEntity.class), eq(Map.class))).thenReturn(responseResponseEntity);
 
-        // Invoke the method
-        cadmClient.init();
+        boolean result = cadmClient.patchGroup(groupId, detail);
 
-        // Verify that the method under test was called with the expected arguments
-        // Add assertions based on your specific implementation and expected behavior
-        // For example, assert that the restTemplate field is not null
-        assertNotNull(cadmClient.getRestTemplate());
+        assertTrue(result);
+
+        ArgumentCaptor<HttpEntity<Object>> requestCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).postForEntity(eq(url + GROUP_API), requestCaptor.capture(), eq(Map.class));
+
+        CADMGroupDetail group = (CADMGroupDetail) requestCaptor.getValue().getBody();
+        assertEquals(detail, group.getApiservice());
+
+        HttpHeaders headers = requestCaptor.getValue().getHeaders();
+        assertEquals(MediaType.APPLICATION_JSON, headers.getContentType());
+        assertEquals(ImmutableList.of(MediaType.APPLICATION_JSON), headers.getAccept());
+    }
+
+    @Test
+    public void testPatchGroupWithFailedGetGroup() {
+        String groupId = "testGroupId";
+        ApiBankingDetail detail = ApiBankingDetail.builder()
+                .apiBankingEnabled("Y")
+                .certificateFingerprint("abcd123")
+                .publicKey("guLKd™701WosszKjgpz3Ig==")
+                .webhookUr1("testurl")
+                .build();
+
+        ResponseEntity<CADMGroupDetail> groupResponseEntity = new ResponseEntity<>(HttpStatus.NOT_FOUND);
+
+        when(restTemplate.getForEntity(url + GROUP_API + "/" + groupId, CADMGroupDetail.class)).thenReturn(groupResponseEntity);
+
+        boolean result = cadmClient.patchGroup(groupId, detail);
+
+        assertFalse(result);
+
+        verify(restTemplate, never()).postForEntity(anyString(), any(HttpEntity.class), anyClass());
     }
