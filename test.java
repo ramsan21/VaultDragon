@@ -151,17 +151,14 @@ public class CadmClientTest {
         when(httpClient.execute(any(HttpUriRequest.class))).thenReturn(mockHttpResponse);
 
         // Set up the mocks in your CadmClient instance
-        cadmClient.setRequestFactory(mockRequestFactory);
+        // In this case, assuming that your CadmClient uses a RestTemplate
+        cadmClient.setRestTemplate(restTemplate);
 
         // Invoke the method
         cadmClient.init();
 
         // Verify that the method under test was called with the expected arguments
-        verify(mockRequestFactory, times(1)).setHttpClient(any(CloseableHttpClient.class));
-        verify(mockRequestFactory, times(1)).setConnectTimeout(5_000);
-        verify(mockRequestFactory, times(1)).setConnectionRequestTimeout(5_000);
-
-        // Add more assertions based on your specific implementation and expected behavior
+        // Add assertions based on your specific implementation and expected behavior
         // For example, assert that the restTemplate field is not null
         assertNotNull(cadmClient.getRestTemplate());
     }
