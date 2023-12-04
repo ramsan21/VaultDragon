@@ -148,11 +148,15 @@ public class CadmClientTest {
         CloseableHttpResponse mockHttpResponse = mock(CloseableHttpResponse.class);
 
         // Mock CloseableHttpClient
-        when(httpClient.execute(any(HttpUriRequest.class))).thenReturn(mockHttpResponse);
+        try {
+            when(httpClient.execute(any(HttpUriRequest.class))).thenReturn(mockHttpResponse);
+        } catch (Exception e) {
+            e.printStackTrace(); // Handle the exception as needed
+        }
 
         // Set up the mocks in your CadmClient instance
-        // In this case, assuming that your CadmClient uses a RestTemplate
-        cadmClient.setRestTemplate(restTemplate);
+        // In this case, assuming that your CadmClient initializes its RestTemplate internally
+        cadmClient.setHttpClient(httpClient);
 
         // Invoke the method
         cadmClient.init();
