@@ -137,3 +137,31 @@ public class CadmClientTest {
         assertNotNull(cadmClient.getRestTemplate());
     }
 }
+
+@Test
+    void testInit() {
+        // Mock HttpComponentsClientHttpRequestFactory
+        HttpComponentsClientHttpRequestFactory mockRequestFactory =
+                mock(HttpComponentsClientHttpRequestFactory.class);
+
+        // Mock CloseableHttpResponse
+        CloseableHttpResponse mockHttpResponse = mock(CloseableHttpResponse.class);
+
+        // Mock CloseableHttpClient
+        when(httpClient.execute(any(HttpUriRequest.class))).thenReturn(mockHttpResponse);
+
+        // Set up the mocks in your CadmClient instance
+        cadmClient.setRequestFactory(mockRequestFactory);
+
+        // Invoke the method
+        cadmClient.init();
+
+        // Verify that the method under test was called with the expected arguments
+        verify(mockRequestFactory, times(1)).setHttpClient(any(CloseableHttpClient.class));
+        verify(mockRequestFactory, times(1)).setConnectTimeout(5_000);
+        verify(mockRequestFactory, times(1)).setConnectionRequestTimeout(5_000);
+
+        // Add more assertions based on your specific implementation and expected behavior
+        // For example, assert that the restTemplate field is not null
+        assertNotNull(cadmClient.getRestTemplate());
+    }
