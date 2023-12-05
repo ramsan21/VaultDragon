@@ -134,3 +134,85 @@ class LDAPManagerTest {
         // You can add assertions here if necessary
     }
 }
+
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import javax.naming.Context;
+import javax.naming.NamingEnumeration;
+import javax.naming.NamingException;
+import javax.naming.directory.DirContext;
+import javax.naming.directory.SearchControls;
+import javax.naming.directory.SearchResult;
+import javax.naming.ldap.LdapContext;
+import java.util.Hashtable;
+import java.util.Optional;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.util.ReflectionTestUtils.invokeMethod;
+
+class LDAPManagerTest {
+
+    @Mock
+    private CryptoHelper cryptoHelper;
+
+    @InjectMocks
+    private LDAPManager ldapManager;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        // Set your field values using ReflectionTestUtils.setField here
+    }
+
+    @Test
+    void testExists() throws NamingException {
+        LdapContext ldapContextMock = mock(LdapContext.class);
+        NamingEnumeration<SearchResult> namingEnumerationMock = mock(NamingEnumeration.class);
+        SearchResult searchResultMock = mock(SearchResult.class);
+
+        when(ldapContextMock.search(anyString(), anyString(), any(SearchControls.class)))
+                .thenReturn(namingEnumerationMock);
+        when(namingEnumerationMock.hasMore()).thenReturn(true);
+        when(namingEnumerationMock.next()).thenReturn(searchResultMock);
+
+        ReflectionTestUtils.setField(ldapManager, "attrs", new Hashtable<>()); // Set necessary fields
+        ReflectionTestUtils.setField(ldapManager, "encryptedPass", "testEncryptedPass"); // Set encryptedPass
+
+        when(cryptoHelper.decrypt(anyString())).thenReturn("decryptedPass");
+
+        // Set necessary fields for attrs in the LDAPManager
+        ReflectionTestUtils.setField(ldapManager, "ctxFactory", "testCtxFactory");
+        ReflectionTestUtils.setField(ldapManager, "url", "testUrl");
+        ReflectionTestUtils.setField(ldapManager, "authentication", "testAuthentication");
+        ReflectionTestUtils.setField(ldapManager, "protocol", "testProtocol");
+        ReflectionTestUtils.setField(ldapManager, "baseDN", "testBaseDN");
+        ReflectionTestUtils.setField(ldapManager, "attr", "testAttr");
+
+        // Adjust attrs initialization in LDAPManager
+        Hashtable<String, String> attrs = new Hashtable<>();
+        attrs.put(Context.INITIAL_CONTEXT_FACTORY, "testCtxFactory");
+        attrs.put(Context.PROVIDER_URL, "testUrl");
+        attrs.put(Context.SECURITY_PROTOCOL, "testProtocol");
+        attrs.put(Context.SECURITY_AUTHENTICATION, "testAuthentication");
+        attrs.put(Context.SECURITY_PRINCIPAL, "principleDN");
+        attrs.put(Context.SECURITY_CREDENTIALS, "decryptedPass");
+
+        when(ldapContextMock.search(anyString(), anyString(), any(SearchControls.class)))
+                .thenReturn(namingEnumerationMock);
+        when(namingEnumerationMock.hasMore()).thenReturn(true);
+        when(namingEnumerationMock.next()).thenReturn(searchResultMock);
+        when(searchResultMock.getNameInNamespace()).thenReturn("testLoginUser");
+
+        Pair<LdapContext, Optional<SearchResult>> result = invokeMethod(ldapManager, "exists", "testBankId");
+
+        // You can add assertions here if necessary
+    }
+}
