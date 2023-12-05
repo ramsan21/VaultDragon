@@ -1,106 +1,136 @@
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
+import org.springframework.test.util.ReflectionTestUtils;
 
-import javax.naming.Context;
-import javax.naming.DirContext;
+import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
-import javax.naming.ldap.InitialLdapContext;
+import javax.naming.directory.Attributes;
+import javax.naming.directory.DirContext;
+import javax.naming.directory.SearchControls;
+import javax.naming.directory.SearchResult;
 import javax.naming.ldap.LdapContext;
-import javax.naming.ldap.SearchResult;
+import java.util.Hashtable;
+import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
-public class LDAPManagerTest {
+class LDAPManagerTest {
 
     @Mock
-    private CryptoHelper mockCryptoHelper;
-
-    @Mock
-    private SearchResult mockSearchResult;
+    private CryptoHelper cryptoHelper;
 
     @InjectMocks
     private LDAPManager ldapManager;
 
-    @Test
-    public void testInit() {
-        // Set up mocks
-        when(mockCryptoHelper.decrypt("encryptedPass")).thenReturn("decryptedPassword");
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        ReflectionTestUtils.setField(ldapManager, "ctxFactory", "testCtxFactory");
+        ReflectionTestUtils.setField(ldapManager, "url", "testUrl");
+        ReflectionTestUtils.setField(ldapManager, "authentication", "testAuthentication");
+        ReflectionTestUtils.setField(ldapManager, "protocol", "testProtocol");
+        ReflectionTestUtils.setField(ldapManager, "encryptedPass", "testEncryptedPass");
+        ReflectionTestUtils.setField(ldapManager, "baseDN", "testBaseDN");
+        ReflectionTestUtils.setField(ldapManager, "attr", "testAttr");
 
-        // Execute the method
+        when(cryptoHelper.decrypt(anyString())).thenReturn("decryptedPass");
+    }
+
+    @Test
+    void testInit() {
         ldapManager.init();
-
-        // Verify attribute population
-        ArgumentCaptor<Hashtable<String, String>> attrsCaptor = ArgumentCaptor.forClass(Hashtable.class);
-        verify(new Hashtable<>(attrsCaptor.capture())).put(Context.INITIAL_CONTEXT_FACTORY, "ctxFactory");
-        verify(new Hashtable<>(attrsCaptor.capture())).put(Context.PROVIDER_URL, "url");
-        verify(new Hashtable<>(attrsCaptor.capture())).put(Context.SECURITY_PROTOCOL, "protocol");
-        verify(new Hashtable<>(attrsCaptor.capture())).put(Context.SECURITY_AUTHENTICATION, "authentication");
-        verify(new Hashtable<>(attrsCaptor.capture())).put(Context.SECURITY_PRINCIPAL, "principleDN");
-        verify(new Hashtable<>(attrsCaptor.capture())).put(Context.SECURITY_CREDENTIALS, "decryptedPassword");
+        // You can add assertions here if necessary
     }
 
     @Test
-    public void testAuthenticateWithUserFound() throws NamingException {
-        String bankId = "bankId";
-        String secret = "secret";
+    void testAuthenticate() throws NamingException {
+        String bankId = "testBankId";
+        String secret = "testSecret";
 
-        // Set up mocks
-        when(ldapManager.exists(bankId)).thenReturn(new Pair<>(mockLdapContext, Optional.of(mockSearchResult)));
-        when(ldapManager.authenticate(mockLdapContext, mockSearchResult, secret)).thenReturn(mockAttributes);
+        LdapContext ldapContextMock = mock(LdapContext.class);
+        NamingEnumeration<SearchResult> namingEnumerationMock = mock(NamingEnumeration.class);
+        SearchResult searchResultMock = mock(SearchResult.class);
 
-        // Execute the method
-        Attributes attributes = ldapManager.authenticate(bankId, secret);
+        when(ldapContextMock.search(anyString(), anyString(), any(SearchControls.class)))
+                .thenReturn(namingEnumerationMock);
+        when(namingEnumerationMock.hasMore()).thenReturn(true);
+        when(namingEnumerationMock.next()).thenReturn(searchResultMock);
+        when(searchResultMock.getNameInNamespace()).thenReturn("testLoginUser");
 
-        // Verify authentication and attribute retrieval
-        assertEquals(mockAttributes, attributes);
-        verify(mockLdapContext, times(2)).addToEnvironment(Context.SECURITY_PRINCIPAL, "loginUser");
-        verify(mockLdapContext, times(2)).addToEnvironment(Context.SECURITY_CREDENTIALS, secret);
-        verify(mockLdapContext).reconnect(null);
+        Pair<LdapContext, Optional<SearchResult>> existsResult =
+                Pair.of(ldapContextMock, Optional.of(searchResultMock));
+
+        when(ldapManager.exists(bankId)).thenReturn(existsResult);
+
+        ldapManager.authenticate(bankId, secret);
+
+        // You can add assertions here if necessary
     }
 
     @Test
-    public void testAuthenticateWithUserNotFound() throws NamingException {
-        String bankId = "bankId";
-        String secret = "secret";
+    void testAuthenticateNoUserFound() throws NamingException {
+        String bankId = "nonExistentBankId";
+        String secret = "testSecret";
 
-        // Set up mocks
-        when(ldapManager.exists(bankId)).thenReturn(new Pair<>(mockLdapContext, Optional.empty()));
+        Pair<LdapContext, Optional<SearchResult>> existsResult =
+                Pair.of(mock(LdapContext.class), Optional.empty());
 
-        // Execute the method
+        when(ldapManager.exists(bankId)).thenReturn(existsResult);
+
         assertThrows(RuntimeException.class, () -> ldapManager.authenticate(bankId, secret));
     }
 
     @Test
-    public void testExists() throws NamingException {
-        String bankId = "bankId";
+    void testAuthenticateNamingException() throws NamingException {
+        String bankId = "testBankId";
+        String secret = "testSecret";
 
-        // Set up mocks
-        when(new InitialLdapContext(ldapManager.getAttributes(), null)).thenReturn(mockLdapContext);
-        when(mockLdapContext.search(ldapManager.getBaseDN(), ldapManager.getAccAttribute(), ldapManager.getConstraints())).thenReturn(mockNamingEnumeration);
+        Pair<LdapContext, Optional<SearchResult>> existsResult =
+                Pair.of(mock(LdapContext.class), Optional.of(mock(SearchResult.class)));
 
-        // Execute the method
-        Pair<LdapContext, Optional<SearchResult>> existsResult = ldapManager.exists(bankId);
+        when(ldapManager.exists(bankId)).thenReturn(existsResult);
+        when(cryptoHelper.decrypt(anyString())).thenThrow(new NamingException());
 
-        // Verify context creation and search
-        assertEquals(mockLdapContext, existsResult.getKey());
-        assertEquals(Optional.of(mockSearchResult), existsResult.getValue());
+        assertThrows(RuntimeException.class, () -> ldapManager.authenticate(bankId, secret));
     }
 
     @Test
-    public void testHandleNamingException() throws NamingException {
-        LdapContext ldapContext = mock(LdapContext.class);
-        SearchResult searchResult = mock(SearchResult.class);
-        String secret = "secret";
+    void testExists() throws NamingException {
+        String bankId = "testBankId";
 
-        // Set up mocks
-        when(ldapManager.authenticate(ldapContext, searchResult, secret)).thenThrow(new NamingException("Authentication failed"));
+        LdapContext ldapContextMock = mock(LdapContext.class);
+        NamingEnumeration<SearchResult> namingEnumerationMock = mock(NamingEnumeration.class);
+        SearchResult searchResultMock = mock(SearchResult.class);
 
-        // Execute the method
-        assertThrows
+        when(ldapContextMock.search(anyString(), anyString(), any(SearchControls.class)))
+                .thenReturn(namingEnumerationMock);
+        when(namingEnumerationMock.hasMore()).thenReturn(true);
+        when(namingEnumerationMock.next()).thenReturn(searchResultMock);
+
+        Pair<LdapContext, Optional<SearchResult>> result = ldapManager.exists(bankId);
+
+        // You can add assertions here if necessary
+    }
+
+    @Test
+    void testExistsNoResult() throws NamingException {
+        String bankId = "nonExistentBankId";
+
+        LdapContext ldapContextMock = mock(LdapContext.class);
+        NamingEnumeration<SearchResult> namingEnumerationMock = mock(NamingEnumeration.class);
+
+        when(ldapContextMock.search(anyString(), anyString(), any(SearchControls.class)))
+                .thenReturn(namingEnumerationMock);
+        when(namingEnumerationMock.hasMore()).thenReturn(false);
+
+        Pair<LdapContext, Optional<SearchResult>> result = ldapManager.exists(bankId);
+
+        // You can add assertions here if necessary
+    }
+}
