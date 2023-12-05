@@ -1,59 +1,106 @@
-@Test
-    public void testPatchGroupWithSuccess() {
-        String groupId = "testGroupId";
-        ApiBankingDetail detail = ApiBankingDetail.builder()
-                .apiBankingEnabled("Y")
-                .certificateFingerprint("abcd123")
-                .publicKey("guLKd™701WosszKjgpz3Ig==")
-                .webhookUr1("testurl")
-                .build();
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-        ResponseEntity<CADMGroupDetail> groupResponseEntity = new ResponseEntity<>(CADMGroupDetail.builder()
-                .groupId("COPEXTGP")
-                .groupName("COPExternalUsers")
-                .countryCode("SG | SINGAPORE")
-                .s2bmarketSegment("K Global Corporate")
-                .contactNo("12345")
-                .ngClientFlag("N")
-                .build(), HttpStatus.OK);
+import javax.naming.Context;
+import javax.naming.DirContext;
+import javax.naming.NamingException;
+import javax.naming.ldap.InitialLdapContext;
+import javax.naming.ldap.LdapContext;
+import javax.naming.ldap.SearchResult;
 
-        ResponseEntity<Map> responseResponseEntity = new ResponseEntity<>(HttpStatus.OK);
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.*;
 
-        when(restTemplate.getForEntity(url + GROUP_API + "/" + groupId, CADMGroupDetail.class)).thenReturn(groupResponseEntity);
-        when(restTemplate.postForEntity(url + GROUP_API, any(HttpEntity.class), eq(Map.class))).thenReturn(responseResponseEntity);
+@ExtendWith(MockitoExtension.class)
+public class LDAPManagerTest {
 
-        boolean result = cadmClient.patchGroup(groupId, detail);
+    @Mock
+    private CryptoHelper mockCryptoHelper;
 
-        assertTrue(result);
+    @Mock
+    private SearchResult mockSearchResult;
 
-        ArgumentCaptor<HttpEntity<Object>> requestCaptor = ArgumentCaptor.forClass(HttpEntity.class);
-        verify(restTemplate).postForEntity(eq(url + GROUP_API), requestCaptor.capture(), eq(Map.class));
+    @InjectMocks
+    private LDAPManager ldapManager;
 
-        CADMGroupDetail group = (CADMGroupDetail) requestCaptor.getValue().getBody();
-        assertEquals(detail, group.getApiservice());
+    @Test
+    public void testInit() {
+        // Set up mocks
+        when(mockCryptoHelper.decrypt("encryptedPass")).thenReturn("decryptedPassword");
 
-        HttpHeaders headers = requestCaptor.getValue().getHeaders();
-        assertEquals(MediaType.APPLICATION_JSON, headers.getContentType());
-        assertEquals(ImmutableList.of(MediaType.APPLICATION_JSON), headers.getAccept());
+        // Execute the method
+        ldapManager.init();
+
+        // Verify attribute population
+        ArgumentCaptor<Hashtable<String, String>> attrsCaptor = ArgumentCaptor.forClass(Hashtable.class);
+        verify(new Hashtable<>(attrsCaptor.capture())).put(Context.INITIAL_CONTEXT_FACTORY, "ctxFactory");
+        verify(new Hashtable<>(attrsCaptor.capture())).put(Context.PROVIDER_URL, "url");
+        verify(new Hashtable<>(attrsCaptor.capture())).put(Context.SECURITY_PROTOCOL, "protocol");
+        verify(new Hashtable<>(attrsCaptor.capture())).put(Context.SECURITY_AUTHENTICATION, "authentication");
+        verify(new Hashtable<>(attrsCaptor.capture())).put(Context.SECURITY_PRINCIPAL, "principleDN");
+        verify(new Hashtable<>(attrsCaptor.capture())).put(Context.SECURITY_CREDENTIALS, "decryptedPassword");
     }
 
     @Test
-    public void testPatchGroupWithFailedGetGroup() {
-        String groupId = "testGroupId";
-        ApiBankingDetail detail = ApiBankingDetail.builder()
-                .apiBankingEnabled("Y")
-                .certificateFingerprint("abcd123")
-                .publicKey("guLKd™701WosszKjgpz3Ig==")
-                .webhookUr1("testurl")
-                .build();
+    public void testAuthenticateWithUserFound() throws NamingException {
+        String bankId = "bankId";
+        String secret = "secret";
 
-        ResponseEntity<CADMGroupDetail> groupResponseEntity = new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        // Set up mocks
+        when(ldapManager.exists(bankId)).thenReturn(new Pair<>(mockLdapContext, Optional.of(mockSearchResult)));
+        when(ldapManager.authenticate(mockLdapContext, mockSearchResult, secret)).thenReturn(mockAttributes);
 
-        when(restTemplate.getForEntity(url + GROUP_API + "/" + groupId, CADMGroupDetail.class)).thenReturn(groupResponseEntity);
+        // Execute the method
+        Attributes attributes = ldapManager.authenticate(bankId, secret);
 
-        boolean result = cadmClient.patchGroup(groupId, detail);
-
-        assertFalse(result);
-
-        verify(restTemplate, never()).postForEntity(anyString(), any(HttpEntity.class), anyClass());
+        // Verify authentication and attribute retrieval
+        assertEquals(mockAttributes, attributes);
+        verify(mockLdapContext, times(2)).addToEnvironment(Context.SECURITY_PRINCIPAL, "loginUser");
+        verify(mockLdapContext, times(2)).addToEnvironment(Context.SECURITY_CREDENTIALS, secret);
+        verify(mockLdapContext).reconnect(null);
     }
+
+    @Test
+    public void testAuthenticateWithUserNotFound() throws NamingException {
+        String bankId = "bankId";
+        String secret = "secret";
+
+        // Set up mocks
+        when(ldapManager.exists(bankId)).thenReturn(new Pair<>(mockLdapContext, Optional.empty()));
+
+        // Execute the method
+        assertThrows(RuntimeException.class, () -> ldapManager.authenticate(bankId, secret));
+    }
+
+    @Test
+    public void testExists() throws NamingException {
+        String bankId = "bankId";
+
+        // Set up mocks
+        when(new InitialLdapContext(ldapManager.getAttributes(), null)).thenReturn(mockLdapContext);
+        when(mockLdapContext.search(ldapManager.getBaseDN(), ldapManager.getAccAttribute(), ldapManager.getConstraints())).thenReturn(mockNamingEnumeration);
+
+        // Execute the method
+        Pair<LdapContext, Optional<SearchResult>> existsResult = ldapManager.exists(bankId);
+
+        // Verify context creation and search
+        assertEquals(mockLdapContext, existsResult.getKey());
+        assertEquals(Optional.of(mockSearchResult), existsResult.getValue());
+    }
+
+    @Test
+    public void testHandleNamingException() throws NamingException {
+        LdapContext ldapContext = mock(LdapContext.class);
+        SearchResult searchResult = mock(SearchResult.class);
+        String secret = "secret";
+
+        // Set up mocks
+        when(ldapManager.authenticate(ldapContext, searchResult, secret)).thenThrow(new NamingException("Authentication failed"));
+
+        // Execute the method
+        assertThrows
