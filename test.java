@@ -1,24 +1,24 @@
 import com.scb.starsec.utility.exceptions.CryptoException;
 import com.scb.starsec.utility.helpers.Utf8;
 import org.bouncycastle.util.encoders.Hex;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.slf4j.Logger;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.s1f4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.security.GeneralSecurityException;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
-class DbCryptoHelperTest {
-
-    @Mock
-    private Logger logger;
+@RunWith(MockitoJUnitRunner.class)
+public class DbCryptoHelperTest {
 
     @Mock
     private KeyHelper keyHelper;
@@ -29,40 +29,47 @@ class DbCryptoHelperTest {
     @InjectMocks
     private DbCryptoHelper dbCryptoHelper;
 
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
+    @Before
+    public void setUp() throws Exception {
         ReflectionTestUtils.setField(dbCryptoHelper, "alias", "testAlias");
         ReflectionTestUtils.setField(dbCryptoHelper, "algorithm", "testAlgorithm");
         ReflectionTestUtils.setField(dbCryptoHelper, "provider", "testProvider");
         ReflectionTestUtils.setField(dbCryptoHelper, "keystorePath", "testKeystorePath");
         ReflectionTestUtils.setField(dbCryptoHelper, "keystorePassword", "testKeystorePassword");
         ReflectionTestUtils.setField(dbCryptoHelper, "keystoreType", "testKeystoreType");
-        ReflectionTestUtils.setField(dbCryptoHelper, "keyHelper", keyHelper);
-        ReflectionTestUtils.setField(dbCryptoHelper, "handler", symmCipherHandler);
+
+        when(keyHelper.getStorageSecretkey()).thenReturn(new byte[]{1, 2, 3});
     }
 
     @Test
-    void testProtect() throws CryptoException, GeneralSecurityException {
+    public void testProtect() {
         String plainText = "testPlainText";
-        when(symmCipherHandler.encrypt(any())).thenReturn(new byte[]{});
-        when(logger.isDebugEnabled()).thenReturn(true);
+        when(symmCipherHandler.encrypt(any())).thenReturn(new byte[]{4, 5, 6});
 
         String result = dbCryptoHelper.protect(plainText);
 
-        verify(logger, times(2)).debug(anyString());
-        assertEquals(plainText, result);
+        assertEquals("040506", result); // Hex encoding of the byte array {4, 5, 6}
     }
 
     @Test
-    void testUnprotect() throws CryptoException, GeneralSecurityException {
-        String cipherTextHex = "testCipherTextHex";
-        when(symmCipherHandler.decrypt(any())).thenReturn(new byte[]{});
-        when(logger.isDebugEnabled()).thenReturn(true);
+    public void testProtectWithNullPlainText() {
+        String result = dbCryptoHelper.protect(null);
+        assertEquals(null, result);
+    }
+
+    @Test
+    public void testUnprotect() {
+        String cipherTextHex = "040506";
+        when(symmCipherHandler.decrypt(any())).thenReturn(new byte[]{1, 2, 3});
 
         String result = dbCryptoHelper.unprotect(cipherTextHex);
 
-        verify(logger, times(2)).debug(anyString());
-        assertEquals(cipherTextHex, result);
+        assertEquals("010203", result); // Utf8 string representation of the byte array {1, 2, 3}
+    }
+
+    @Test
+    public void testUnprotectWithNullCipherTextHex() {
+        String result = dbCryptoHelper.unprotect(null);
+        assertEquals(null, result);
     }
 }
