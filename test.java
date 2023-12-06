@@ -1,75 +1,52 @@
+import org.joda.time.Instant;
+import org.joda.time.Interval;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class UAASRsaSHA256VerifierTest {
-
-    @Mock
-    private SignatureHandler mockHandler;
+class TimeOffsetClockTest {
 
     @InjectMocks
-    private UAASRsaSHA256Verifier verifier;
+    private TimeOffsetClock clock;
 
     @Test
-    void testVerifySignature_Success() throws CryptoException {
-        // Mocking behavior
-        byte[] claims = "claims".getBytes();
-        byte[] signature = "signature".getBytes();
-        when(mockHandler.verify(claims, signature)).thenReturn(true);
+    void testNow() {
+        // Set up the test
+        long offset = 1000L;
+        clock = new TimeOffsetClock(offset);
 
         // Perform the test
-        verifier.verifySignature(claims, signature);
+        Instant now = clock.now();
 
-        // Verify that the logger.debug and other assertions as needed
-        // ...
-
-        // Example assertions using Mockito
-        verify(mockHandler, times(1)).verify(claims, signature);
+        // Verify that the clock's time matches the expected time
+        Instant expectedNow = new Instant(System.currentTimeMillis() + offset);
+        assertTrue(now.isEqual(expectedNow));
     }
 
     @Test
-    void testVerifySignature_Failure() {
-        // Mocking behavior
-        byte[] claims = "claims".getBytes();
-        byte[] signature = "signature".getBytes();
-        when(mockHandler.verify(claims, signature)).thenReturn(false);
+    void testIsCurrentTimeInInterval() {
+        // Set up the test
+        long offset = 1000L;
+        clock = new TimeOffsetClock(offset);
 
-        // Perform the test and expect CryptoException
-        assertThrows(CryptoException.class, () -> verifier.verifySignature(claims, signature));
+        // Define an interval
+        Instant start = new Instant(System.currentTimeMillis() - 2000L);
+        Instant end = new Instant(System.currentTimeMillis() + 2000L);
 
-        // Verify that the logger.debug and other assertions as needed
-        // ...
+        // Perform the test with a valid interval
+        boolean result = clock.isCurrentTimeInInterval(start, end);
 
-        // Example assertions using Mockito
-        verify(mockHandler, times(1)).verify(claims, signature);
-    }
+        // Verify that the result is true for a valid interval
+        assertTrue(result);
 
-    @Test
-    void testVerifySignature_Exception() {
-        // Mocking behavior to throw an exception
-        byte[] claims = "claims".getBytes();
-        byte[] signature = "signature".getBytes();
-        when(mockHandler.verify(claims, signature)).thenThrow(new RuntimeException("Simulated exception"));
+        // Perform the test with an invalid interval
+        Instant invalidStart = new Instant(System.currentTimeMillis() + 3000L);
+        Instant invalidEnd = new Instant(System.currentTimeMillis() + 4000L);
+        result = clock.isCurrentTimeInInterval(invalidStart, invalidEnd);
 
-        // Perform the test and expect CryptoException
-        assertThrows(CryptoException.class, () -> verifier.verifySignature(claims, signature));
-
-        // Verify that the logger.debug and other assertions as needed
-        // ...
-
-        // Example assertions using Mockito
-        verify(mockHandler, times(1)).verify(claims, signature);
-    }
-
-    @Test
-    void testConstructor() {
-        // Initialize the mocks
-        MockitoAnnotations.openMocks(this);
-
-        // Perform any additional assertions related to the constructor
-        // ...
+        // Verify that the result is false for an invalid interval
+        assertFalse(result);
     }
 }
