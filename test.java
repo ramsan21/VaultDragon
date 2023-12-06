@@ -1,52 +1,87 @@
-import org.joda.time.Instant;
-import org.joda.time.Interval;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import javax.crypto.Cipher;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.interfaces.RSAPublicKey;
 
-class TimeOffsetClockTest {
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class AsymCipherHandlerTest {
+
+    @Mock
+    private RSAPublicKey mockPublicKey;
+
+    @Mock
+    private PrivateKey mockPrivateKey;
 
     @InjectMocks
-    private TimeOffsetClock clock;
+    private AsymCipherHandler cipherHandler;
 
     @Test
-    void testNow() {
+    void testDecrypt() throws GeneralSecurityException, IOException {
         // Set up the test
-        long offset = 1000L;
-        clock = new TimeOffsetClock(offset);
+        byte[] cipherText = "encryptedText".getBytes();
+        cipherHandler.setPrivateKey(mockPrivateKey);
+
+        Cipher mockCipher = mock(Cipher.class);
+        when(mockCipher.getBlockSize()).thenReturn(16); // Set your desired block size
+        when(cipherHandler.getCipherInstance()).thenReturn(mockCipher);
 
         // Perform the test
-        Instant now = clock.now();
+        byte[] decryptedText = cipherHandler.decrypt(cipherText);
 
-        // Verify that the clock's time matches the expected time
-        Instant expectedNow = new Instant(System.currentTimeMillis() + offset);
-        assertTrue(now.isEqual(expectedNow));
+        // Verify that the decryption works as expected
+        // Add assertions based on your specific scenario
+        assertNotNull(decryptedText);
     }
 
     @Test
-    void testIsCurrentTimeInInterval() {
+    void testEncrypt() throws GeneralSecurityException {
         // Set up the test
-        long offset = 1000L;
-        clock = new TimeOffsetClock(offset);
+        byte[] plainText = "originalText".getBytes();
+        cipherHandler.setPublicKey(mockPublicKey);
 
-        // Define an interval
-        Instant start = new Instant(System.currentTimeMillis() - 2000L);
-        Instant end = new Instant(System.currentTimeMillis() + 2000L);
+        Cipher mockCipher = mock(Cipher.class);
+        when(mockCipher.getBlockSize()).thenReturn(16); // Set your desired block size
+        when(cipherHandler.getCipherInstance()).thenReturn(mockCipher);
 
-        // Perform the test with a valid interval
-        boolean result = clock.isCurrentTimeInInterval(start, end);
+        // Perform the test
+        byte[] encryptedText = cipherHandler.encrypt(plainText);
 
-        // Verify that the result is true for a valid interval
-        assertTrue(result);
+        // Verify that the encryption works as expected
+        // Add assertions based on your specific scenario
+        assertNotNull(encryptedText);
+    }
 
-        // Perform the test with an invalid interval
-        Instant invalidStart = new Instant(System.currentTimeMillis() + 3000L);
-        Instant invalidEnd = new Instant(System.currentTimeMillis() + 4000L);
-        result = clock.isCurrentTimeInInterval(invalidStart, invalidEnd);
+    // Add more tests for edge cases, setter/getter methods, etc.
 
-        // Verify that the result is false for an invalid interval
-        assertFalse(result);
+    @Test
+    void testSetPrivateKey() {
+        // Set up the test
+        PrivateKey privateKey = mock(PrivateKey.class);
+
+        // Perform the test
+        cipherHandler.setPrivateKey(privateKey);
+
+        // Verify that the private key is set correctly
+        assertEquals(privateKey, cipherHandler.getPrivatekey());
+    }
+
+    @Test
+    void testSetPublicKey() {
+        // Set up the test
+        PublicKey publicKey = mock(PublicKey.class);
+
+        // Perform the test
+        cipherHandler.setPublicKey(publicKey);
+
+        // Verify that the public key is set correctly
+        assertEquals(publicKey, cipherHandler.getPublickey());
     }
 }
