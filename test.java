@@ -85,3 +85,28 @@ class AsymCipherHandlerTest {
         assertEquals(publicKey, cipherHandler.getPublickey());
     }
 }
+
+@Test
+    void testDecryptWithReflection() throws Exception {
+        // Set up the test
+        byte[] cipherText = "encryptedText".getBytes();
+        PrivateKey mockPrivateKey = mock(PrivateKey.class);
+
+        AsymCipherHandler cipherHandler = new AsymCipherHandler("algorithm");
+        cipherHandler.setPrivateKey(mockPrivateKey);
+
+        // Use reflection to access the private method
+        Method method = AsymCipherHandler.class.getDeclaredMethod("getCipherInstance");
+        method.setAccessible(true);
+
+        Cipher mockCipher = mock(Cipher.class);
+        when(mockCipher.getBlockSize()).thenReturn(16); // Set your desired block size
+        when(method.invoke(cipherHandler)).thenReturn(mockCipher);
+
+        // Perform the test
+        byte[] decryptedText = cipherHandler.decrypt(cipherText);
+
+        // Verify that the decryption works as expected
+        // Add assertions based on your specific scenario
+        assertEquals("decryptedText", new String(decryptedText));
+    }
