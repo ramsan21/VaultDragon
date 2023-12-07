@@ -1,75 +1,52 @@
-import com.scb.starsec.utility.exceptions.CryptoException;
-import com.scb.starsec.utility.helpers.Utf8;
-import org.bouncycastle.util.encoders.Hex;
-import org.junit.Before;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.fail;
+
+import java.nio.charset.CharacterCodingException;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import org.s1f4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.test.util.ReflectionTestUtils;
 
-import java.security.GeneralSecurityException;
+public class YourClassTest {
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+    @Test
+    public void testGetBytes() {
+        String inputString = "Hello, World!";
+        byte[] expectedBytes;
 
-@RunWith(MockitoJUnitRunner.class)
-public class DbCryptoHelperTest {
+        try {
+            // Calculate the expected byte array using a reliable method
+            expectedBytes = inputString.getBytes("UTF-8");
+        } catch (Exception e) {
+            // If the standard method fails, the test case should fail as well
+            fail("Unexpected exception while getting expected bytes: " + e.getMessage());
+            return;
+        }
 
-    @Mock
-    private KeyHelper keyHelper;
+        try {
+            // Call the method you want to test
+            byte[] resultBytes = YourClass.getBytes(inputString);
 
-    @Mock
-    private SymmCipherHandler symmCipherHandler;
-
-    @InjectMocks
-    private DbCryptoHelper dbCryptoHelper;
-
-    @Before
-    public void setUp() throws Exception {
-        ReflectionTestUtils.setField(dbCryptoHelper, "alias", "testAlias");
-        ReflectionTestUtils.setField(dbCryptoHelper, "algorithm", "testAlgorithm");
-        ReflectionTestUtils.setField(dbCryptoHelper, "provider", "testProvider");
-        ReflectionTestUtils.setField(dbCryptoHelper, "keystorePath", "testKeystorePath");
-        ReflectionTestUtils.setField(dbCryptoHelper, "keystorePassword", "testKeystorePassword");
-        ReflectionTestUtils.setField(dbCryptoHelper, "keystoreType", "testKeystoreType");
-
-        when(keyHelper.getStorageSecretkey()).thenReturn(new byte[]{1, 2, 3});
+            // Assert that the result matches the expected value
+            assertArrayEquals(expectedBytes, resultBytes);
+        } catch (IllegalArgumentException e) {
+            // If the method throws IllegalArgumentException, fail the test
+            fail("IllegalArgumentException not expected: " + e.getMessage());
+        }
     }
 
     @Test
-    public void testProtect() {
-        String plainText = "testPlainText";
-        when(symmCipherHandler.encrypt(any())).thenReturn(new byte[]{4, 5, 6});
+    public void testGetBytesWithException() {
+        String inputString = "Invalid \uD83D\uDE00 Emoji"; // This emoji may cause CharacterCodingException
 
-        String result = dbCryptoHelper.protect(plainText);
+        try {
+            // Call the method you want to test, expecting an exception
+            YourClass.getBytes(inputString);
 
-        assertEquals("040506", result); // Hex encoding of the byte array {4, 5, 6}
-    }
-
-    @Test
-    public void testProtectWithNullPlainText() {
-        String result = dbCryptoHelper.protect(null);
-        assertEquals(null, result);
-    }
-
-    @Test
-    public void testUnprotect() {
-        String cipherTextHex = "040506";
-        when(symmCipherHandler.decrypt(any())).thenReturn(new byte[]{1, 2, 3});
-
-        String result = dbCryptoHelper.unprotect(cipherTextHex);
-
-        assertEquals("010203", result); // Utf8 string representation of the byte array {1, 2, 3}
-    }
-
-    @Test
-    public void testUnprotectWithNullCipherTextHex() {
-        String result = dbCryptoHelper.unprotect(null);
-        assertEquals(null, result);
+            // If no exception is thrown, fail the test
+            fail("Expected IllegalArgumentException, but no exception was thrown");
+        } catch (IllegalArgumentException e) {
+            // Assert that the exception message contains the expected substring
+            // This is just an example; you may adjust it based on your actual implementation
+            assert(e.getMessage().contains("Encoding failed"));
+            assert(e.getCause() instanceof CharacterCodingException);
+        }
     }
 }
