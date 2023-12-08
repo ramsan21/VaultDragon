@@ -1,52 +1,91 @@
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.fail;
-
-import java.nio.charset.CharacterCodingException;
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnitRunner;
 
-public class YourClassTest {
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
+import java.security.GeneralSecurityException;
+import java.util.Optional;
 
-    @Test
-    public void testGetBytes() {
-        String inputString = "Hello, World!";
-        byte[] expectedBytes;
+import static org.junit.Assert.assertArrayEquals;
+import static org.mockito.Mockito.*;
 
-        try {
-            // Calculate the expected byte array using a reliable method
-            expectedBytes = inputString.getBytes("UTF-8");
-        } catch (Exception e) {
-            // If the standard method fails, the test case should fail as well
-            fail("Unexpected exception while getting expected bytes: " + e.getMessage());
-            return;
-        }
+@RunWith(MockitoJUnitRunner.class)
+public class SymmCipherHandlerTest {
 
-        try {
-            // Call the method you want to test
-            byte[] resultBytes = YourClass.getBytes(inputString);
+    @Mock
+    private Cipher mockCipher;
 
-            // Assert that the result matches the expected value
-            assertArrayEquals(expectedBytes, resultBytes);
-        } catch (IllegalArgumentException e) {
-            // If the method throws IllegalArgumentException, fail the test
-            fail("IllegalArgumentException not expected: " + e.getMessage());
-        }
+    @Mock
+    private SecretKey mockSecretKey;
+
+    @InjectMocks
+    private SymmCipherHandler symmCipherHandler;
+
+    @Before
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
     }
 
     @Test
-    public void testGetBytesWithException() {
-        String inputString = "Invalid \uD83D\uDE00 Emoji"; // This emoji may cause CharacterCodingException
+    public void testDecrypt() throws Exception {
+        byte[] cipherText = "TestCipherText".getBytes();
+        byte[] expectedPlainText = "TestPlainText".getBytes();
 
-        try {
-            // Call the method you want to test, expecting an exception
-            YourClass.getBytes(inputString);
+        when(mockCipher.getAlgorithm()).thenReturn("AES/CBC/PKCS5Padding");
+        when(mockCipher.doFinal(cipherText)).thenReturn(expectedPlainText);
 
-            // If no exception is thrown, fail the test
-            fail("Expected IllegalArgumentException, but no exception was thrown");
-        } catch (IllegalArgumentException e) {
-            // Assert that the exception message contains the expected substring
-            // This is just an example; you may adjust it based on your actual implementation
-            assert(e.getMessage().contains("Encoding failed"));
-            assert(e.getCause() instanceof CharacterCodingException);
+        Whitebox.setInternalState(symmCipherHandler, "algorithm", "AES");
+        Whitebox.setInternalState(symmCipherHandler, "secretkey", mockSecretKey);
+
+        byte[] result = symmCipherHandler.decrypt(cipherText);
+
+        verify(mockCipher).init(eq(Cipher.DECRYPT_MODE), eq(mockSecretKey), any(IvParameterSpec.class));
+        assertArrayEquals(expectedPlainText, result);
+    }
+
+    @Test
+    public void testEncrypt() throws Exception {
+        byte[] plainText = "TestPlainText".getBytes();
+        byte[] expectedCipherText = "TestCipherText".getBytes();
+
+        when(mockCipher.getAlgorithm()).thenReturn("AES/CBC/PKCS5Padding");
+        when(mockCipher.doFinal(plainText)).thenReturn(expectedCipherText);
+
+        Whitebox.setInternalState(symmCipherHandler, "algorithm", "AES");
+        Whitebox.setInternalState(symmCipherHandler, "secretkey", mockSecretKey);
+
+        byte[] result = symmCipherHandler.encrypt(plainText);
+
+        verify(mockCipher).init(eq(Cipher.ENCRYPT_MODE), eq(mockSecretKey), any(IvParameterSpec.class));
+        assertArrayEquals(expectedCipherText, result);
+    }
+
+    @Test
+    public void testSetIv() {
+        byte[] iv = "TestIV".getBytes();
+
+        symmCipherHandler.setIv(iv);
+
+        byte[] actualIv = Whitebox.getInternalState(symmCipherHandler, "iv");
+        assertArrayEquals(iv, actualIv);
+    }
+
+    @Test
+    public void testGetDefaultIV() {
+        int totalIVByte = 16;
+        byte[] expectedIV = new byte[totalIVByte];
+        for (int i = 0; i < totalIVByte; i++) {
+            expectedIV[i] = (byte) 0xf3;
         }
+
+        byte[] result = Whitebox.invokeMethod(symmCipherHandler, "getDefaultIV", totalIVByte);
+
+        assertArrayEquals(expectedIV, result);
     }
 }
