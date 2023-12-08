@@ -1,82 +1,106 @@
-import com.scb.starsec.utility.exceptions.CryptoException;
-import com.scb.starsec.utility.helpers.KeyHelper;
-import com.scb.starsec.utility.helpers.SymmCipherHandler;
-import com.scb.starsec.utility.helpers.Utf8;
-import org.bouncycastle.util.encoders.Hex;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
-import org.s1f4j.Logger;
 
-import java.security.GeneralSecurityException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.when;
-
-class DbCryptoHelperTest {
-
-    @Mock
-    private Logger logger;
+class KeyHelperTest {
 
     @Mock
-    private KeyHelper keyHelper;
-
-    @Mock
-    private SymmCipherHandler symmCipherHandler;
+    private CryptoHelper cryptoHelper;
 
     @InjectMocks
-    private DbCryptoHelper dbCryptoHelper;
+    private KeyHelper keyHelper;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         MockitoAnnotations.openMocks(this);
-        when(keyHelper.getStorageSecretkey()).thenReturn(Mockito.mock(SecretKey.class));
-        dbCryptoHelper.init();
     }
 
     @Test
-    void testProtect() {
-        String plainText = "TestPlainText";
-        when(symmCipherHandler.encrypt(Mockito.any())).thenReturn(new byte[]{1, 2, 3});
+    void testGetKeyStore() throws Exception {
+        // Mocking
+        when(cryptoHelper.decrypt(any())).thenReturn("decryptedPassword");
+        whenNew(FileInputStream.class).withAnyArguments().thenReturn(mock(FileInputStream.class));
+        KeyStore keyStoreMock = mock(KeyStore.class);
+        when(KeyStore.getInstance(any(), any())).thenReturn(keyStoreMock);
 
-        String encryptedValue = dbCryptoHelper.protect(plainText);
+        // Test
+        KeyStore result = keyHelper.getkeyStore("provider", "keystorePath", "encryptedPassword", "keystoreType");
 
-        assertEquals("010203", encryptedValue); // Expected hex representation of encrypted bytes
+        // Verify
+        verify(keyStoreMock).load(any(), eq("decryptedPassword".toCharArray()));
+        verify(keyStoreMock).close();
+        // Additional verifications as needed
     }
 
     @Test
-    void testUnprotect() {
-        String cipherTextHex = "010203";
-        when(symmCipherHandler.decrypt(Mockito.any())).thenReturn(new byte[]{4, 5, 6});
+    void testGetStorageSecretKey() throws Exception {
+        // Mocking
+        KeyStore keyStoreMock = mock(KeyStore.class);
+        when(keyHelper.getkeyStore(any(), any(), any(), any())).thenReturn(keyStoreMock);
+        when(keyStoreMock.getKey(any(), any())).thenReturn(mock(SecretKey.class));
+        when(cryptoHelper.decrypt(any())).thenReturn("decryptedPassword");
 
-        String decryptedValue = dbCryptoHelper.unprotect(cipherTextHex);
+        // Test
+        SecretKey result = keyHelper.getStorageSecretkey();
 
-        assertEquals("040506", decryptedValue); // Expected plain text
+        // Verify
+        verify(keyStoreMock).getKey(any(), any());
+        // Additional verifications as needed
     }
 
     @Test
-    void testProtectWithException() throws CryptoException, GeneralSecurityException {
-        String plainText = "TestPlainText";
-        when(symmCipherHandler.encrypt(Mockito.any())).thenThrow(new CryptoException("Encryption error"));
+    void testSignCsr() {
+        // Mocking
+        when(cryptoHelper.decrypt(any())).thenReturn("decryptedPassword");
+        whenNew(IcaContentSignerBuilder.class).withAnyArguments().thenReturn(mock(IcaContentSignerBuilder.class));
+        whenNew(JcaX509CertificateConverter.class).withNoArguments().thenReturn(mock(JcaX509CertificateConverter.class));
 
-        String encryptedValue = dbCryptoHelper.protect(plainText);
+        // Test
+        X509Certificate result = keyHelper.signCsr("pem", 30);
 
-        assertEquals(plainText, encryptedValue); // Should return original plain text on exception
+        // Verify
+        // Additional verifications as needed
     }
 
     @Test
-    void testUnprotectWithException() throws CryptoException, GeneralSecurityException {
-        String cipherTextHex = "010203";
-        when(symmCipherHandler.decrypt(Mockito.any())).thenThrow(new CryptoException("Decryption error"));
+    void testCertToString() throws Exception {
+        // Mocking
+        X509Certificate certificateMock = mock(X509Certificate.class);
+        when(certificateMock.getEncoded()).thenReturn(new byte[]{});
+        whenNew(StringWriter.class).withNoArguments().thenReturn(mock(StringWriter.class));
 
-        String decryptedValue = dbCryptoHelper.unprotect(cipherTextHex);
+        // Test
+        String result = keyHelper.certToString(certificateMock);
 
-        assertEquals(cipherTextHex, decryptedValue); // Should return original cipher text on exception
+        // Verify
+        // Additional verifications as needed
     }
 
-    // Add more test cases as needed
+    @Test
+    void testConvertPemToPKCS10CertificationRequest() {
+        // Test
+        PKCS10CertificationRequest result = keyHelper.convertPemToPKCS10CertificationRequest("pem");
 
+        // Verify
+        // Additional verifications as needed
+    }
+
+    @Test
+    void testIsJavaAtLeast() {
+        // Test
+        boolean result = keyHelper.isJavaAtLeast(8.0);
+
+        // Verify
+        // Additional verifications as needed
+    }
 }
