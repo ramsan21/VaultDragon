@@ -1,96 +1,82 @@
+import com.scb.starsec.utility.exceptions.CryptoException;
+import com.scb.starsec.utility.helpers.KeyHelper;
+import com.scb.starsec.utility.helpers.SymmCipherHandler;
+import com.scb.starsec.utility.helpers.Utf8;
+import org.bouncycastle.util.encoders.Hex;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.IvParameterSpec;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
+import org.s1f4j.Logger;
+
 import java.security.GeneralSecurityException;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
-@PrepareForTest({SymmCipherHandler.class})
-class SymmCipherHandlerTest {
+class DbCryptoHelperTest {
 
     @Mock
-    private Cipher mockCipher;
+    private Logger logger;
 
     @Mock
-    private SecretKey mockSecretKey;
+    private KeyHelper keyHelper;
 
-    @InjectMocks
+    @Mock
     private SymmCipherHandler symmCipherHandler;
 
+    @InjectMocks
+    private DbCryptoHelper dbCryptoHelper;
+
     @BeforeEach
-    void setUp() {
-        PowerMockito.mockStatic(Cipher.class);
-        when(Cipher.getInstance(anyString(), anyString())).thenReturn(mockCipher);
-        when(Cipher.getInstance(anyString())).thenReturn(mockCipher);
+    void setUp() throws Exception {
+        MockitoAnnotations.openMocks(this);
+        when(keyHelper.getStorageSecretkey()).thenReturn(Mockito.mock(SecretKey.class));
+        dbCryptoHelper.init();
     }
 
     @Test
-    void testDecrypt() throws Exception {
-        byte[] cipherText = "TestCipherText".getBytes();
-        byte[] expectedPlainText = "TestPlainText".getBytes();
+    void testProtect() {
+        String plainText = "TestPlainText";
+        when(symmCipherHandler.encrypt(Mockito.any())).thenReturn(new byte[]{1, 2, 3});
 
-        when(mockCipher.getAlgorithm()).thenReturn("AES/CBC/PKCS5Padding");
-        when(mockCipher.doFinal(cipherText)).thenReturn(expectedPlainText);
+        String encryptedValue = dbCryptoHelper.protect(plainText);
 
-        symmCipherHandler.setAlgorithm("AES");
-        symmCipherHandler.setSecretKey(mockSecretKey);
-
-        byte[] result = symmCipherHandler.decrypt(cipherText);
-
-        verify(mockCipher).init(eq(Cipher.DECRYPT_MODE), eq(mockSecretKey), any(IvParameterSpec.class));
-        assertArrayEquals(expectedPlainText, result);
+        assertEquals("010203", encryptedValue); // Expected hex representation of encrypted bytes
     }
 
     @Test
-    void testEncrypt() throws Exception {
-        byte[] plainText = "TestPlainText".getBytes();
-        byte[] expectedCipherText = "TestCipherText".getBytes();
+    void testUnprotect() {
+        String cipherTextHex = "010203";
+        when(symmCipherHandler.decrypt(Mockito.any())).thenReturn(new byte[]{4, 5, 6});
 
-        when(mockCipher.getAlgorithm()).thenReturn("AES/CBC/PKCS5Padding");
-        when(mockCipher.doFinal(plainText)).thenReturn(expectedCipherText);
+        String decryptedValue = dbCryptoHelper.unprotect(cipherTextHex);
 
-        symmCipherHandler.setAlgorithm("AES");
-        symmCipherHandler.setSecretKey(mockSecretKey);
-
-        byte[] result = symmCipherHandler.encrypt(plainText);
-
-        verify(mockCipher).init(eq(Cipher.ENCRYPT_MODE), eq(mockSecretKey), any(IvParameterSpec.class));
-        assertArrayEquals(expectedCipherText, result);
+        assertEquals("040506", decryptedValue); // Expected plain text
     }
 
     @Test
-    void testSetIv() {
-        byte[] iv = "TestIV".getBytes();
+    void testProtectWithException() throws CryptoException, GeneralSecurityException {
+        String plainText = "TestPlainText";
+        when(symmCipherHandler.encrypt(Mockito.any())).thenThrow(new CryptoException("Encryption error"));
 
-        symmCipherHandler.setIv(iv);
+        String encryptedValue = dbCryptoHelper.protect(plainText);
 
-        byte[] actualIv = symmCipherHandler.getIv();
-        assertArrayEquals(iv, actualIv);
+        assertEquals(plainText, encryptedValue); // Should return original plain text on exception
     }
 
     @Test
-    void testGetDefaultIV() {
-        int totalIVByte = 16;
-        byte[] expectedIV = new byte[totalIVByte];
-        for (int i = 0; i < totalIVByte; i++) {
-            expectedIV[i] = (byte) 0xf3;
-        }
+    void testUnprotectWithException() throws CryptoException, GeneralSecurityException {
+        String cipherTextHex = "010203";
+        when(symmCipherHandler.decrypt(Mockito.any())).thenThrow(new CryptoException("Decryption error"));
 
-        byte[] result = PowerMockito.method(SymmCipherHandler.class, "getDefaultIV", int.class)
-                .withArguments(totalIVByte)
-                .invoke();
+        String decryptedValue = dbCryptoHelper.unprotect(cipherTextHex);
 
-        assertArrayEquals(expectedIV, result);
+        assertEquals(cipherTextHex, decryptedValue); // Should return original cipher text on exception
     }
+
+    // Add more test cases as needed
+
 }
