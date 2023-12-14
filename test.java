@@ -1,118 +1,76 @@
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Scanner;
-import java.util.logging.Logger;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Value;
+
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.sql.Timestamp;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.*;
 
-public class AbstractCommandTest {
+@ExtendWith(MockitoExtension.class)
+public class ImportPublicKeyFileCommandTest {
 
     @Mock
-    private Scanner scanner;
-    @Mock
-    private Logger logger;
+    private wtValidationKeyRepository jwtValidationKeyRepository;
 
-    private AbstractCommand command;
+    @InjectMocks
+    private ImportPublicKeyFileCommand importPublicKeyFileCommand;
+
+    @Mock
+    private BufferedReader bufferedReader;
 
     @BeforeEach
-    public void setUp() {
-        MockitoAnnotations.initMocks(this);
-        command = spy(new MyConcreteCommand());
-        doReturn(logger).when(command).getLogger();
+    public void setUp() throws FileNotFoundException {
+        // Set up a mock BufferedReader for FileReader
+        when(bufferedReader.readLine()).thenReturn("-----BEGIN PUBLIC KEY-----", "public_key_content", "-----END PUBLIC KEY-----", null);
+        when(new BufferedReader(any(FileReader.class))).thenReturn(bufferedReader);
     }
 
     @Test
-    public void testParse_InteractiveMode_WithInput() {
+    public void testImportPublicKey_Success() {
+        // Mock repository to return an empty Optional, indicating the issuer doesn't exist
+        when(jwtValidationKeyRepository.findByIssuer(anyString())).thenReturn(Optional.empty());
+
         Map<String, String> args = new HashMap<>();
-        args.put("param1", "default1");
-        doReturn("newInput").when(scanner).nextLine();
+        args.put("issuer", "testIssuer");
+        args.put("fileName", "testFile");
+        args.put("override", "true");
 
-        command.parse(args);
+        Map<String, String> result = importPublicKeyFileCommand.with(args);
 
-        assertEquals("newInput", args.get("param1"));
-        assertTrue(command.isInteractive());
-        verifyLogMessages(false, true);
+        assertEquals("success", result.get("output"));
+        verify(jwtValidationKeyRepository, times(1)).save(any());
     }
 
     @Test
-    public void testParse_InteractiveMode_WithoutInput() {
+    public void testImportPublicKey_IssuerExists_Override() {
+        // Mock repository to return an existing JwtValidationKey
+        JwtValidationKey existingKey = new JwtValidationKey();
+        existingKey.setIssuer("testIssuer");
+        existingKey.setPublicKey("existingPublicKey");
+        when(jwtValidationKeyRepository.findByIssuer(anyString())).thenReturn(Optional.of(existingKey));
+
         Map<String, String> args = new HashMap<>();
-        args.put("param1", "default1");
-        doReturn("").when(scanner).nextLine();
+        args.put("issuer", "testIssuer");
+        args.put("fileName", "testFile");
+        args.put("override", "true");
 
-        command.parse(args);
+        Map<String, String> result = importPublicKeyFileCommand.with(args);
 
-        assertEquals("default1", args.get("param1"));
-        assertTrue(command.isInteractive());
-        verifyLogMessages(true, false);
+        assertEquals("Success updating to Database.", result.get("output"));
+        verify(jwtValidationKeyRepository, times(1)).save(any());
     }
 
-    @Test
-    public void testParse_NonInteractiveMode() {
-        Map<String, String> args = new HashMap<>();
-        command = spy(new MyNonInteractiveCommand());
-
-        command.parse(args);
-
-        assertEquals("default1", args.get("param1"));
-        assertFalse(command.isInteractive());
-        verifyLogMessages(false, false);
-    }
-
-    private void verifyLogMessages(boolean expectedUserKeptValue, boolean expectedUserChangedValue) {
-        verify(logger).debug("User choose to keep previous value [param1]: default1");
-        verify(logger).debug("User choose to change value [param1]: default1");
-        if (expectedUserKeptValue) {
-            verify(logger, times(1)).debug("User choose to keep previous value [param1]: default1");
-            verify(logger, times(0)).debug("User choose to change value [param1]: default1");
-        } else if (expectedUserChangedValue) {
-            verify(logger, times(0)).debug("User choose to keep previous value [param1]: default1");
-            verify(logger, times(1)).debug("User choose to change value [param1]: default1");
-        }
-    }
-
-    private class MyConcreteCommand extends AbstractCommand {
-        @Override
-        protected Map<String, String> with(Map<String, String> args) {
-            return args;
-        }
-
-        @Override
-        protected String[] getParams() {
-            return new String[]{"param1"};
-        }
-
-        @Override
-        protected boolean isInteractive() {
-            return true;
-        }
-    }
-
-    private class MyNonInteractiveCommand extends AbstractCommand {
-        @Override
-        protected Map<String, String> with(Map<String, String> args) {
-            return args;
-        }
-
-        @Override
-        protected String[] getParams() {
-            return new String[]{"param1"};
-        }
-
-        @Override
-        protected boolean isInteractive() {
-            return false;
-        }
-    }
+    // Add more test cases for different scenarios (e.g., existing issuer without override, invalid parameters, etc.)
 }
