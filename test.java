@@ -37,12 +37,22 @@ class ImportPublicKeyFileCommandTest {
         when(jwtValidationKeyRepository.findByIssuer("testIssuer")).thenReturn(Optional.empty());
 
         // Mock BufferedReader behavior
-        BufferedReader mockBufferedReader = new BufferedReader(/* your mock setup */);
+        BufferedReader mockBufferedReader = createMockBufferedReader("-----BEGIN PUBLIC KEY-----\npublic_key_content\n-----END PUBLIC KEY-----");
         doReturn(mockBufferedReader).when(importPublicKeyFileCommand).getBufferedReader("testFile");
 
         Map<String, String> result = importPublicKeyFileCommand.with(args);
 
         assertEquals("success", result.get("output"));
+    }
+
+    private BufferedReader createMockBufferedReader(String content) {
+        BufferedReader mockBufferedReader = mock(BufferedReader.class);
+        try {
+            when(mockBufferedReader.readLine()).thenReturn(content, null);
+        } catch (IOException e) {
+            e.printStackTrace(); // Handle or log the exception
+        }
+        return mockBufferedReader;
     }
 
     // Add more test cases for different scenarios
