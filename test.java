@@ -1,6 +1,5 @@
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Scanner;
 import java.util.logging.Logger;
 
@@ -9,32 +8,15 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import
- 
-static org.junit.jupiter.api.Assertions.assertEquals;
-import
- 
-static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
-import
- 
-static org.junit.jupiter.api.Assertions.assertTrue;
-import
- 
-static
- 
-org.mockito.ArgumentMatchers.any;
-
-import
- 
-static org.mockito.Mockito.doReturn;
-import
- 
-static org.mockito.Mockito.spy;
-
-public
- 
-class AbstractCommandTest {
+public class AbstractCommandTest {
 
     @Mock
     private Scanner scanner;
@@ -89,14 +71,14 @@ class AbstractCommandTest {
     }
 
     private void verifyLogMessages(boolean expectedUserKeptValue, boolean expectedUserChangedValue) {
-        verify(logger).debug("User choose to keep previous value [" + "param1" + "]: " + "default1");
-        verify(logger).debug("User choose to change value [" + "param1" + "]: " + "default1");
+        verify(logger).debug("User choose to keep previous value [param1]: default1");
+        verify(logger).debug("User choose to change value [param1]: default1");
         if (expectedUserKeptValue) {
-            verify(logger, times(1)).debug("User choose to keep previous value [" + "param1" + "]: " + "default1");
-            verify(logger, times(0)).debug("User choose to change value [" + "param1" + "]: " + "default1");
+            verify(logger, times(1)).debug("User choose to keep previous value [param1]: default1");
+            verify(logger, times(0)).debug("User choose to change value [param1]: default1");
         } else if (expectedUserChangedValue) {
-            verify(logger, times(0)).debug("User choose to keep previous value [" + "param1" + "]: " + "default1");
-            verify(logger, times(1)).debug("User choose to change value [" + "param1" + "]: " + "default1");
+            verify(logger, times(0)).debug("User choose to keep previous value [param1]: default1");
+            verify(logger, times(1)).debug("User choose to change value [param1]: default1");
         }
     }
 
@@ -108,7 +90,7 @@ class AbstractCommandTest {
 
         @Override
         protected String[] getParams() {
-            return new String[] {"param1"};
+            return new String[]{"param1"};
         }
 
         @Override
@@ -125,7 +107,7 @@ class AbstractCommandTest {
 
         @Override
         protected String[] getParams() {
-            return new String[] {"param1"};
+            return new String[]{"param1"};
         }
 
         @Override
