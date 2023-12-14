@@ -1,56 +1,100 @@
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-
-import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
-
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
-class ImportPublicKeyFileCommandTest {
+public class ImportPublicKeyFileCommandTest {
 
     @Mock
     private wtValidationKeyRepository jwtValidationKeyRepository;
+    @Mock
+    private Logger logger;
 
-    @InjectMocks
-    private ImportPublicKeyFileCommand importPublicKeyFileCommand;
+    @TempDir
+    private File tempDir;
+    private ImportPublicKeyFileCommand command;
 
     @BeforeEach
-    void setUp() {
+    public void setUp() {
         MockitoAnnotations.initMocks(this);
+        command = new ImportPublicKeyFileCommand();
+        command.setJwtValidationKeyRepository(jwtValidationKeyRepository);
+        command.setLogger(logger);
+        command.setInFilePath(tempDir.getAbsolutePath());
     }
 
     @Test
-    void testImportPublicKey_Success() throws IOException {
+    public void testWith_MissingParameters() {
         Map<String, String> args = new HashMap<>();
-        args.put("issuer", "testIssuer");
-        args.put("fileName", "testFile");
-        args.put("override", "true");
+        Map<String, String> outputMap = command.with(args);
 
-        // Mock behavior for jwtValidationKeyRepository using doReturn
-        doReturn(Optional.empty()).when(jwtValidationKeyRepository).findByIssuer("testIssuer");
-
-        // Mock BufferedReader behavior
-        BufferedReader mockBufferedReader = createMockBufferedReader("-----BEGIN PUBLIC KEY-----\npublic_key_content\n-----END PUBLIC KEY-----");
-        doReturn(mockBufferedReader).when(importPublicKeyFileCommand).getBufferedReader("testFile");
-
-        Map<String, String> result = importPublicKeyFileCommand.with(args);
-
-        assertEquals("success", result.get("output"));
+        assertEquals(StatusCode.STAR_invalid_command_parameter.getCodeAsString(), outputMap.get("statusCode"));
+        assertEquals("error", outputMap.get("output"));
+        verify(logger, times(2)).info("Invalid parameters provided");
     }
 
-    private BufferedReader createMockBufferedReader(String content) throws IOException {
-        BufferedReader mockBufferedReader = mock(BufferedReader.class);
-        when(mockBufferedReader.readLine()).thenReturn(content, null);
-        return mockBufferedReader;
+    @Test
+    public void testWith_NonExistentFile() {
+        Map<String, String> args = new HashMap<>();
+        args.put("issuer", "test");
+        args.put("fileName", "nonexistent.pub");
+        Map<String, String> outputMap = command.with(args);
+
+        assertEquals(StatusCode.STAR_file_not_found.getCodeAsString(), outputMap.get("statusCode"));
+        assertEquals("error", outputMap.get("output"));
+        verify(logger).error(any(String.class), any(FileNotFoundException.class));
     }
 
-    // Add more test cases for different scenarios
-}
+    @Test
+    public void testWith_IOException() throws IOException {
+        File publicKeyFile = tempDir.newFile("error.pub");
+        publicKeyFile.deleteOnExit();
+        publicKeyFile.setWritable(false);
+        Map<String, String> args = new HashMap<>();
+        args.put("issuer", "test");
+        args.put("fileName", publicKeyFile.getName());
+        Map<String, String> outputMap = command.with(args);
+
+        assertEquals(StatusCode.STAR_file_error.getCodeAsString(), outputMap.get("statusCode"));
+        assertEquals("error", outputMap.get("output"));
+        verify(logger).error(any(String.class), any(IOException.class));
+    }
+
+    @Test
+    public void testWith_InvalidPublicKey() throws IOException {
+        File publicKeyFile = createTempFile("invalid_key.pub", "invalid public key content");
+        Map<String, String> args = new HashMap<>();
+        args.put("issuer", "test");
+        args.put("fileName", publicKeyFile.getName());
+        Map<String, String> outputMap = command.with(args);
+
+        assertEquals(StatusCode.STAR_invalid_command_parameter.getCodeAsString(), outputMap.get("statusCode"));
+        assertEquals("error", outputMap.get("output"));
+        verify(logger).info("Invalid parameters provided");
+    }
+
+    @Test
+    public void testWith_ExistingKey_NoOverride() throws IOException {
+        File publicKeyFile = createTempFile("existing_key.pub", "valid public key content");
+        doReturn(Optional.of(new JwtValidationKey())).when(jwtValidationKeyRepository).findByIssuer("test");
+        Map<String, String> args = new HashMap<>();
+        args.put("issuer", "test");
+        args.put("fileName", publicKeyFile.getName());
+        Map<String, String> outputMap = command.with(args);
+
+        assertEquals(StatusCode
+                     }
+            ]
