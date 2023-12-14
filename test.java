@@ -8,9 +8,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
@@ -34,8 +34,8 @@ class ImportPublicKeyFileCommandTest {
         args.put("fileName", "testFile");
         args.put("override", "true");
 
-        // Mock behavior for jwtValidationKeyRepository
-        when(jwtValidationKeyRepository.findByIssuer("testIssuer")).thenReturn(Optional.empty());
+        // Mock behavior for jwtValidationKeyRepository using doReturn
+        doReturn(Optional.empty()).when(jwtValidationKeyRepository).findByIssuer("testIssuer");
 
         // Mock BufferedReader behavior
         BufferedReader mockBufferedReader = createMockBufferedReader("-----BEGIN PUBLIC KEY-----\npublic_key_content\n-----END PUBLIC KEY-----");
