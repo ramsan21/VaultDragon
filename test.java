@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
@@ -45,13 +46,9 @@ class ImportPublicKeyFileCommandTest {
         assertEquals("success", result.get("output"));
     }
 
-    private BufferedReader createMockBufferedReader(String content) {
+    private BufferedReader createMockBufferedReader(String content) throws IOException {
         BufferedReader mockBufferedReader = mock(BufferedReader.class);
-        try {
-            when(mockBufferedReader.readLine()).thenReturn(content, null);
-        } catch (IOException e) {
-            e.printStackTrace(); // Handle or log the exception
-        }
+        when(mockBufferedReader.readLine()).thenReturn(content, null);
         return mockBufferedReader;
     }
 
