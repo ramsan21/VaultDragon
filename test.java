@@ -1,1 +1,5 @@
-"C:\Users\2014027\goldenversions\java-1.8.0\bin\java" -Dstar_pkcs7.config.file="C:\temp\Encrypt\conf\star_client_pkcs7.conf" -classpath ".;C:\temp\Encrypt\lib\iaik_jce_full-1.0.0.jar;C:\temp\Encrypt\lib\log4j-api-2.19.0.jar;C:\temp\Encrypt\lib\slf4j-api-1.7.32.jar;C:\temp\Encrypt\lib\slf4j-log4j12-1.7.32.jar;C:\temp\Encrypt\lib\gapiclient-DCDACS-3279.2.jar" com.scb.starsec.pkcs.pkcs7.StarPKCS7EncByModule "C:\temp\Encrypt\input\test.txt" "C:\temp\Encrypt\keys\BulkEnc2048_test.arm" "C:\temp\Encrypt\output\test.enc"
+SELECT
+  REGEXP_SUBSTR(req_body, '"orgId"\s*:\s*"(.*?)",', 1, 1, NULL, 1) AS org_id,
+  REGEXP_SUBSTR(req_body, '"profileOrgID"\s*:\s*"(.*?)",', 1, 1, NULL, 1) AS profile_org_id
+FROM your_table
+WHERE your_condition;
