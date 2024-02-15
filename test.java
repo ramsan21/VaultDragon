@@ -1,62 +1,93 @@
 import org.bouncycastle.bcpg.ArmoredOutputStream;
-import org.bouncycastle.openpgp.*;
-import org.bouncycastle.openpgp.operator.jcajce.JcePGPDataEncryptorBuilder;
-import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodGenerator;
+import org.bouncycastle.bcpg.PGPEncryptedData;
+import org.bouncycastle.bcpg.PGPEncryptedDataGenerator;
+import org.bouncycastle.bcpg.PGPLiteralData;
+import org.bouncycastle.bcpg.PGPCompressedDataGenerator;
+import org.bouncycastle.bcpg.PGPPublicKey;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.*;
+import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
+import java.security.Security;
 
-public class PgpEncryptFile {
+public class YourClassName {
 
-    public ResultObject encryptFile(String inputFile, String outputFile, String publicKeyFile, boolean useArmor, boolean withIntegrityCheck, String encAlgo) {
-        ResultObject result = new ResultObject();
-
-        try {
-            PGPPublicKey encKey = PgpUtils.readPublicKey(new FileInputStream(publicKeyFile));
-
-            if (encKey == null) {
-                result.setIntValue(PGActionConstants.ACTION_FAILURE);
-                result.setErrMsg("Unable to get the encryption key from the keyring. Identity=" + publicKeyFile);
-                result.setOutFileName(outputFile);
-                return result;
-            }
-
-            OutputStream outputStream = new FileOutputStream(outputFile);
-
-            if (useArmor) {
-                outputStream = new ArmoredOutputStream(outputStream);
-            }
-
-            PGPCompressedDataGenerator compressedDataGenerator = new PGPCompressedDataGenerator(PGPCompressedData.ZIP);
-            PGPLiteralDataGenerator literalDataGenerator = new PGPLiteralDataGenerator();
-            OutputStream encryptedOutputStream = literalDataGenerator.open(
-                    new JcaPGPDataEncryptorBuilder(PGPEncryptedData.CAST5)
-                            .setWithIntegrityPacket(withIntegrityCheck)
-                            .setSecureRandom(new SecureRandom())
-                            .build(), outputStream);
-
-            try (InputStream inputStream = new BufferedInputStream(new FileInputStream(inputFile))) {
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
-                    encryptedOutputStream.write(buffer, 0, bytesRead);
-                }
-            }
-
-            if (useArmor) {
-                outputStream.close();
-            }
-
-            result.setIntValue(PGActionConstants.ACTION_SUCCESS);
-            result.setSuccessMsg("Encrypted file [" + outputFile + "] created successfully.");
-        } catch (Exception e) {
-            result.setIntValue(PGActionConstants.ACTION_FAILURE);
-            result.setErrMsg("Caught " + e.getClass().getName() + ". Error Msg: " + e.getMessage() + ": PGP Encryption Failed");
-            e.printStackTrace(); // Log or handle the exception appropriately
-        }
-
-        return result;
+    static {
+        Security.addProvider(new BouncyCastleProvider());
     }
 
-    // Other methods and classes, such as PgpUtils, should be defined based on your existing code.
+    public ResultObject encryptFile(String strInputFile, String strOutputFile, String strPKIdentity,
+                                    boolean bInArmor, boolean withIntegrityCheck, String encAlgo)
+            throws IOException, NoSuchProviderException {
+
+        ResultObject resObj = new ResultObject();
+        strOutputFile = checkOutputFile(strOutputFile);
+
+        try (OutputStream out = new FileOutputStream(strOutputFile)) {
+            OutputStream outArmor = bInArmor ? new ArmoredOutputStream(out) : null;
+
+            try {
+                ByteArrayOutputStream bout = new ByteArrayOutputStream();
+                PGPCompressedDataGenerator comData = new PGPCompressedDataGenerator(PGPCompressedData.ZIP);
+
+                PGPPublicKey encKey = keyCtrIr.getEncryptKey(strPKIdentity, false);
+                if (encKey == null) {
+                    resObj.setIntValue(PGActionConstants.ACTION_FAILURE);
+                    resObj.setErrMsg("Unable to get the encrypt key from keyring. Identity=" + strPKIdentity);
+                    resObj.setOutFileName(strOutputFile);
+                    return resObj;
+                }
+
+                Poputil.writeFileToLiteralData(comData.open(bout), PGPLiteralData.BINARY, new File(strInputFile));
+                comData.close();
+
+                PGPEncryptedDataGenerator cPk;
+                if (encAlgo == null || encAlgo.trim().isEmpty()) {
+                    System.out.println("Default algorithm used for encryption");
+                    cPk = new PGPEncryptedDataGenerator(PGPEncryptedData.CAST5, withIntegrityCheck, new SecureRandom());
+                } else {
+                    int secretAlgo = algoUtil.getSymmetricCipherValueByName(encAlgo);
+                    System.out.println("Algorithm used for encryption = " + encAlgo);
+                    cPk = new PGPEncryptedDataGenerator(secretAlgo, withIntegrityCheck, new SecureRandom());
+                }
+
+                cPk.addMethod(encKey);
+                byte[] bytes = bout.toByteArray();
+
+                try (OutputStream cout = (bInArmor) ? cPk.open(outArmor, bytes.length) : cPk.open(out, bytes.length)) {
+                    cout.write(bytes);
+                }
+
+                resObj.setIntValue(PGActionConstants.ACTION_SUCCESS);
+                resObj.setSuccessMsg("Encrypted file [" + strOutputFile + "] created successfully.");
+                System.out.println("Encryption successful");
+
+            } catch (Exception e) {
+                System.err.println("Caught " + e.getClass().getName() + ". Error Msg:" + e.getMessage() + ": PGP Encryption Failed");
+                resObj.setIntValue(PGActionConstants.ACTION_FAILURE);
+                resObj.setErrMsg("Caught " + e.getClass().getName() + ". Error Msg:" + e.getMessage() + ": PGP Encryption Failed");
+            }
+        }
+
+        return resObj;
+    }
+
+    private String checkOutputFile(String strOutputFile) throws IOException {
+        try {
+            System.out.println("PGP output dir path ==" + strOutputFile + "; Create File? " + (strOutputFile == null || strOutputFile.equals("")));
+            System.out.println("OUT_STREAM_DIR PATH ==" + keyCtrIr.getPGConfigProperty(PGPConfigConstants.OUT_STREAM_DIR));
+            
+            if (strOutputFile == null || strOutputFile.equals("")) {
+                String uniq = java.lang.management.ManagementFactory.getRuntimeMXBean().getName().replace('@', '-') + "_";
+                File sharedOutputFile = File.createTempFile("pgp_" + uniq, ".tmp", new File(keyCtrIr.getPGPConfigProperty(PGPConfigConstants.OUT_STREAM_DIR)));
+                strOutputFile = sharedOutputFile.getAbsolutePath();
+            }
+        } catch (IOException e) {
+            System.err.println("IOException Caught " + e.getClass().getName() + ": " + e.getMessage());
+            throw e;
+        }
+        System.out.println("Returned Output File ==" + strOutputFile);
+        return strOutputFile;
+    }
 }
