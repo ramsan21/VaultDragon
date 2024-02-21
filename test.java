@@ -2,72 +2,73 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collections;
 import java.util.Iterator;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class YourClassTest {
 
     @Mock
-    private PGPCongi config;
+    private YourConfig config;
 
     @InjectMocks
     private YourClass yourClass;
 
     @Test
-    void testGetUserID() throws Exception {
-        // Mock PGPCongi to return a specific path
-        String publicKeyPath = "path/to/public/key";
-        when(config.getBankPublicKeyPath()).thenReturn(publicKeyPath);
-
-        // Mock FileInputStream and InputStream
+    void testGetEncryptKey() throws Exception {
+        // MockedConstruction for FileInputStream
         try (MockedConstruction<FileInputStream> mockedConstruction = mockConstruction(FileInputStream.class,
                 (mock, context) -> when(mock.read(any())).thenReturn(-1))) {
 
-            // Mock PGPPublicKeyRingCollection
+            // Mock behavior for config methods
+            when(config.getBankPublicKeyPath()).thenReturn("path/to/bank/public/key");
+            when(config.getClientPublicKeyPath()).thenReturn("path/to/client/public/key");
+
+            // Mock behavior for PGPUtil and other dependencies
             PGPPublicKeyRingCollection mockPub = mock(PGPPublicKeyRingCollection.class);
+            Iterator mockIterator = mock(Iterator.class);
 
-            // Mock PGPPublicKey
-            PGPPublicKey mockKey = mock(PGPPublicKey.class);
-
-            // Mock Iterator<String>
-            Iterator<String> mockUserIds = mock(Iterator.class);
-            when(mockUserIds.hasNext()).thenReturn(true);
-            when(mockUserIds.next()).thenReturn("testUserID");
-
-            // Set up PGPUtil mock behavior
-            when(new PGPPublicKeyRingCollection(any(InputStream.class), any(JcaKeyFingerprintCalculator.class)))
+            whenNew(PGPPublicKeyRingCollection.class)
+                    .withAnyArguments()
                     .thenReturn(mockPub);
-            when(mockPub.getPublicKey(anyLong())).thenReturn(mockKey);
-            when(mockKey.getUserIDs()).thenReturn(mockUserIds);
+            when(mockPub.getKeyRings(any(String.class))).thenReturn(mockIterator);
+            when(mockIterator.hasNext()).thenReturn(true, false);
+            
+            PGPPublicKeyRing mockKeyRing = mock(PGPPublicKeyRing.class);
+            Iterator mockKeyIterator = mock(Iterator.class);
+            PGPPublicKey mockPublicKey = mock(PGPPublicKey.class);
 
-            // Test the getUserID method
-            long keyID = 1234L;
-            boolean bankKey = true;
-            String result = yourClass.getUserID(keyID, bankKey);
+            when(mockIterator.next()).thenReturn(mockKeyRing);
+            when(mockKeyRing.getPublicKeys()).thenReturn(mockKeyIterator);
+            when(mockKeyIterator.hasNext()).thenReturn(true, false);
+            when(mockKeyIterator.next()).thenReturn(mockPublicKey);
 
-            // Assert that the result is "testUserID"
-            assertEquals("testUserID", result);
+            // Test the getEncryptKey method
+            PGPPublicKey result = yourClass.getEncryptKey("testIdentity", true);
+
+            // Assert that the result is not null
+            assertNotNull(result);
 
             // Optionally, verify other interactions as needed
             verify(config, times(1)).getBankPublicKeyPath();
-            verify(mockPub, times(1)).getPublicKey(anyLong());
-            verify(mockKey, times(1)).getUserIDs();
-            verify(mockUserIds, times(1)).hasNext();
-            verify(mockUserIds, times(1)).next();
+            verify(config, times(1)).getClientPublicKeyPath();
+            verify(mockPub, times(1)).getKeyRings(any(String.class));
+            verify(mockIterator, times(2)).hasNext();
+            verify(mockIterator, times(1)).next();
+            verify(mockKeyRing, times(1)).getPublicKeys();
+            verify(mockKeyIterator, times(2)).hasNext();
+            verify(mockKeyIterator, times(1)).next();
+            verify(mockPublicKey, times(1)).isEncryptionKey();
         } catch (IOException e) {
             // Handle IOException if needed
         }
