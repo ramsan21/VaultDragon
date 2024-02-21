@@ -1,40 +1,75 @@
-<dependencies>
-    <!-- JUnit 5 -->
-    <dependency>
-        <groupId>org.junit.jupiter</groupId>
-        <artifactId>junit-jupiter-api</artifactId>
-        <version>5.8.1</version>
-        <scope>test</scope>
-    </dependency>
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
-    <dependency>
-        <groupId>org.junit.jupiter</groupId>
-        <artifactId>junit-jupiter-engine</artifactId>
-        <version>5.8.1</version>
-        <scope>test</scope>
-    </dependency>
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Collections;
+import java.util.Iterator;
 
-    <!-- Mockito -->
-    <dependency>
-        <groupId>org.mockito</groupId>
-        <artifactId>mockito-core</artifactId>
-        <version>3.12.4</version>
-        <scope>test</scope>
-    </dependency>
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.*;
 
-    <!-- PowerMockito for JUnit 5 -->
-    <dependency>
-        <groupId>org.powermock</groupId>
-        <artifactId>powermock-module-junit5</artifactId>
-        <version>2.0.9</version>
-        <scope>test</scope>
-    </dependency>
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+class YourClassTest {
 
-    <!-- PowerMockito core -->
-    <dependency>
-        <groupId>org.powermock</groupId>
-        <artifactId>powermock-api-mockito2</artifactId>
-        <version>2.0.9</version>
-        <scope>test</scope>
-    </dependency>
-</dependencies>
+    @Mock
+    private PGPCongi config;
+
+    @InjectMocks
+    private YourClass yourClass;
+
+    @Test
+    void testGetUserID() throws Exception {
+        // Mock PGPCongi to return a specific path
+        String publicKeyPath = "path/to/public/key";
+        when(config.getBankPublicKeyPath()).thenReturn(publicKeyPath);
+
+        // Mock FileInputStream and InputStream
+        try (MockedConstruction<FileInputStream> mockedConstruction = mockConstruction(FileInputStream.class,
+                (mock, context) -> when(mock.read(any())).thenReturn(-1))) {
+
+            // Mock PGPPublicKeyRingCollection
+            PGPPublicKeyRingCollection mockPub = mock(PGPPublicKeyRingCollection.class);
+
+            // Mock PGPPublicKey
+            PGPPublicKey mockKey = mock(PGPPublicKey.class);
+
+            // Mock Iterator<String>
+            Iterator<String> mockUserIds = mock(Iterator.class);
+            when(mockUserIds.hasNext()).thenReturn(true);
+            when(mockUserIds.next()).thenReturn("testUserID");
+
+            // Set up PGPUtil mock behavior
+            when(new PGPPublicKeyRingCollection(any(InputStream.class), any(JcaKeyFingerprintCalculator.class)))
+                    .thenReturn(mockPub);
+            when(mockPub.getPublicKey(anyLong())).thenReturn(mockKey);
+            when(mockKey.getUserIDs()).thenReturn(mockUserIds);
+
+            // Test the getUserID method
+            long keyID = 1234L;
+            boolean bankKey = true;
+            String result = yourClass.getUserID(keyID, bankKey);
+
+            // Assert that the result is "testUserID"
+            assertEquals("testUserID", result);
+
+            // Optionally, verify other interactions as needed
+            verify(config, times(1)).getBankPublicKeyPath();
+            verify(mockPub, times(1)).getPublicKey(anyLong());
+            verify(mockKey, times(1)).getUserIDs();
+            verify(mockUserIds, times(1)).hasNext();
+            verify(mockUserIds, times(1)).next();
+        } catch (IOException e) {
+            // Handle IOException if needed
+        }
+    }
+}
