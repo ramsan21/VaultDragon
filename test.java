@@ -1,26 +1,20 @@
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+public String getUserID(long keyID, boolean bankKey) throws Exception {
+        String publicKeyPath = bankKey ? getConfig().getBankPublicKeyPath() : getConfig().getClientPublicKeyPath();
 
-public class StatusCodeTest {
+        try (InputStream in = new FileInputStream(Objects.requireNonNull(publicKeyPath, "Public key path cannot be null"))) {
+            PGPPublicKeyRingCollection pgpPub = new PGPPublicKeyRingCollection(
+                    PGPUtil.getDecoderStream(in), new JcaKeyFingerprintCalculator());
 
-    @Test
-    public void testGetCode() {
-        assertEquals(9101, StatusCode.STAR_FUNC_FAIL9101.getCode());
-        assertEquals(100, StatusCode.SUCCESS.getCode());
-        assertEquals(1604, StatusCode.ACTIION_FAILURE.getCode());
+            PGPPublicKey key = Objects.requireNonNull(pgpPub.getPublicKey(keyID),
+                    "Unable to get the Key from Public Keyring. KeyID = " + Long.toHexString(keyID));
+
+            Iterator<String> userIds = key.getUserIDs();
+
+            if (userIds.hasNext()) {
+                return userIds.next();
+            } else {
+                log.error("Unable to find the associated user id for the keyID. KeyID = {}", Long.toHexString(keyID));
+                return null;
+            }
+        }
     }
-
-    @Test
-    public void testGetDesc() {
-        assertNull(StatusCode.STAR_FUNC_FAIL9101.getDesc());
-        assertNull(StatusCode.SUCCESS.getDesc());
-        assertEquals("Action Failure", StatusCode.ACTIION_FAILURE.getDesc());
-    }
-
-    @Test
-    public void testGetDescFormatted() {
-        assertEquals("Func Fail9101", StatusCode.STAR_FUNC_FAIL9101.getDescFormatted());
-        assertEquals("Success", StatusCode.SUCCESS.getDescFormatted());
-        assertEquals("Action Failure", StatusCode.ACTIION_FAILURE.getDescFormatted());
-    }
-}
