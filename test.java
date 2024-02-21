@@ -1,44 +1,52 @@
-@Mock
-    private PGPCongi configMock;
+@Test
+public void testGetUserIDSuccess() throws Exception {
+    // Mock PGPCongi to return specific paths
+    when(config.getBankPublicKeyPath()).thenReturn("path/to/bank/key");
+    when(config.getClientPublicKeyPath()).thenReturn("path/to/client/key");
 
-    @InjectMocks
-    private KeyService keyService;
+    // Prepare mock PGPPublicKey with a user ID
+    PGPPublicKey mockKey = mock(PGPPublicKey.class);
+    when(mockKey.getUserIDs()).thenReturn(Collections.singletonList("testUserID"));
 
-    @Test
-    void testGetUserID() throws Exception {
-        // Arrange
-        long keyID = 123;
-        boolean bankKey = true;
+    // Mock PGPPublicKeyRingCollection to return the mock key
+    PGPPublicKeyRingCollection mockPub = mock(PGPPublicKeyRingCollection.class);
+    when(mockPub.getPublicKey(anyLong())).thenReturn(mockKey);
 
-        // Mock dependencies
-        when(configMock.getBankPublicKeyPath()).thenReturn("bankPublicKeyPath");
-        when(configMock.getClientPublicKeyPath()).thenReturn("clientPublicKeyPath");
+    // Create a mock InputStream for the key file
+    InputStream mockIn = mock(InputStream.class);
+    when(new FileInputStream(anyString())).thenReturn(mockIn);
 
-        InputStream inMock = mock(InputStream.class);
-        PGPPublicKeyRingCollection pgpPubMock = mock(PGPPublicKeyRingCollection.class);
-        PGPPublicKey pgpPublicKeyMock = mock(PGPPublicKey.class);
-        Iterator<String> userIdsMock = mock(Iterator.class);
+    // Inject mocks into KeyService
+    KeyService keyService = new KeyService(config);
+    Whitebox.setInternalState(keyService, "pgpUtil", new PGPUtil(mockIn, new JcaKeyFingerprintCalculator()));
 
-        // Mock behavior for getPgpPub() method
-        doReturn(pgpPubMock).when(keyService, "getPgpPub", any(InputStream.class));
+    // Test for both bankKey and clientKey scenarios
+    String userId = keyService.getUserID(1234L, true); // bankKey
+    assertEquals("testUserID", userId);
 
-        // Mock interactions
-        when(inMock.read()).thenReturn(-1);  // Simulate an empty stream
-        when(pgpPubMock.getPublicKey(keyID)).thenReturn(pgpPublicKeyMock);
-        when(pgpPublicKeyMock.getUserIDs()).thenReturn(userIdsMock);
-        when(userIdsMock.hasNext()).thenReturn(true);
-        when(userIdsMock.next()).thenReturn("testUserID");
+    userId = keyService.getUserID(5678L, false); // clientKey
+    assertEquals("testUserID", userId);
+}
+@Test
+public void testGetUserIDMissingUserID() throws Exception {
+    // ... (Mock setup similar to the first test)
 
-        // Act
-        String result = keyService.getUserID(keyID, bankKey);
+    // Mock PGPPublicKey to have no user IDs
+    when(mockKey.getUserIDs()).thenReturn(Collections.emptyList());
 
-        // Assert
-        assertEquals("testUserID", result);
+    // ... (Inject mocks into KeyService)
 
-        // Verify interactions
-        verify(inMock).close();
-        verify(pgpPubMock).getPublicKey(keyID);
-        verify(pgpPublicKeyMock).getUserIDs();
-        verify(userIdsMock).hasNext();
-        verify(userIdsMock).next();
-    }
+    String userId = keyService.getUserID(1234L, true);
+    assertNull(userId);
+}
+@Test(expected = NullPointerException.class)
+public void testGetUserIDNullKeyPath() throws Exception {
+    when(config.getBankPublicKeyPath()).thenReturn(null);
+    keyService.getUserID(1234L, true);
+}
+@Test(expected = Exception.class)
+public void testGetUserIDExceptionFromPGP() throws Exception {
+    when(mockPub.getPublicKey(anyLong())).thenThrow(new PGPException("Test exception"));
+    // ... (Inject mocks into KeyService)
+    keyService.getUserID(1234L, true);
+}
