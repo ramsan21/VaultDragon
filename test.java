@@ -1,66 +1,47 @@
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockedConstruction;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.security.PrivateKey;
-import java.security.PublicKey;
-
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
-class YourClassTest {
+import java.io.InputStream;
+import org.bouncycastle.openpgp.PGPObjectFactory;
+import org.bouncycastle.openpgp.PGPUtil;
+import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator;
+import org.junit.Test;
 
-    @Mock
-    private PGPPropertiesReader pgpPropertiesReader;
-
-    @InjectMocks
-    private YourClass yourClass;
-
-    @Test
-    void testFindSecretKey() throws Exception {
-        // MockedConstruction for PGPPropertiesReader
-        try (MockedConstruction<PGPPropertiesReader> mockedConstruction = mockConstruction(PGPPropertiesReader.class,
-                (mock, context) -> when(mock.getPriKeyFromKeyStore(any(String.class))).thenReturn(mock(PrivateKey.class))) {
-
-            // Mock behavior for getEncryptKey method
-            PGPPublicKey mockPublicKey = mock(PGPPublicKey.class);
-            when(yourClass.getEncryptKey(any(String.class), anyBoolean())).thenReturn(mockPublicKey);
-
-            // Test the findSecretKey method
-            String identity = "testIdentity";
-            IcaPGPPrivateKey result = yourClass.findSecretKey(identity);
-
-            // Assert that the result is not null
-            assertNotNull(result);
-
-            // Optionally, verify other interactions as needed
-            verify(pgpPropertiesReader, times(1)).getPriKeyFromKeyStore(identity);
-            verify(yourClass, times(1)).getEncryptKey(identity, false);
-        }
-    }
+public class MessageDecryptorTest {
 
     @Test
-    void testFindSecretKeyException() throws Exception {
-        // MockedConstruction for PGPPropertiesReader
-        try (MockedConstruction<PGPPropertiesReader> mockedConstruction = mockConstruction(PGPPropertiesReader.class,
-                (mock, context) -> when(mock.getPriKeyFromKeyStore(any(String.class))).thenThrow(new Exception("Mocked exception"))) {
+    public void testDecryptVerify() throws Exception {
+        // Create a mock for DecryptVerifyRequest and UtilClass
+        DecryptVerifyRequest mockRequest = mock(DecryptVerifyRequest.class);
+        UtilClass mockUtil = mock(UtilClass.class);
 
-            // Mock behavior for getEncryptKey method
-            when(yourClass.getEncryptKey(any(String.class), anyBoolean())).thenReturn(mock(PGPPublicKey.class));
+        // Mock the PGPObjectFactory and related classes
+        InputStream mockInputStream = mock(InputStream.class);
+        JcaKeyFingerprintCalculator mockCalculator = mock(JcaKeyFingerprintCalculator.class);
+        PGPObjectFactory mockPGPObjectFactory = mock(PGPObjectFactory.class);
+        Object mockObject = mock(Object.class);
 
-            // Test the findSecretKey method and assert that it throws PGException
-            String identity = "testIdentity";
-            assertThrows(PGException.class, () -> yourClass.findSecretKey(identity));
+        // Mock the construction of PGPObjectFactory
+        whenNew(PGPObjectFactory.class)
+                .withArguments(eq(PGPUtil.getDecoderStream(mockInputStream)), eq(mockCalculator))
+                .thenReturn(mockPGPObjectFactory);
 
-            // Optionally, verify other interactions as needed
-            verify(pgpPropertiesReader, times(1)).getPriKeyFromKeyStore(identity);
-            verify(yourClass, times(0)).getEncryptKey(any(String.class), anyBoolean());
-        }
+        // Mock the behavior of PGPObjectFactory and Object
+        when(mockPGPObjectFactory.nextObject()).thenReturn(mockObject);
+
+        // Create an instance of your class to be tested
+        MessageDecryptor messageDecryptor = new MessageDecryptor(mockUtil);
+
+        // Call the method to be tested
+        MessageResponse result = messageDecryptor.decryptverify(mockRequest);
+
+        // Assert the expected result based on your logic
+        // For example, if the method returns a MessageResponse object, you can check its properties
+        assertEquals("Expected value", result.getSomeProperty());
+
+        // Verify that the PGPObjectFactory construction and methods were called as expected
+        verifyNew(PGPObjectFactory.class)
+                .withArguments(eq(PGPUtil.getDecoderStream(mockInputStream)), eq(mockCalculator));
+        verify(mockPGPObjectFactory).nextObject();
     }
 }
