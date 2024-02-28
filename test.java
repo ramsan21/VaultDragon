@@ -1,15 +1,54 @@
-CREATE SEQUENCE PublicKeySeq
-    START WITH 1
-    INCREMENT BY 1
-    NOMAXVALUE
-    NOCYCLE;
+import org.bouncycastle.bcpg.SignatureSubpacketTags;
+import org.bouncycastle.openpgp.*;
 
-CREATE TABLE PublicKeyTable (
-    ID NUMBER DEFAULT PublicKeySeq.NEXTVAL NOT NULL,
-    Identity VARCHAR2(50) NOT NULL,
-    KeyId VARCHAR2(50) NOT NULL,
-    Filename VARCHAR2(255) NOT NULL,
-    KeyBlob BLOB,
-    IsBankId NUMBER(1) DEFAULT 0, -- 0 for clientid, 1 for bankid
-    CONSTRAINT PublicKeyTable_PK PRIMARY KEY (ID)
-);
+import java.io.*;
+import java.util.Date;
+
+public class PGPKeyExpiration {
+
+    public static void main(String[] args) {
+        String keyRingFilePath = "path/to/your/keyring.gpg";
+
+        try {
+            Date expirationDate = getKeyExpirationDate(keyRingFilePath);
+            if (expirationDate != null) {
+                System.out.println("Key Expiration Date: " + expirationDate);
+            } else {
+                System.out.println("Key does not have an expiration date.");
+            }
+        } catch (IOException | PGPException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static Date getKeyExpirationDate(String keyRingFilePath) throws IOException, PGPException {
+        try (InputStream keyRingStream = new FileInputStream(keyRingFilePath)) {
+            PGPPublicKeyRingCollection keyRingCollection = new PGPPublicKeyRingCollection(keyRingStream, new JcaKeyFingerprintCalculator());
+
+            for (PGPPublicKeyRing keyRing : keyRingCollection) {
+                for (PGPPublicKey publicKey : keyRing) {
+                    Date expirationDate = getSignatureExpirationDate(publicKey.getSelfSignature());
+                    if (expirationDate != null) {
+                        return expirationDate;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static Date getSignatureExpirationDate(PGPSignature signature) {
+        PGPSignatureSubpacketVector subpackets = signature.getHashedSubPackets();
+        if (subpackets != null) {
+            SignatureSubpacket subpacket = subpackets.getSubpacket(SignatureSubpacketTags.KEY_EXPIRE_TIME);
+            if (subpacket != null) {
+                long expirationTime = subpacket.getTime();
+                if (expirationTime > 0) {
+                    return new Date(expirationTime * 1000L);
+                }
+            }
+        }
+        return null;
+    }
+}
