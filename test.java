@@ -1,60 +1,83 @@
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
-import java.io.IOException;
-import java.util.ArrayList;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
-public class CalculatorTest {
+public class BankKeyServiceTest {
+
+    @Mock
+    private BankKeyRepository repository;
+
+    @InjectMocks
+    private BankKeyService bankKeyService;
 
     @Test
-    public void testGetCustEncKey_Success() throws ValidationException, IOException {
-        // Arrange
-        KeyService keyService = Mockito.mock(KeyService.class);
-        Calculator calculator = new Calculator(keyService);
+    public void testSaveCurrentBankKey() {
+        BankKey.BankKeyBuilder bankKeyBuilderMock = Mockito.mock(BankKey.BankKeyBuilder.class);
+        when(bankKeyService.bankKeyBuilder()).thenReturn(bankKeyBuilderMock);
 
-        List<CustomerKey> customerKeys = new ArrayList<>();
-        CustomerKey customerKey = new CustomerKey();
-        customerKey.setUser("testUser");
-        customerKey.setPublicKeyData(new byte[]{/* your public key data here */});
-        customerKeys.add(customerKey);
+        bankKeyService.saveCurrentBankkey();
 
-        when(keyService.customerKeyByUser("testUser")).thenReturn(customerKeys);
-
-        // Act
-        PGPPublicKey result = calculator.getCustEncKey("testUser");
-
-        // Assert
-        // You may want to assert the actual PGPPublicKey instance or other conditions based on your requirements
-        assertEquals(/* expected PGPPublicKey */, result);
-
-        // Verify that the keyService.customerKeyByUser method was called with the correct argument
-        verify(keyService, times(1)).customerKeyByUser("testUser");
+        verify(repository, times(1)).save(any(BankKey.class));
+        verify(bankKeyService, times(1)).clearCurrentBankKey();
     }
 
     @Test
-    public void testGetCustEncKey_NoKeyFound() throws ValidationException, IOException {
-        // Arrange
-        KeyService keyService = Mockito.mock(KeyService.class);
-        Calculator calculator = new Calculator(keyService);
+    public void testClearCurrentBankKey() {
+        bankKeyService.clearCurrentBankKey();
 
-        when(keyService.customerKeyByUser(anyString())).thenReturn(new ArrayList<>());
-
-        // Act
-        PGPPublicKey result = calculator.getCustEncKey("nonExistentUser");
-
-        // Assert
-        assertEquals(null, result);
-
-        // Verify that the keyService.customerKeyByUser method was called with the correct argument
-        verify(keyService, times(1)).customerKeyByUser("nonExistentUser");
+        // Add assertions if needed
     }
 
-    // Similar tests can be written for edge cases, exceptions, etc.
+    @Test
+    public void testBankKeyBuilderWithNonNullThreadLocal() {
+        BankKey.BankKeyBuilder expectedBuilder = BankKey.builder().createdon(Timestamp.from(Instant.now()));
+        bankKeyService.bankKeyThreadLocal.set(expectedBuilder);
 
-    // You may also want to test the private method extractEncryptionKey using reflection or other techniques.
+        BankKey.BankKeyBuilder actualBuilder = bankKeyService.bankKeyBuilder();
+
+        assertEquals(expectedBuilder, actualBuilder);
+    }
+
+    @Test
+    public void testBankKeyBuilderWithNullThreadLocal() {
+        bankKeyService.bankKeyThreadLocal.set(null);
+
+        BankKey.BankKeyBuilder actualBuilder = bankKeyService.bankKeyBuilder();
+
+        // Add assertions if needed
+    }
+
+    @Test
+    public void testGetBankkey() {
+        String user = "testUser";
+        List<BankKey> expectedBankKeys = Arrays.asList(new BankKey(), new BankKey());
+
+        when(repository.findyUser(user)).thenReturn(expectedBankKeys);
+
+        List<BankKey> actualBankKeys = bankKeyService.getBankkey(user);
+
+        assertEquals(expectedBankKeys, actualBankKeys);
+    }
+
+    @Test
+    public void testGetBankKeyByKeyId() {
+        String keyId = "testKeyId";
+        List<BankKey> expectedBankKeys = Arrays.asList(new BankKey(), new BankKey());
+
+        when(repository.findBykeyId(keyId)).thenReturn(expectedBankKeys);
+
+        List<BankKey> actualBankKeys = bankKeyService.getBankKeyByKeyId(keyId);
+
+        assertEquals(expectedBankKeys, actualBankKeys);
+    }
 }
