@@ -42,5 +42,29 @@ private OutputStream setupLiteralDataGenerator(OutputStream out, String inputFil
 }
 
 private PGPSignatureGenerator setupPGPSignatureGenerator(SignFileRequest req) throws PGPException, NoSuchAlgorithmException, NoSuchProviderException {
-    // The same setupPGPSignatureGenerator method as before
+    PGPPrivateKey pgpPrivateKey = this.keyChainHandler.findSecretKey(req.getIdentity());
+    if (pgpPrivateKey == null) {
+        throw new PGPException("Unable to get the secret key from keyring. Identity=" + req.getIdentity());
+    }
+
+    PGPPublicKey pgpPublicKey = this.keyChainHandler.getBankMastKey(req.getIdentity());
+    Iterator<String> it = pgpPublicKey.getUserIDs();
+    log.info("Hash algorithm used for signing = " + req.getHashAlgo());
+
+    PGPSignatureGenerator pgpSignatureGenerator = new PGPSignatureGenerator(
+            new JcaPGPContentSignerBuilder(PublicKeyAlgorithmTags.RSA_GENERAL,
+                    algoUtil.getSymmetricCipherValueByName(req.getHashAlgo()))
+                    .setProvider(config.getProviders())
+                    .setDigestProvider(config.getProviders()));
+
+    pgpSignatureGenerator.init(PGPSignature.BINARY_DOCUMENT, pgpPrivateKey);
+
+    if (it.hasNext()) {
+        String user = it.next();
+        PGPSignatureSubpacketGenerator spen = new PGPSignatureSubpacketGenerator();
+        spen.addSignerUserID(false, user.getBytes(StandardCharsets.UTF_8));
+        pgpSignatureGenerator.setHashedSubpackets(spen.generate());
+    }
+
+    return pgpSignatureGenerator;
 }
