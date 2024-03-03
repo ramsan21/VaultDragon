@@ -3,12 +3,20 @@ public MessageResponse signFile(SignFileRequest req) throws Exception {
     String inputFile = FilenameUtils.getFullPath(req.getInputFile()) + FilenameUtils.getName(req.getInputFile());
     String outputFile = FilenameUtils.getFullPath(req.getOutputFile()) + FilenameUtils.getName(req.getOutputFile());
 
-    try (FileOutputStream out = new FileOutputStream(outputFile);
-         ArmoredOutputStream outArmor = req.isArmor() ? new ArmoredOutputStream(out) : null;
-         BCPGOutputStream bout = new BCPGOutputStream(req.isArmor() ? outArmor : out);
-         OutputStream lOut = setupLiteralDataGenerator(bout, inputFile);
-         FileInputStream fIn = new FileInputStream(new File(inputFile));
-         PGPCompressedDataGenerator pgpCompressedDataGenerator = new PGPCompressedDataGenerator(CompressionAlgorithmTags.ZLIB)) {
+    FileOutputStream out = null;
+    ArmoredOutputStream outArmor = null;
+    BCPGOutputStream bout = null;
+    OutputStream lOut = null;
+    FileInputStream fIn = null;
+    PGPCompressedDataGenerator pgpCompressedDataGenerator = null;
+
+    try {
+        out = new FileOutputStream(outputFile);
+        outArmor = req.isArmor() ? new ArmoredOutputStream(out) : null;
+        bout = new BCPGOutputStream(req.isArmor() ? outArmor : out);
+        lOut = setupLiteralDataGenerator(bout, inputFile);
+        fIn = new FileInputStream(new File(inputFile));
+        pgpCompressedDataGenerator = new PGPCompressedDataGenerator(CompressionAlgorithmTags.ZLIB);
 
         PGPSignatureGenerator pgpSignatureGenerator = setupPGPSignatureGenerator(req);
 
@@ -31,6 +39,29 @@ public MessageResponse signFile(SignFileRequest req) throws Exception {
         log.error(e.getClass().getName(), e);
         response.setStatusCode(StatusCode.STAR_FUNC_FAIL.getCode());
         response.setErrorMessage("Error Msg:" + e.getMessage() + " PGP Signing Failed");
+    } finally {
+        try {
+            if (pgpCompressedDataGenerator != null) {
+                pgpCompressedDataGenerator.close();
+            }
+            if (lOut != null) {
+                lOut.close();
+            }
+            if (bout != null) {
+                bout.close();
+            }
+            if (outArmor != null) {
+                outArmor.close();
+            }
+            if (out != null) {
+                out.close();
+            }
+            if (fIn != null) {
+                fIn.close();
+            }
+        } catch (IOException e) {
+            log.warn("Failed to close input/output streams", e);
+        }
     }
 
     return response;
