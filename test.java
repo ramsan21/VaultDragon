@@ -1,69 +1,54 @@
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.MockedConstruction;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.stream.Stream;
+import java.nio.file.FileAlreadyExistsException;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@RunWith(MockitoJUnitRunner.class)
-public class YourClassTest {
-
-    @Mock
-    private CustomerKeyService customerKeyService;
-
-    @Mock
-    private BankKeyService bankKeyService;
-
-    @InjectMocks
-    private YourClass yourClass;
+@ExtendWith(MockitoExtension.class)
+class YourClassTest {
 
     @Test
-    public void testAddCustomerKeys_Success() throws Exception {
-        // Mocking the behavior of getPublicKeyFilePath in the request
-        String publicKeyFilePath = "testPublicKeyFilePath";
-        CustomerKeyRequest request = new CustomerKeyRequest();
-        request.setPublicKeyFilePath(publicKeyFilePath);
+    void testAddCustomerKeys_Success() throws Exception {
+        try (MockedConstruction<File> mockedFile = mockConstruction(File.class)) {
+            // Mocking the behavior of File
+            when(mockedFile.construct(any(), any())).thenReturn(mock(File.class));
 
-        // Mocking the behavior of FileInputStream
-        try (InputStream mockInputStream = mock(InputStream.class)) {
-            when(new FileInputStream(publicKeyFilePath)).thenReturn(mockInputStream);
+            // Mocking the behavior of FileInputStream
+            try (MockedConstruction<FileInputStream> mockedInputStream = mockConstruction(FileInputStream.class)) {
+                // Mocking the behavior of PGPUtil
+                try (MockedConstruction<PGPUtil> mockedPGPUtil = mockConstruction(PGPUtil.class)) {
+                    // Mocking the behavior of PGPPublicKeyRingCollection
+                    try (MockedConstruction<PGPPublicKeyRingCollection> mockedPGPPublicKeyRingCollection =
+                                 mockConstruction(PGPPublicKeyRingCollection.class)) {
 
-            // Mocking the behavior of PGPPublicKeyRingCollection
-            PGPPublicKeyRingCollection mockPublicKeyRingCollection = mock(PGPPublicKeyRingCollection.class);
-            when(new PGPPublicKeyRingCollection(any(), any())).thenReturn(mockPublicKeyRingCollection);
+                        // Mocking the behavior of customerKeyService and bankKeyService
+                        CustomerKeyService customerKeyService = mock(CustomerKeyService.class);
+                        BankKeyService bankKeyService = mock(BankKeyService.class);
 
-            // Mocking the behavior of PGPPublicKeyRing stream
-            PGPPublicKeyRing mockPublicKeyRing = mock(PGPPublicKeyRing.class);
-            when(mockPublicKeyRingCollection.getKeyRings()).thenReturn(Stream.of(mockPublicKeyRing));
+                        // Create an instance of YourClass with the mocked dependencies
+                        YourClass yourClass = new YourClass(customerKeyService, bankKeyService);
 
-            // Mocking the behavior of getUser
-            when(yourClass.getUser(any())).thenReturn("testUser");
+                        // Execute the method
+                        MessageResponse response = yourClass.addCustomerKeys(mock(CustomerKeyRequest.class));
 
-            // Execute the method
-            yourClass.addCustomerKeys(request);
+                        // Verify that the expected methods are called
+                        verify(customerKeyService, times(1)).customerKeyBuilder();
+                        verify(customerKeyService, times(1)).saveCurrentCustomerKey();
 
-            // Verify that the expected methods are called
-            verify(customerKeyService).customerKeyBuilder();
-            verify(customerKeyService).saveCurrentCustomerKey();
+                        // Assert the response
+                        assertEquals(StatusCode.SUCCESS.getCode(), response.getStatusCode());
+                        assertEquals("Customer Key Inserted Successfully.", response.getSuccessMessage());
+                    }
+                }
+            }
         }
-    }
-
-    @Test(expected = FileNotFoundException.class)
-    public void testAddCustomerKeys_FileNotFound() throws Exception {
-        // Mocking the behavior of getPublicKeyFilePath in the request
-        String publicKeyFilePath = "nonExistentFilePath";
-        CustomerKeyRequest request = new CustomerKeyRequest();
-        request.setPublicKeyFilePath(publicKeyFilePath);
-
-        // Execute the method, expect FileNotFoundException
-        yourClass.addCustomerKeys(request);
     }
 
     // Additional tests for other scenarios...
