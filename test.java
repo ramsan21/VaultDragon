@@ -51,3 +51,39 @@ class YourClassTest {
     // Additional tests for other scenarios...
 
 }
+
+@Test
+    public void testAddCustomerKeys() throws Exception {
+        // Mock external dependencies
+        // Assuming you have appropriate mocks for these
+        MockCustomerKeyService customerKeyService = Mockito.mock(MockCustomerKeyService.class);
+        MockBankKeyService bankKeyService = Mockito.mock(MockBankKeyService.class);
+
+        // Define expected behavior for File constructor
+        Answer<File> fileAnswer = invocation -> {
+            String path = (String) invocation.getArguments()[0];
+            return new File("test_file.txt");  // Simulate a test file
+        };
+
+        try (MockedConstruction<File> mockedFile = Mockito.mockConstruction(File.class, fileAnswer)) {
+            PGPPublicKeyRingCollection mockPgpPub = Mockito.mock(PGPPublicKeyRingCollection.class);
+            PGPPublicKeyRing mockPgpPublicKey = Mockito.mock(PGPPublicKeyRing.class);
+            Mockito.when(mockPgpPub.iterator()).thenReturn(Collections.singletonList(mockPgpPublicKey).iterator());
+
+            // Set up mocked InputStream behavior (optional for more fine-grained control)
+            // ...
+
+            // Call the method under test
+            YourClass yourClass = new YourClass(customerKeyService, bankKeyService);
+            MessageResponse response = yourClass.addCustomerKeys(new CustomerKeyRequest("test_path"));
+
+            // Assertions
+            Mockito.verify(mockedFile).constructor(Mockito.eq("test_path"));
+            Mockito.verify(customerKeyService).saveCurrentCustomerKey();
+            // ... other verifications as needed
+
+            // Assert the response
+            Assert.assertEquals(StatusCode.SUCCESS.getCode(), response.getStatusCode());
+            Assert.assertEquals("Customer Key Inserted Successfully.", response.getSuccessMessage());
+        }
+    }
