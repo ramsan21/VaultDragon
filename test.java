@@ -1,101 +1,62 @@
-public MessageResponse signFile(SignFileRequest req) throws Exception {
-    MessageResponse response = new MessageResponse();
-    String inputFile = FilenameUtils.getFullPath(req.getInputFile()) + FilenameUtils.getName(req.getInputFile());
-    String outputFile = FilenameUtils.getFullPath(req.getOutputFile()) + FilenameUtils.getName(req.getOutputFile());
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
-    FileOutputStream out = null;
-    ArmoredOutputStream outArmor = null;
-    BCPGOutputStream bout = null;
-    OutputStream lOut = null;
-    FileInputStream fIn = null;
-    PGPCompressedDataGenerator pgpCompressedDataGenerator = null;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.stream.Stream;
 
-    try {
-        out = new FileOutputStream(outputFile);
-        outArmor = req.isArmor() ? new ArmoredOutputStream(out) : null;
-        bout = new BCPGOutputStream(req.isArmor() ? outArmor : out);
-        lOut = setupLiteralDataGenerator(bout, inputFile);
-        fIn = new FileInputStream(new File(inputFile));
-        pgpCompressedDataGenerator = new PGPCompressedDataGenerator(CompressionAlgorithmTags.ZLIB);
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-        PGPSignatureGenerator pgpSignatureGenerator = setupPGPSignatureGenerator(req);
+public class KeyServiceTest {
 
-        pgpSignatureGenerator.generateOnePassVersion(false).encode(bout);
+    @Mock
+    private CustomerKeyService customerKeyService;
 
-        int ch;
-        while ((ch = fIn.read()) >= 0) {
-            lOut.write(ch);
-            pgpSignatureGenerator.update((byte) ch);
-        }
+    @Mock
+    private BankKeyService bankKeyService;
 
-        pgpSignatureGenerator.generate().encode(bout);
+    @InjectMocks
+    private KeyService keyService;
 
-        response.setStatusCode(StatusCode.SUCCESS.getCode());
-        response.setSuccessMessage("Signed file [" + outputFile + "] created successfully.");
-        response.setOutFileName(outputFile);
-        log.info("Sign successful");
+    @Test
+    public void testAddCustomerKeys() throws ValidationException, IOException {
+        // Initialize mocks
+        MockitoAnnotations.initMocks(this);
 
-    } catch (Exception e) {
-        log.error(e.getClass().getName(), e);
-        response.setStatusCode(StatusCode.STAR_FUNC_FAIL.getCode());
-        response.setErrorMessage("Error Msg:" + e.getMessage() + " PGP Signing Failed");
-    } finally {
-        try {
-            if (pgpCompressedDataGenerator != null) {
-                pgpCompressedDataGenerator.close();
-            }
-            if (lOut != null) {
-                lOut.close();
-            }
-            if (bout != null) {
-                bout.close();
-            }
-            if (outArmor != null) {
-                outArmor.close();
-            }
-            if (out != null) {
-                out.close();
-            }
-            if (fIn != null) {
-                fIn.close();
-            }
-        } catch (IOException e) {
-            log.warn("Failed to close input/output streams", e);
+        // Mocking the behavior of customerKeyBuilder
+        when(customerKeyService.customerKeyBuilder()).thenReturn(new CustomerKey.CustomerKeyBuilder());
+
+        // Mocking the behavior of getPublicKeyFilePath in the request
+        String publicKeyFilePath = "testPublicKeyFilePath";
+        CustomerKeyRequest request = new CustomerKeyRequest();
+        request.setPublicKeyFilePath(publicKeyFilePath);
+
+        // Mocking the behavior of FileInputStream
+        try (InputStream mockInputStream = Mockito.mock(InputStream.class)) {
+            when(new FileInputStream(publicKeyFilePath)).thenReturn(mockInputStream);
+
+            // Mocking the behavior of PGPPublicKeyRingCollection
+            PGPPublicKeyRingCollection mockPublicKeyRingCollection = Mockito.mock(PGPPublicKeyRingCollection.class);
+            when(new PGPPublicKeyRingCollection(any(), any())).thenReturn(mockPublicKeyRingCollection);
+
+            // Mocking the behavior of PGPPublicKeyRing stream
+            PGPPublicKeyRing mockPublicKeyRing = Mockito.mock(PGPPublicKeyRing.class);
+            when(mockPublicKeyRingCollection.getKeyRings()).thenReturn(Stream.of(mockPublicKeyRing));
+
+            // Mocking the behavior of getUser
+            when(keyService.getUser(any())).thenReturn("testUser");
+
+            // Execute the method
+            keyService.addCustomerKeys(request);
+
+            // Verify that the expected methods are called
+            verify(customerKeyService).customerKeyBuilder();
+            verify(customerKeyService).saveCurrentCustomerKey();
         }
     }
-
-    return response;
-}
-
-private OutputStream setupLiteralDataGenerator(OutputStream out, String inputFile) throws IOException {
-    PGPLiteralDataGenerator lGen = new PGPLiteralDataGenerator();
-    return lGen.open(out, PGPLiteralData.BINARY, new File(inputFile));
-}
-
-private PGPSignatureGenerator setupPGPSignatureGenerator(SignFileRequest req) throws PGPException, NoSuchAlgorithmException, NoSuchProviderException {
-    PGPPrivateKey pgpPrivateKey = this.keyChainHandler.findSecretKey(req.getIdentity());
-    if (pgpPrivateKey == null) {
-        throw new PGPException("Unable to get the secret key from keyring. Identity=" + req.getIdentity());
-    }
-
-    PGPPublicKey pgpPublicKey = this.keyChainHandler.getBankMastKey(req.getIdentity());
-    Iterator<String> it = pgpPublicKey.getUserIDs();
-    log.info("Hash algorithm used for signing = " + req.getHashAlgo());
-
-    PGPSignatureGenerator pgpSignatureGenerator = new PGPSignatureGenerator(
-            new JcaPGPContentSignerBuilder(PublicKeyAlgorithmTags.RSA_GENERAL,
-                    algoUtil.getSymmetricCipherValueByName(req.getHashAlgo()))
-                    .setProvider(config.getProviders())
-                    .setDigestProvider(config.getProviders()));
-
-    pgpSignatureGenerator.init(PGPSignature.BINARY_DOCUMENT, pgpPrivateKey);
-
-    if (it.hasNext()) {
-        String user = it.next();
-        PGPSignatureSubpacketGenerator spen = new PGPSignatureSubpacketGenerator();
-        spen.addSignerUserID(false, user.getBytes(StandardCharsets.UTF_8));
-        pgpSignatureGenerator.setHashedSubpackets(spen.generate());
-    }
-
-    return pgpSignatureGenerator;
 }
