@@ -1,18 +1,14 @@
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import javax.persistence.*;
 import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.Date;
 
-@NoArgsConstructor
-@AllArgsConstructor(access = AccessLevel.PRIVATE) // Make the all-args constructor private
-@Getter
 @Entity
 @Table(name = "PGP_BANK_KEYS")
+@NoArgsConstructor
+@Getter // Generates getters for all fields but with custom implementations for mutable types
 public class BankKey implements Serializable {
 
     @Id
@@ -42,43 +38,45 @@ public class BankKey implements Serializable {
     @Column(name = "T_CREATED")
     private Timestamp createdOn; // Mutable field
 
-    // Use Builder to control the setting of mutable fields
-    @Builder
-    public static BankKey create(Long id, String user, String groupId, String keyId, byte[] publicKeyData, String privateKey, Date expiryDate, Timestamp createdOn) {
-        BankKey bankKey = new BankKey();
-        bankKey.id = id;
-        bankKey.user = user;
-        bankKey.groupId = groupId;
-        bankKey.keyId = keyId;
-        bankKey.setPublicKeyData(publicKeyData); // Defensive copy
-        bankKey.privateKey = privateKey;
-        bankKey.setExpiryDate(expiryDate); // Defensive copy
-        bankKey.setCreatedOn(createdOn); // Defensive copy
-        return bankKey;
+    // Custom builder method to handle mutable fields properly
+    public static class BankKeyBuilder {
+        private byte[] publicKeyData;
+        private Date expiryDate;
+        private Timestamp createdOn;
+
+        public BankKeyBuilder publicKeyData(byte[] publicKeyData) {
+            this.publicKeyData = publicKeyData == null ? null : publicKeyData.clone();
+            return this;
+        }
+
+        public BankKeyBuilder expiryDate(Date expiryDate) {
+            this.expiryDate = expiryDate == null ? null : new Date(expiryDate.getTime());
+            return this;
+        }
+
+        public BankKeyBuilder createdOn(Timestamp createdOn) {
+            this.createdOn = createdOn == null ? null : new Timestamp(createdOn.getTime());
+            return this;
+        }
+
+        // Build method will be automatically implemented by Lombok to use these custom setters
     }
 
-    // Defensive copy for mutable fields
-    public void setPublicKeyData(byte[] publicKeyData) {
-        this.publicKeyData = publicKeyData == null ? null : publicKeyData.clone();
-    }
+    // Use Lombok to generate builder
+    @Builder(builderMethodName = "newBuilder")
 
+    // Defensive getters
     public byte[] getPublicKeyData() {
         return this.publicKeyData == null ? null : this.publicKeyData.clone();
-    }
-
-    public void setExpiryDate(Date expiryDate) {
-        this.expiryDate = expiryDate == null ? null : new Date(expiryDate.getTime());
     }
 
     public Date getExpiryDate() {
         return this.expiryDate == null ? null : new Date(this.expiryDate.getTime());
     }
 
-    public void setCreatedOn(Timestamp createdOn) {
-        this.createdOn = createdOn == null ? null : new Timestamp(createdOn.getTime());
-    }
-
     public Timestamp getCreatedOn() {
         return this.createdOn == null ? null : new Timestamp(this.createdOn.getTime());
     }
+
+    // Note: Setters for mutable fields are intentionally omitted to enforce immutability
 }
