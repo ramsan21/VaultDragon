@@ -1,5 +1,6 @@
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import javax.persistence.*;
@@ -7,11 +8,10 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.Date;
 
-@Entity
-@Getter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder(toBuilder = true)
+@AllArgsConstructor(access = AccessLevel.PRIVATE) // Make the all-args constructor private
+@Getter
+@Entity
 @Table(name = "PGP_BANK_KEYS")
 public class BankKey implements Serializable {
 
@@ -31,60 +31,54 @@ public class BankKey implements Serializable {
 
     @Lob
     @Column(name = "PUBLIC_KEY_DATA")
-    private byte[] publicKeyData;
+    private byte[] publicKeyData; // Mutable field
 
     @Column(name = "PRIVATE_KEY")
     private String privateKey;
 
     @Column(name = "EXP_DATE")
-    private Date expiryDate;
+    private Date expiryDate; // Mutable field
 
     @Column(name = "T_CREATED")
-    private Timestamp createdOn;
+    private Timestamp createdOn; // Mutable field
 
-    // Custom setter for mutable and sensitive fields
+    // Use Builder to control the setting of mutable fields
+    @Builder
+    public static BankKey create(Long id, String user, String groupId, String keyId, byte[] publicKeyData, String privateKey, Date expiryDate, Timestamp createdOn) {
+        BankKey bankKey = new BankKey();
+        bankKey.id = id;
+        bankKey.user = user;
+        bankKey.groupId = groupId;
+        bankKey.keyId = keyId;
+        bankKey.setPublicKeyData(publicKeyData); // Defensive copy
+        bankKey.privateKey = privateKey;
+        bankKey.setExpiryDate(expiryDate); // Defensive copy
+        bankKey.setCreatedOn(createdOn); // Defensive copy
+        return bankKey;
+    }
+
+    // Defensive copy for mutable fields
+    public void setPublicKeyData(byte[] publicKeyData) {
+        this.publicKeyData = publicKeyData == null ? null : publicKeyData.clone();
+    }
+
+    public byte[] getPublicKeyData() {
+        return this.publicKeyData == null ? null : this.publicKeyData.clone();
+    }
+
     public void setExpiryDate(Date expiryDate) {
-        this.expiryDate = (expiryDate == null) ? null : new Date(expiryDate.getTime());
+        this.expiryDate = expiryDate == null ? null : new Date(expiryDate.getTime());
+    }
+
+    public Date getExpiryDate() {
+        return this.expiryDate == null ? null : new Date(this.expiryDate.getTime());
     }
 
     public void setCreatedOn(Timestamp createdOn) {
-        this.createdOn = (createdOn == null) ? null : new Timestamp(createdOn.getTime());
+        this.createdOn = createdOn == null ? null : new Timestamp(createdOn.getTime());
     }
 
-    // Exclude from Lombok and manually implement to include encryption or security measures
-    public void setPrivateKey(String privateKey) {
-        // Placeholder for actual encryption logic
-        this.privateKey = encryptPrivateKey(privateKey);
+    public Timestamp getCreatedOn() {
+        return this.createdOn == null ? null : new Timestamp(this.createdOn.getTime());
     }
-
-    // Builder customization to include safe handling for mutable and sensitive fields
-    public static class BankKeyBuilder {
-        private Date expiryDate;
-        private Timestamp createdOn;
-        private String privateKey;
-
-        public BankKeyBuilder expiryDate(Date expiryDate) {
-            this.expiryDate = (expiryDate == null) ? null : new Date(expiryDate.getTime());
-            return this;
-        }
-
-        public BankKeyBuilder createdOn(Timestamp createdOn) {
-            this.createdOn = (createdOn == null) ? null : new Timestamp(createdOn.getTime());
-            return this;
-        }
-
-        public BankKeyBuilder privateKey(String privateKey) {
-            // Placeholder for actual encryption logic
-            this.privateKey = encryptPrivateKey(privateKey);
-            return this;
-        }
-
-        // Placeholder for the encryption method
-        private static String encryptPrivateKey(String privateKey) {
-            // Implement encryption logic here
-            return privateKey; // Modify this with actual encryption
-        }
-    }
-
-    // Additional logic...
 }
