@@ -1,89 +1,53 @@
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.MockedConstruction;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.util.Objects;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.mockito.Mockito;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
-class YourClassTest {
+class YourServiceTest {
 
     @Test
-    void testAddCustomerKeys_Success() throws Exception {
-        try (MockedConstruction<File> mockedFile = mockConstruction(File.class, (info, context) -> {
-            if (info.getMethod().getName().equals("getAbsolutePath")) {
-                // Mocking the behavior of getAbsolutePath
-                context.returnValue("mockedAbsolutePath");
-            } else {
-                // Mocking the behavior of other methods if needed
-                context.returnValue(mock(File.class));
-            }
-        })) {
-            try (MockedConstruction<FileInputStream> mockedInputStream = mockConstruction(FileInputStream.class)) {
-                try (MockedConstruction<PGPUtil> mockedPGPUtil = mockConstruction(PGPUtil.class)) {
-                    try (MockedConstruction<PGPPublicKeyRingCollection> mockedPGPPublicKeyRingCollection =
-                                 mockConstruction(PGPPublicKeyRingCollection.class)) {
+    void testAddCustomerKeys() throws Exception {
+        // Assuming CustomerKeyRequest and MessageResponse are your classes
+        CustomerKeyRequest request = new CustomerKeyRequest();
+        request.setPublickeyFilePath("/path/to/public/key");
 
-                        CustomerKeyService customerKeyService = mock(CustomerKeyService.class);
-                        BankKeyService bankKeyService = mock(BankKeyService.class);
+        // Mock dependencies
+        try (MockedConstruction<FileInputStream> mockedFileInputStream = Mockito.mockConstruction(FileInputStream.class, (mock, context) -> {
+            // Mock constructor behavior if needed
+        });
+             MockedConstruction<PGPPublicKeyRingCollection> mockedPGPPublicKeyRingCollection = Mockito.mockConstruction(PGPPublicKeyRingCollection.class);
+             MockedConstruction<File> mockedFile = Mockito.mockConstruction(File.class)) {
 
-                        YourClass yourClass = new YourClass(customerKeyService, bankKeyService);
+            // Mock the static utility methods if they're involved (for demonstration, let's assume they're static methods in a Utility class)
+            // For example, Mockito.mockStatic(Utility.class), then inside: utilityMock.when(() -> Utility.method()).thenReturn(value);
 
-                        MessageResponse response = yourClass.addCustomerKeys(mock(CustomerKeyRequest.class));
+            // Mock your service dependencies if any, using @Mock or Mockito.mock()
+            CustomerKeyService customerKeyService = Mockito.mock(CustomerKeyService.class);
+            BankKeyService bankKeyService = Mockito.mock(BankKeyService.class);
 
-                        verify(customerKeyService, times(1)).customerKeyBuilder();
-                        verify(customerKeyService, times(1)).saveCurrentCustomerKey();
+            // Assuming enrich method does something with these services that can be verified
+            // Example of setting expectations
+            when(customerKeyService.customerKeyBuilder()).thenReturn(new CustomerKey.CustomerKeyBuilder());
+            when(bankKeyService.bankKeyBuilder()).thenReturn(new BankKey.BankKeyBuilder());
 
-                        assertEquals(StatusCode.SUCCESS.getCode(), response.getStatusCode());
-                        assertEquals("Customer Key Inserted Successfully.", response.getSuccessMessage());
-                    }
-                }
-            }
+            YourService service = new YourService(); // Replace with actual service class that contains addCustomerKeys
+            // Inject mocks into your service if needed
+            // service.setCustomerKeyService(customerKeyService);
+            // service.setBankKeyService(bankKeyService);
+
+            // Execute the method to be tested
+            MessageResponse response = service.addCustomerKeys(request);
+
+            // Verify the outcome
+            assertEquals(StatusCode.SUCCESS.getCode(), response.getStatusCode());
+            assertEquals("Customer Key Inserted Successfully.", response.getSuccessMessage());
+
+            // Verify interactions with the mocked objects
+            verify(customerKeyService, times(1)).saveCurrentCustomerKey();
+            // Add more verify() calls as needed to ensure the correct methods were called with expected parameters
         }
     }
-
-    // Additional tests for other scenarios...
-
 }
-
-@Test
-    public void testAddCustomerKeys() throws Exception {
-        // Mock external dependencies
-        // Assuming you have appropriate mocks for these
-        MockCustomerKeyService customerKeyService = Mockito.mock(MockCustomerKeyService.class);
-        MockBankKeyService bankKeyService = Mockito.mock(MockBankKeyService.class);
-
-        // Define expected behavior for File constructor
-        Answer<File> fileAnswer = invocation -> {
-            String path = (String) invocation.getArguments()[0];
-            return new File("test_file.txt");  // Simulate a test file
-        };
-
-        try (MockedConstruction<File> mockedFile = Mockito.mockConstruction(File.class, fileAnswer)) {
-            PGPPublicKeyRingCollection mockPgpPub = Mockito.mock(PGPPublicKeyRingCollection.class);
-            PGPPublicKeyRing mockPgpPublicKey = Mockito.mock(PGPPublicKeyRing.class);
-            Mockito.when(mockPgpPub.iterator()).thenReturn(Collections.singletonList(mockPgpPublicKey).iterator());
-
-            // Set up mocked InputStream behavior (optional for more fine-grained control)
-            // ...
-
-            // Call the method under test
-            YourClass yourClass = new YourClass(customerKeyService, bankKeyService);
-            MessageResponse response = yourClass.addCustomerKeys(new CustomerKeyRequest("test_path"));
-
-            // Assertions
-            Mockito.verify(mockedFile).constructor(Mockito.eq("test_path"));
-            Mockito.verify(customerKeyService).saveCurrentCustomerKey();
-            // ... other verifications as needed
-
-            // Assert the response
-            Assert.assertEquals(StatusCode.SUCCESS.getCode(), response.getStatusCode());
-            Assert.assertEquals("Customer Key Inserted Successfully.", response.getSuccessMessage());
-        }
-    }
