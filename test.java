@@ -1,39 +1,90 @@
-<dependency>
-    <groupId>com.h2database</groupId>
-    <artifactId>h2</artifactId>
-    <scope>test</scope>
-</dependency>
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import javax.persistence.*;
+import java.io.Serializable;
+import java.sql.Timestamp;
+import java.util.Date;
 
-    @DataJpaTest
-public class BankKeyRepositoryTest {
+@Entity
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Table(name = "PGP_BANK_KEYS")
+public class BankKey implements Serializable {
 
-    @Autowired
-    private TestEntityManager entityManager;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ID")
+    private Long id;
 
-    @Autowired
-    private BankKeyRepository repository;
+    @Column(name = "USER_ID")
+    private String user;
 
-    @Test
-    public void testSaveAndFindById() {
-        // Create a new BankKey entity
-        BankKey newBankKey = new BankKey();
-        newBankKey.setUser("testUser");
-        newBankKey.setGroupId("testGroup");
-        newBankKey.setKeyId("testKey");
-        newBankKey.setPublicKeyData(new byte[]{1, 2, 3});
-        newBankKey.setPrivatekey("privateKey");
-        newBankKey.setExpiryDate(new Date());
-        newBankKey.setCreatedon(new Timestamp(System.currentTimeMillis()));
+    @Column(name = "GROUP_ID")
+    private String groupId;
 
-        // Persist the entity
-        newBankKey = entityManager.persistFlushFind(newBankKey);
+    @Column(name = "KEY_ID")
+    private String keyId;
 
-        // Retrieve the entity using the repository
-        Optional<BankKey> foundBankKey = repository.findById(newBankKey.getId());
+    @Lob
+    @Column(name = "PUBLIC_KEY_DATA")
+    private byte[] publicKeyData;
 
-        // Assert the found entity is not null and equals the original entity
-        assertTrue(foundBankKey.isPresent());
-        assertEquals(newBankKey.getUser(), foundBankKey.get().getUser());
-        // Continue assertions for other fields...
+    @Column(name = "PRIVATE_KEY")
+    private String privateKey;
+
+    @Column(name = "EXP_DATE")
+    private Date expiryDate;
+
+    @Column(name = "T_CREATED")
+    private Timestamp createdOn;
+
+    // Custom setter for mutable and sensitive fields
+    public void setExpiryDate(Date expiryDate) {
+        this.expiryDate = (expiryDate == null) ? null : new Date(expiryDate.getTime());
     }
+
+    public void setCreatedOn(Timestamp createdOn) {
+        this.createdOn = (createdOn == null) ? null : new Timestamp(createdOn.getTime());
+    }
+
+    // Exclude from Lombok and manually implement to include encryption or security measures
+    public void setPrivateKey(String privateKey) {
+        // Placeholder for actual encryption logic
+        this.privateKey = encryptPrivateKey(privateKey);
+    }
+
+    // Builder customization to include safe handling for mutable and sensitive fields
+    public static class BankKeyBuilder {
+        private Date expiryDate;
+        private Timestamp createdOn;
+        private String privateKey;
+
+        public BankKeyBuilder expiryDate(Date expiryDate) {
+            this.expiryDate = (expiryDate == null) ? null : new Date(expiryDate.getTime());
+            return this;
+        }
+
+        public BankKeyBuilder createdOn(Timestamp createdOn) {
+            this.createdOn = (createdOn == null) ? null : new Timestamp(createdOn.getTime());
+            return this;
+        }
+
+        public BankKeyBuilder privateKey(String privateKey) {
+            // Placeholder for actual encryption logic
+            this.privateKey = encryptPrivateKey(privateKey);
+            return this;
+        }
+
+        // Placeholder for the encryption method
+        private static String encryptPrivateKey(String privateKey) {
+            // Implement encryption logic here
+            return privateKey; // Modify this with actual encryption
+        }
+    }
+
+    // Additional logic...
 }
