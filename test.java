@@ -1,82 +1,84 @@
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import javax.persistence.*;
-import java.io.Serializable;
+import java.io.*;
+import java.nio.file.Path;
+import java.security.NoSuchProviderException;
 import java.sql.Timestamp;
 import java.util.Date;
+import java.util.Iterator;
+import org.bouncycastle.bcpg.ArmoredOutputStream;
+import org.bouncycastle.bcpg.BCPGOutputStream;
+import org.bouncycastle.openpgp.*;
+import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentSignerBuilder;
+import org.bouncycastle.openpgp.operator.jcajce.JcaPGPKeyConversion;
 
-@Entity
-@Table(name = "PGP_BANK_KEYS")
-@NoArgsConstructor
-@Getter // Generates getters for all fields but with custom implementations for mutable types
-public class BankKey implements Serializable {
+public class YourClass {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
-    private Long id;
+    private KeyChainHandler keyChainHandler; // Assume this is defined elsewhere
+    private Util util; // Assume this is defined elsewhere
+    private Config config; // Assume this is defined elsewhere
+    private AlgoUtil algoUtil; // Assume this is defined elsewhere
 
-    @Column(name = "USER_ID")
-    private String user;
+    public MessageResponse signFile(SignFileRequest req) throws Exception {
+        MessageResponse response = new MessageResponse();
+        Path inPath = util.getFilePath(req.getInputFile());
+        Path outPath = util.checkOutputFile(req.getOutputFile());
 
-    @Column(name = "GROUP_ID")
-    private String groupId;
+        try (FileInputStream fi = new FileInputStream(inPath.toFile());
+             FileOutputStream out = new FileOutputStream(outPath.toFile())) {
 
-    @Column(name = "KEY_ID")
-    private String keyId;
+            OutputStream finalOut = prepareOutputStream(req, out);
+            signData(req, finalOut, fi, inPath);
 
-    @Lob
-    @Column(name = "PUBLIC_KEY_DATA")
-    private byte[] publicKeyData; // Mutable field
-
-    @Column(name = "PRIVATE_KEY")
-    private String privateKey;
-
-    @Column(name = "EXP_DATE")
-    private Date expiryDate; // Mutable field
-
-    @Column(name = "T_CREATED")
-    private Timestamp createdOn; // Mutable field
-
-    // Custom builder method to handle mutable fields properly
-    public static class BankKeyBuilder {
-        private byte[] publicKeyData;
-        private Date expiryDate;
-        private Timestamp createdOn;
-
-        public BankKeyBuilder publicKeyData(byte[] publicKeyData) {
-            this.publicKeyData = publicKeyData == null ? null : publicKeyData.clone();
-            return this;
+            response.setStatusCode(StatusCode.SUCCESS.getCode());
+            response.setSuccessMessage("Signed file [" + outPath.toUri().toString() + "] created successfully.");
+            log.info("Sign successful");
+        } catch (PGPException | IOException e) {
+            log.error(e.getClass().getName(), e);
+            response.setStatusCode(StatusCode.FAIL.getCode());
+            response.setErrorMessage("Error Msg: " + e.getMessage() + ": PGP Signing Failed");
         }
+        response.setOutFileName(outPath.toUri().getPath());
+        return response;
+    }
 
-        public BankKeyBuilder expiryDate(Date expiryDate) {
-            this.expiryDate = expiryDate == null ? null : new Date(expiryDate.getTime());
-            return this;
+    private OutputStream prepareOutputStream(SignFileRequest req, FileOutputStream out) throws IOException {
+        return req.isArmor() ? new ArmoredOutputStream(out) : out;
+    }
+
+    private void signData(SignFileRequest req, OutputStream out, FileInputStream fi, Path inPath) throws IOException, NoSuchProviderException, PGPException {
+        PGPPrivateKey pgpPrivateKey = keyChainHandler.findSecretKey(req.getIdentity());
+        PGPPublicKey pgpPublicKey = keyChainHandler.getBankMasterKey(req.getIdentity());
+
+        Iterator<String> it = pgpPublicKey.getUserIDs();
+        if (!it.hasNext()) {
+            throw new IllegalArgumentException("No user ID for public key.");
         }
+        String userId = it.next();
 
-        public BankKeyBuilder createdOn(Timestamp createdOn) {
-            this.createdOn = createdOn == null ? null : new Timestamp(createdOn.getTime());
-            return this;
+        PGPSignatureGenerator pgpSignatureGenerator = new PGPSignatureGenerator(
+                new JcaPGPContentSignerBuilder(pgpPublicKey.getAlgorithm(), PGPUtil.SHA256)
+                        .setProvider(config.getProvider()));
+
+        pgpSignatureGenerator.init(PGPSignature.BINARY_DOCUMENT, pgpPrivateKey);
+
+        PGPSignatureSubpacketGenerator spGen = new PGPSignatureSubpacketGenerator();
+        spGen.setSignerUserID(false, userId.getBytes());
+        pgpSignatureGenerator.setHashedSubpackets(spGen.generate());
+
+        try (BCPGOutputStream bcpgOut = new BCPGOutputStream(new ArmoredOutputStream(out))) {
+            pgpSignatureGenerator.generateOnePassVersion(false).encode(bcpgOut);
+
+            PGPLiteralDataGenerator lGen = new PGPLiteralDataGenerator();
+            try (OutputStream lOut = lGen.open(bcpgOut, PGPLiteralData.BINARY, inPath.toFile())) {
+                byte[] buf = new byte[4096];
+                int len;
+                while ((len = fi.read(buf)) > 0) {
+                    lOut.write(buf, 0, len);
+                    pgpSignatureGenerator.update(buf, 0, len);
+                }
+            }
+            pgpSignatureGenerator.generate().encode(bcpgOut);
         }
-
-        // Build method will be automatically implemented by Lombok to use these custom setters
     }
 
-    // Use Lombok to generate builder
-    @Builder(builderMethodName = "newBuilder")
-
-    // Defensive getters
-    public byte[] getPublicKeyData() {
-        return this.publicKeyData == null ? null : this.publicKeyData.clone();
-    }
-
-    public Date getExpiryDate() {
-        return this.expiryDate == null ? null : new Date(this.expiryDate.getTime());
-    }
-
-    public Timestamp getCreatedOn() {
-        return this.createdOn == null ? null : new Timestamp(this.createdOn.getTime());
-    }
-
-    // Note: Setters for mutable fields are intentionally omitted to enforce immutability
+    // Assume log, StatusCode, and other referenced types/classes are defined elsewhere.
 }
