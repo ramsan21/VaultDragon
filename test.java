@@ -1,57 +1,39 @@
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+<dependency>
+    <groupId>com.h2database</groupId>
+    <artifactId>h2</artifactId>
+    <scope>test</scope>
+</dependency>
 
-import java.lang.reflect.Constructor;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-@SpringBootTest
-class YourServiceTest {
+    @DataJpaTest
+public class BankKeyRepositoryTest {
 
     @Autowired
-    private YourService yourService; // Inject your main service where addCustomerKeys method is
+    private TestEntityManager entityManager;
 
-    @MockBean
-    private KeyService keyService; // Mock the correct KeyService
+    @Autowired
+    private BankKeyRepository repository;
 
     @Test
-    void testAddCustomerKeys() throws Exception {
-        CustomerKeyRequest request = new CustomerKeyRequest();
-        request.setPublickeyFilePath("/path/to/public/key");
+    public void testSaveAndFindById() {
+        // Create a new BankKey entity
+        BankKey newBankKey = new BankKey();
+        newBankKey.setUser("testUser");
+        newBankKey.setGroupId("testGroup");
+        newBankKey.setKeyId("testKey");
+        newBankKey.setPublicKeyData(new byte[]{1, 2, 3});
+        newBankKey.setPrivatekey("privateKey");
+        newBankKey.setExpiryDate(new Date());
+        newBankKey.setCreatedon(new Timestamp(System.currentTimeMillis()));
 
-        // Assume BankKey.BankKeyBuilder and CustomerKey.CustomerKeyBuilder have private constructors
-        // Use reflection if necessary to create instances of these builders
-        Constructor<BankKey.BankKeyBuilder> bankKeyBuilderConstructor = BankKey.BankKeyBuilder.class.getDeclaredConstructor();
-        bankKeyBuilderConstructor.setAccessible(true);
-        BankKey.BankKeyBuilder bankKeyBuilder = bankKeyBuilderConstructor.newInstance();
+        // Persist the entity
+        newBankKey = entityManager.persistFlushFind(newBankKey);
 
-        Constructor<CustomerKey.CustomerKeyBuilder> customerKeyBuilderConstructor = CustomerKey.CustomerKeyBuilder.class.getDeclaredConstructor();
-        customerKeyBuilderConstructor.setAccessible(true);
-        CustomerKey.CustomerKeyBuilder customerKeyBuilder = customerKeyBuilderConstructor.newInstance();
+        // Retrieve the entity using the repository
+        Optional<BankKey> foundBankKey = repository.findById(newBankKey.getId());
 
-        // Mock the behavior of keyService to return the builders
-        when(keyService.bankKeyBuilder()).thenReturn(bankKeyBuilder);
-        when(keyService.customerKeyBuilder()).thenReturn(customerKeyBuilder);
-
-        // Call the method under test
-        MessageResponse response = yourService.addCustomerKeys(request);
-
-        // Asserts and verifies
-        assertEquals(StatusCode.SUCCESS.getCode(), response.getStatusCode());
-        assertEquals("Customer Key Inserted Successfully.", response.getSuccessMessage());
-
-        // Verify that keyService methods were called
-        verify(keyService, times(1)).saveCurrentCustomerKey();
-        // Verify other interactions as necessary
-
-        // Reset the constructor accessibility if desired
-        bankKeyBuilderConstructor.setAccessible(false);
-        customerKeyBuilderConstructor.setAccessible(false);
+        // Assert the found entity is not null and equals the original entity
+        assertTrue(foundBankKey.isPresent());
+        assertEquals(newBankKey.getUser(), foundBankKey.get().getUser());
+        // Continue assertions for other fields...
     }
 }
