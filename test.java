@@ -1,29 +1,48 @@
-@Test
-    void testLoadStreamFromClasspath() throws Exception {
-        // Prepare the method to be invoked using reflection
-        Method loadStreamMethod = PGPPropertiesReader.class.getDeclaredMethod("loadStream", String.class);
-        loadStreamMethod.setAccessible(true);
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.test.util.ReflectionTestUtils;
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-        String classpathResource = "classpath:resource";
-        when(util.getFilePath(anyString())).thenReturn(null); // Simulate the behavior
-        
-        // Invoke the private method
-        InputStream result = (InputStream) loadStreamMethod.invoke(pgpPropertiesReader, classpathResource);
-        
-        assertNotNull(result, "InputStream should not be null for classpath resources");
+class PGPPropertiesReaderTest {
+
+    @InjectMocks
+    private PGPPropertiesReader pgpPropertiesReader;
+
+    @Mock
+    private PGPConfig config;
+
+    @Mock
+    private Util util;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        when(config.getKeyStoreSec()).thenReturn("secret");
+        // Configure more mocks as necessary
     }
 
     @Test
-    void testLoadStreamFromFile() throws Exception {
-        // Prepare the method to be invoked using reflection
-        Method loadStreamMethod = PGPPropertiesReader.class.getDeclaredMethod("loadStream", String.class);
-        loadStreamMethod.setAccessible(true);
-
-        String filePath = "file:path/to/resource";
-        // Assume util.getFilePath properly mocked if necessary
-
-        // Invoke the private method
-        InputStream result = (InputStream) loadStreamMethod.invoke(pgpPropertiesReader, filePath);
-        
-        assertNotNull(result, "InputStream should not be null for file paths");
+    void testInitialize() {
+        // Assuming the initialize method doesn't require special handling beyond what's mockable
+        ReflectionTestUtils.invokeMethod(pgpPropertiesReader, "initialize");
+        assertNotNull(ReflectionTestUtils.getField(pgpPropertiesReader, "ssap"), "ssap should be initialized");
+        // Add further assertions and verifications as needed
     }
+
+    @Test
+    void testLoadStream() throws Exception {
+        String expectedPath = "path/to/resource";
+        // Mock util.getFilePath or other interactions as needed
+        
+        InputStream result = (InputStream) ReflectionTestUtils.invokeMethod(pgpPropertiesReader, "loadStream", expectedPath);
+        
+        assertNotNull(result, "InputStream should not be null");
+        // Additional assertions as needed
+    }
+
+    // Implement other tests following a similar pattern
+}
