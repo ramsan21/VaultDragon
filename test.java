@@ -1,84 +1,92 @@
-import java.io.*;
-import java.nio.file.Path;
-import java.security.NoSuchProviderException;
-import java.sql.Timestamp;
-import java.util.Date;
-import java.util.Iterator;
-import org.bouncycastle.bcpg.ArmoredOutputStream;
-import org.bouncycastle.bcpg.BCPGOutputStream;
-import org.bouncycastle.openpgp.*;
-import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentSignerBuilder;
-import org.bouncycastle.openpgp.operator.jcajce.JcaPGPKeyConversion;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+import java.io.InputStream;
+import java.security.KeyStore;
+import java.security.PrivateKey;
 
-public class YourClass {
+class PGPPropertiesReaderTest {
 
-    private KeyChainHandler keyChainHandler; // Assume this is defined elsewhere
-    private Util util; // Assume this is defined elsewhere
-    private Config config; // Assume this is defined elsewhere
-    private AlgoUtil algoUtil; // Assume this is defined elsewhere
+    @InjectMocks
+    private PGPPropertiesReader pgpPropertiesReader;
 
-    public MessageResponse signFile(SignFileRequest req) throws Exception {
-        MessageResponse response = new MessageResponse();
-        Path inPath = util.getFilePath(req.getInputFile());
-        Path outPath = util.checkOutputFile(req.getOutputFile());
+    @Mock
+    private PGPConfig config;
 
-        try (FileInputStream fi = new FileInputStream(inPath.toFile());
-             FileOutputStream out = new FileOutputStream(outPath.toFile())) {
+    @Mock
+    private Util util;
 
-            OutputStream finalOut = prepareOutputStream(req, out);
-            signData(req, finalOut, fi, inPath);
-
-            response.setStatusCode(StatusCode.SUCCESS.getCode());
-            response.setSuccessMessage("Signed file [" + outPath.toUri().toString() + "] created successfully.");
-            log.info("Sign successful");
-        } catch (PGPException | IOException e) {
-            log.error(e.getClass().getName(), e);
-            response.setStatusCode(StatusCode.FAIL.getCode());
-            response.setErrorMessage("Error Msg: " + e.getMessage() + ": PGP Signing Failed");
-        }
-        response.setOutFileName(outPath.toUri().getPath());
-        return response;
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        when(config.getKeyStoreSec()).thenReturn("secret");
+        when(config.getProviders()).thenReturn("provider1,provider2");
+        // Add additional setup as necessary
     }
 
-    private OutputStream prepareOutputStream(SignFileRequest req, FileOutputStream out) throws IOException {
-        return req.isArmor() ? new ArmoredOutputStream(out) : out;
-    }
-
-    private void signData(SignFileRequest req, OutputStream out, FileInputStream fi, Path inPath) throws IOException, NoSuchProviderException, PGPException {
-        PGPPrivateKey pgpPrivateKey = keyChainHandler.findSecretKey(req.getIdentity());
-        PGPPublicKey pgpPublicKey = keyChainHandler.getBankMasterKey(req.getIdentity());
-
-        Iterator<String> it = pgpPublicKey.getUserIDs();
-        if (!it.hasNext()) {
-            throw new IllegalArgumentException("No user ID for public key.");
-        }
-        String userId = it.next();
-
-        PGPSignatureGenerator pgpSignatureGenerator = new PGPSignatureGenerator(
-                new JcaPGPContentSignerBuilder(pgpPublicKey.getAlgorithm(), PGPUtil.SHA256)
-                        .setProvider(config.getProvider()));
-
-        pgpSignatureGenerator.init(PGPSignature.BINARY_DOCUMENT, pgpPrivateKey);
-
-        PGPSignatureSubpacketGenerator spGen = new PGPSignatureSubpacketGenerator();
-        spGen.setSignerUserID(false, userId.getBytes());
-        pgpSignatureGenerator.setHashedSubpackets(spGen.generate());
-
-        try (BCPGOutputStream bcpgOut = new BCPGOutputStream(new ArmoredOutputStream(out))) {
-            pgpSignatureGenerator.generateOnePassVersion(false).encode(bcpgOut);
-
-            PGPLiteralDataGenerator lGen = new PGPLiteralDataGenerator();
-            try (OutputStream lOut = lGen.open(bcpgOut, PGPLiteralData.BINARY, inPath.toFile())) {
-                byte[] buf = new byte[4096];
-                int len;
-                while ((len = fi.read(buf)) > 0) {
-                    lOut.write(buf, 0, len);
-                    pgpSignatureGenerator.update(buf, 0, len);
-                }
-            }
-            pgpSignatureGenerator.generate().encode(bcpgOut);
+    @Test
+    void testInitializeSuccess() {
+        try {
+            pgpPropertiesReader.initialize();
+            // Verify that the necessary methods are called within `initialize`
+            verify(config, atLeastOnce()).getKeyStoreSec();
+        } catch (Exception e) {
+            fail("Initialization should not throw an exception");
         }
     }
 
-    // Assume log, StatusCode, and other referenced types/classes are defined elsewhere.
+    @Test
+    void testGetPrikeyFromKeyStoreSuccess() throws Exception {
+        // Assuming you have a way to mock the static KeyStore.getInstance call,
+        // and the rest of the static interactions, which could be through refactoring
+        // for better testability or using a library like PowerMock.
+        
+        // Mock the behavior of external calls if any, and ensure
+        // the method's logic is correctly handling the scenarios.
+        
+        // This is a placeholder to simulate a successful retrieval scenario
+        String identity = "testIdentity";
+        PrivateKey expectedPrivateKey = mock(PrivateKey.class); // Mocked private key
+        KeyStore keyStoreMock = mock(KeyStore.class);
+
+        when(config.getBaseKeyPath()).thenReturn("/base/path/");
+        when(config.getKeyStoreProvider()).thenReturn("provider");
+        when(config.getKeyStoreType()).thenReturn("type");
+
+        // Mock more interactions as needed...
+
+        when(keyStoreMock.getKey(eq(identity), any())).thenReturn(expectedPrivateKey);
+        // Assuming there's a way to set this mock into the scenario, perhaps with a factory or refactored approach
+
+        PrivateKey result = pgpPropertiesReader.getPrikeyFromkeyStore(identity);
+
+        assertNotNull(result, "Private key should not be null");
+        assertEquals(expectedPrivateKey, result, "Expected private key was not returned");
+    }
+
+    @Test
+    void testLoadStreamFromClasspath() throws Exception {
+        String classpathResource = "classpath:resource";
+        when(util.getFilePath(anyString())).thenReturn(null); // Simulate the behavior
+        
+        InputStream result = pgpPropertiesReader.loadStream(classpathResource);
+        
+        assertNotNull(result, "InputStream should not be null for classpath resources");
+    }
+
+    @Test
+    void testLoadStreamFromFile() throws Exception {
+        String filePath = "file:path/to/resource";
+        // Setup mock for util.getFilePath to return a valid Path
+        
+        InputStream result = pgpPropertiesReader.loadStream(filePath);
+        
+        assertNotNull(result, "InputStream should not be null for file paths");
+    }
+
+    // Additional tests as needed...
 }
