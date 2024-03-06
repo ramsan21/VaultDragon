@@ -1,57 +1,47 @@
+import org.bouncycastle.openpgp.*;
+import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.springframework.data.util.Pair;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.nio.file.Path;
-import java.util.Arrays;
+import java.io.InputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-public class VerifyLiteralTest {
-
-    @TempDir
-    Path tempDir; // JUnit 5 temporary directory feature
+public class YourServiceClassTest {
 
     @Test
-    public void testVerifyLiteral() throws Exception {
-        YourServiceClass service = new YourServiceClass(); // Your service class instance
-        DataPath outPath = new DataPath(tempDir.resolve("testOutput.txt")); // Using the @TempDir
-        PGLiteralData pgpLiteralData = mock(PGLiteralData.class);
-        PGPOnePassSignature ops = mock(PGPOnePassSignature.class);
-        PGPSignature pgpSignature = mock(PGPSignature.class);
-        Boolean signed = Boolean.TRUE;
+    public void testGetFactoryAndObject() throws Exception {
+        YourServiceClass service = new YourServiceClass(); // Assuming YourServiceClass contains the getFactoryAndObject method
+        InputStream mockInputStream = new ByteArrayInputStream(new byte[0]);
 
-        // Simulate pgpLiteralData input stream with test data
-        String testData = "Test data";
-        InputStream testDataStream = new ByteArrayInputStream(testData.getBytes());
-        when(pgpLiteralData.getInputStream()).thenReturn(testDataStream);
+        // Mocking PGPObjectFactory and its returned objects
+        try (MockedStatic<PGPObjectFactory> mockedFactory = Mockito.mockStatic(PGPObjectFactory.class)) {
+            PGPObjectFactory mockPGPFactory = mock(PGPObjectFactory.class);
+            PGPMarker mockMarker = mock(PGPMarker.class); // or PGCompressedData as needed
+            PGCompressedData mockCompressedData = mock(PGCompressedData.class);
+            PGPObjectFactory mockPGPFactoryCompressed = mock(PGPObjectFactory.class);
 
-        try (MockedConstruction<FileOutputStream> mockedFOS = Mockito.mockConstruction(FileOutputStream.class, (mock, context) -> {
-            // No additional behavior needed, but you could simulate write behavior if necessary
-        })) {
-            // Invoke the private method
-            PGPOnePassSignature result = (PGPOnePassSignature) ReflectionTestUtils.invokeMethod(service, "verifyLiteral", outPath, pgpLiteralData, ops, pgpSignature, signed);
+            // Sequence of objects to be returned by the factory
+            when(mockPGPFactory.nextObject()).thenReturn(mockMarker, mockCompressedData);
+            when(mockCompressedData.getDataStream()).thenReturn(new ByteArrayInputStream(new byte[0])); // Simulate compressed data stream
+            when(mockPGPFactoryCompressed.nextObject()).thenReturn(null); // Adjust as needed
 
-            // Assertions
+            // Static mocking to return our mock factory
+            mockedFactory.when(() -> new PGPObjectFactory(any(InputStream.class), any(JcaKeyFingerprintCalculator.class)))
+                    .thenReturn(mockPGPFactory, mockPGPFactoryCompressed);
+
+            // Invoke the private method using ReflectionTestUtils
+            Pair<PGPObjectFactory, Object> result = (Pair<PGPObjectFactory, Object>) ReflectionTestUtils.invokeMethod(service, "getFactoryAndObject", mockInputStream);
+
+            // Verify and assert results
             assertNotNull(result);
-            verify(pgpLiteralData, atLeastOnce()).getInputStream();
-            if (Boolean.TRUE.equals(signed)) {
-                verify(ops, atLeastOnce()).update(anyByte());
-                verify(pgpSignature, atLeastOnce()).update(anyByte());
-            }
-
-            // Verify file content if necessary
-            File outputFile = outPath.toFile();
-            assertTrue(outputFile.exists());
-            byte[] fileContent = java.nio.file.Files.readAllBytes(outputFile.toPath());
-            assertTrue(Arrays.equals(testData.getBytes(), fileContent));
+            assertEquals(mockPGPFactoryCompressed, result.getFirst());
+            assertNull(result.getSecond()); // or other assertions based on expected behavior
         }
     }
 }
