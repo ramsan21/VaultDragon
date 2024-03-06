@@ -1,51 +1,57 @@
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.nio.file.Path;
+import java.util.Arrays;
+
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
-@ExtendWith(SpringExtension.class)
-public class VerifySignatureListTest {
+public class VerifyLiteralTest {
 
-    @Autowired
-    private YourServiceClass service; // Replace YourServiceClass with the actual class name
+    @TempDir
+    Path tempDir; // JUnit 5 temporary directory feature
 
     @Test
-    public void testVerifySignatureList() throws Exception {
-        DecryptVerifyRequest request = mock(DecryptVerifyRequest.class);
-        PGPSignatureList pgpSignatureList = mock(PGPSignatureList.class);
-        PGPSignature pgpSignature = mock(PGPSignature.class);
+    public void testVerifyLiteral() throws Exception {
+        YourServiceClass service = new YourServiceClass(); // Your service class instance
+        DataPath outPath = new DataPath(tempDir.resolve("testOutput.txt")); // Using the @TempDir
+        PGLiteralData pgpLiteralData = mock(PGLiteralData.class);
         PGPOnePassSignature ops = mock(PGPOnePassSignature.class);
-        PGPPublicKey key = mock(PGPPublicKey.class);
-        KeyChainHandler keyChainHandler = mock(KeyChainHandler.class);
+        PGPSignature pgpSignature = mock(PGPSignature.class);
+        Boolean signed = Boolean.TRUE;
 
-        // Setup mock behavior
-        when(pgpSignatureList.get(0)).thenReturn(pgpSignature);
-        when(pgpSignature.getKeyID()).thenReturn(123L);
-        when(ops.getKeyID()).thenReturn(123L); // Adjust as necessary to match your logic
-        when(service.keyChainHandler).thenReturn(keyChainHandler); // Assume service has a field keyChainHandler
-        when(keyChainHandler.getCustKeyByKeyId(anyLong())).thenReturn(key);
+        // Simulate pgpLiteralData input stream with test data
+        String testData = "Test data";
+        InputStream testDataStream = new ByteArrayInputStream(testData.getBytes());
+        when(pgpLiteralData.getInputStream()).thenReturn(testDataStream);
 
-        // Use Mockito to mock construction of AlgoUtil objects
-        try (MockedConstruction<AlgoUtil> mocked = Mockito.mockConstruction(AlgoUtil.class, (mock, context) -> {
-            when(mock.getDigestName(anyInt())).thenReturn("SHA-256");
-            when(mock.getPublicKeyCipherName(anyInt())).thenReturn("RSA");
+        try (MockedConstruction<FileOutputStream> mockedFOS = Mockito.mockConstruction(FileOutputStream.class, (mock, context) -> {
+            // No additional behavior needed, but you could simulate write behavior if necessary
         })) {
-            // Use reflection to invoke the private method
-            PGPSignature result = (PGPSignature) ReflectionTestUtils.invokeMethod(service, "verifySignatureList", request, pgpSignatureList, ops);
+            // Invoke the private method
+            PGPOnePassSignature result = (PGPOnePassSignature) ReflectionTestUtils.invokeMethod(service, "verifyLiteral", outPath, pgpLiteralData, ops, pgpSignature, signed);
 
-            // Assertions to verify the behavior and interactions
+            // Assertions
             assertNotNull(result);
-            verify(pgpSignatureList).get(0);
-            verify(keyChainHandler).getCustKeyByKeyId(123L);
-            // Add more verifications and assertions as needed
+            verify(pgpLiteralData, atLeastOnce()).getInputStream();
+            if (Boolean.TRUE.equals(signed)) {
+                verify(ops, atLeastOnce()).update(anyByte());
+                verify(pgpSignature, atLeastOnce()).update(anyByte());
+            }
+
+            // Verify file content if necessary
+            File outputFile = outPath.toFile();
+            assertTrue(outputFile.exists());
+            byte[] fileContent = java.nio.file.Files.readAllBytes(outputFile.toPath());
+            assertTrue(Arrays.equals(testData.getBytes(), fileContent));
         }
     }
 }
