@@ -1,48 +1,60 @@
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.mockito.MockedConstruction;
+import org.mockito.Mockito;
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PGPPropertiesReaderTest {
 
-    @InjectMocks
-    private PGPPropertiesReader pgpPropertiesReader;
+    private KeyChainHandler keyChainHandler;
+    private PGPOnePassSignature ops;
+    private PGPPublicKey key;
+    private DecryptVerifyRequest request;
+    private PGPOnePassSignatureList opsList;
+    private PGPSignatureList sigList;
 
-    @Mock
-    private PGPConfig config;
-
-    @Mock
-    private Util util;
-
+    // This setup method is a general preparation, you'll need to adjust mocking per test case basis
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-        when(config.getKeyStoreSec()).thenReturn("secret");
-        // Configure more mocks as necessary
+        keyChainHandler = mock(KeyChainHandler.class);
+        ops = mock(PGPOnePassSignature.class);
+        key = mock(PGPPublicKey.class);
+        request = mock(DecryptVerifyRequest.class);
+        opsList = mock(PGPOnePassSignatureList.class);
+        sigList = mock(PGPSignatureList.class);
+
+        when(opsList.get(0)).thenReturn(ops);
+        when(keyChainHandler.getCustKeyByKeyId(anyLong())).thenReturn(key);
+        // Mock other necessary interactions
     }
 
     @Test
-    void testInitialize() {
-        // Assuming the initialize method doesn't require special handling beyond what's mockable
-        ReflectionTestUtils.invokeMethod(pgpPropertiesReader, "initialize");
-        assertNotNull(ReflectionTestUtils.getField(pgpPropertiesReader, "ssap"), "ssap should be initialized");
-        // Add further assertions and verifications as needed
+    void testVerifyOnePassSignatureList() throws Exception {
+        try (MockedConstruction<BcPGPContentVerifierBuilderProvider> mocked = Mockito.mockConstruction(BcPGPContentVerifierBuilderProvider.class, (mock, context) -> {
+            // Optional: Configure the mock if necessary
+        })) {
+            PGPPropertiesReader reader = new PGPPropertiesReader(keyChainHandler); // Assuming constructor injection for simplicity
+            PGPOnePassSignature resultOps = reader.verifyOnePassSignatureList(request, opsList);
+            assertNotNull(resultOps);
+            // Verify interactions and possibly the usage of BcPGPContentVerifierBuilderProvider mock
+        }
     }
 
     @Test
-    void testLoadStream() throws Exception {
-        String expectedPath = "path/to/resource";
-        // Mock util.getFilePath or other interactions as needed
-        
-        InputStream result = (InputStream) ReflectionTestUtils.invokeMethod(pgpPropertiesReader, "loadStream", expectedPath);
-        
-        assertNotNull(result, "InputStream should not be null");
-        // Additional assertions as needed
+    void testLogUserIdCheckValidUserId() throws Exception {
+        String validUserId = "validUserId";
+        long keyId = 12345L;
+
+        when(keyChainHandler.getCustUserByKeyId(keyId)).thenReturn(validUserId);
+        when(request.getKeyId()).thenReturn(validUserId);
+
+        PGPPropertiesReader reader = new PGPPropertiesReader(keyChainHandler); // Assuming constructor injection for simplicity
+        reader.logUserIdCheck(request, keyId); // This method does not return a value, so verify the interactions
+
+        verify(keyChainHandler).getCustUserByKeyId(keyId);
+        // Verify log interactions if necessary. For actual logging verification, consider using tools like SLF4J Test
     }
 
-    // Implement other tests following a similar pattern
+    // Add similar tests for `verifySignatureList` and `verifyLiteral` following the above patterns
 }
