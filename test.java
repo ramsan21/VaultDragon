@@ -7,44 +7,45 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest
 @ExtendWith(SpringExtension.class)
-public class VerifyOnePassSignatureListTest {
+public class VerifySignatureListTest {
 
     @Autowired
     private YourServiceClass service; // Replace YourServiceClass with the actual class name
 
     @Test
-    public void testVerifyOnePassSignatureList() throws Exception {
-        // Mock the dependencies
-        DecryptVerifyRequest request = mock(DecryptVerifyRequest.class); // Assuming request is your custom class
-        PGPOnePassSignatureList opsList = mock(PGPOnePassSignatureList.class);
+    public void testVerifySignatureList() throws Exception {
+        DecryptVerifyRequest request = mock(DecryptVerifyRequest.class);
+        PGPSignatureList pgpSignatureList = mock(PGPSignatureList.class);
+        PGPSignature pgpSignature = mock(PGPSignature.class);
         PGPOnePassSignature ops = mock(PGPOnePassSignature.class);
         PGPPublicKey key = mock(PGPPublicKey.class);
         KeyChainHandler keyChainHandler = mock(KeyChainHandler.class);
 
-        // Configure mocks
-        when(opsList.get(0)).thenReturn(ops);
-        when(ops.getKeyID()).thenReturn(123L);
-        when(service.keyChainHandler).thenReturn(keyChainHandler);
-        when(keyChainHandler.getCustKeyByKeyId(123L)).thenReturn(key);
+        // Setup mock behavior
+        when(pgpSignatureList.get(0)).thenReturn(pgpSignature);
+        when(pgpSignature.getKeyID()).thenReturn(123L);
+        when(ops.getKeyID()).thenReturn(123L); // Adjust as necessary to match your logic
+        when(service.keyChainHandler).thenReturn(keyChainHandler); // Assume service has a field keyChainHandler
+        when(keyChainHandler.getCustKeyByKeyId(anyLong())).thenReturn(key);
 
+        // Use Mockito to mock construction of AlgoUtil objects
         try (MockedConstruction<AlgoUtil> mocked = Mockito.mockConstruction(AlgoUtil.class, (mock, context) -> {
             when(mock.getDigestName(anyInt())).thenReturn("SHA-256");
             when(mock.getPublicKeyCipherName(anyInt())).thenReturn("RSA");
         })) {
-            // Use ReflectionTestUtils to access the private method
-            PGPOnePassSignature result = (PGPOnePassSignature) ReflectionTestUtils.invokeMethod(service, "verifyOnePassSignatureList", request, opsList);
+            // Use reflection to invoke the private method
+            PGPSignature result = (PGPSignature) ReflectionTestUtils.invokeMethod(service, "verifySignatureList", request, pgpSignatureList, ops);
 
-            // Asserts and verifies
+            // Assertions to verify the behavior and interactions
             assertNotNull(result);
-            verify(opsList).get(0);
-            verify(ops).getKeyID();
+            verify(pgpSignatureList).get(0);
             verify(keyChainHandler).getCustKeyByKeyId(123L);
-            // Add more assertions and verifications as needed
+            // Add more verifications and assertions as needed
         }
     }
 }
