@@ -1,55 +1,35 @@
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
-
-import static org.mockito.Mockito.*;
-import static org.junit.jupiter.api.Assertions.*;
-
-@ExtendWith(MockitoExtension.class)
-public class BankPrivateKeyUpdateServiceTest {
-
-    @Test
-    public void testUpdateBankPrivateKey() {
-        // Mock the dependencies
+@Test
+    public void testUpdateBankPrivateKey() throws IOException {
         InputRequest ir = mock(InputRequest.class);
         BankKeyService bankKeyService = mock(BankKeyService.class);
-        Util util = mock(Util.class); // Assuming Util is a dependency used to getFilePath
+        Util util = mock(Util.class); // Assuming Util is a utility class for file path operations
+
         when(ir.getInput()).thenReturn("testPath");
         when(ir.getPrefix()).thenReturn("testPrefix");
 
-        // Mock the util.getFilePath to return a mock Path that simulates DirectoryStream
         Path mockPath = mock(Path.class);
         when(util.getFilePath("testPath")).thenReturn(mockPath);
 
-        // Set up DirectoryStream to simulate file reading
-        try (MockedStatic<Files> mockedFiles = mockStatic(Files.class);
-             MockedStatic<DirectoryStream> mockedStream = mockStatic(DirectoryStream.class)) {
+        // Mock DirectoryStream and its iterator
+        DirectoryStream<Path> directoryStream = mock(DirectoryStream.class);
+        Iterator<Path> iterator = Collections.singleton(Paths.get("testPrefix_user")).iterator();
+        
+        when(directoryStream.iterator()).thenReturn(iterator);
 
-            DirectoryStream<Path> directoryStream = mock(DirectoryStream.class);
-            Path entryPath = Paths.get("testPrefix_user");
-            Stream<Path> pathStream = Stream.of(entryPath);
-            mockedStream.when(() -> Files.newDirectoryStream(mockPath)).thenReturn(directoryStream);
-            when(directoryStream.spliterator()).thenReturn(pathStream.spliterator());
-
-            // Mock Files.readString to return a private key
+        try (MockedStatic<Files> mockedFiles = mockStatic(Files.class)) {
+            mockedFiles.when(() -> Files.newDirectoryStream(any(Path.class))).thenReturn(directoryStream);
             mockedFiles.when(() -> Files.readString(any(Path.class))).thenReturn("privateKeyContents");
 
-            // Create an instance of your service class
+            // Mocking static methods of Files
             YourServiceClass service = new YourServiceClass();
-            // Set mock dependencies using ReflectionTestUtils
             ReflectionTestUtils.setField(service, "bankKeyService", bankKeyService);
             ReflectionTestUtils.setField(service, "util", util);
 
-            // Call the public method
             MessageResponse response = service.updateBankPrivateKey(ir);
 
-            // Verify
             assertEquals(StatusCode.SUCCESS.getCode(), response.getStatusCode());
             assertEquals("Private key update Successfully.", response.getSuccessMessage());
             verify(bankKeyService).updatePrivateKey("user", "privateKeyContents");
-        } catch (IOException e) {
-            fail("IOException should not be thrown");
         }
     }
 }
