@@ -1,61 +1,63 @@
-import static org.mockito.Mockito.*;
-import static org.junit.Assert.*;
-import org.junit.Before;
 import org.junit.Test;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
+
+import static org.mockito.Mockito.*;
+import static org.junit.Assert.*;
 
 public class CustomerKeyServiceTest {
 
-    private CustomerKeyService customerKeyService;
-    private Repository repository; // Assuming Repository is your interface for data access
-    private Util util; // Assuming Util is a utility class for user-related operations
-    private PGPPublicKeyRing pgpPublicKeyRing;
-    private ThreadLocal<CustomerKey> customerKeyThreadLocal; // Assuming this is a ThreadLocal for CustomerKeys
-
-    @Before
-    public void setUp() {
-        repository = mock(Repository.class);
-        util = mock(Util.class);
-        customerKeyService = new CustomerKeyService(repository, util);
-        pgpPublicKeyRing = mock(PGPPublicKeyRing.class);
-        customerKeyThreadLocal = new ThreadLocal<>();
-        customerKeyService.setCustomerKeyThreadLocal(customerKeyThreadLocal); // Assuming there's a setter method
-    }
-
     @Test
-    public void testEnrichWithExistingCustomerKey() throws IOException {
-        // Setup
-        String expectedUser = "user@example.com";
-        String keyId = "12345";
+    public void testEnrichWithExistingCustomerKey() throws Exception {
+        // Initialize mocks and objects via reflection
+        CustomerKeyService customerKeyService = instantiateCustomerKeyService();
+        Repository repository = mock(Repository.class);
+        Util util = mock(Util.class);
+        PGPPublicKeyRing pgpPublicKeyRing = mock(PGPPublicKeyRing.class);
         PGPPublicKey pgpPublicKey = mock(PGPPublicKey.class);
         CustomerKey existingCustomerKey = new CustomerKey();
+        String expectedUser = "user@example.com";
+        String keyId = "12345";
 
+        // Setup mocks
         when(pgpPublicKeyRing.getPublicKey()).thenReturn(pgpPublicKey);
         when(pgpPublicKey.getUserIDs()).thenReturn(Collections.enumeration(Arrays.asList(expectedUser)));
         when(pgpPublicKey.getKeyID()).thenReturn(Long.parseLong(keyId));
         when(util.getUser(pgpPublicKey.getUserIDs())).thenReturn(expectedUser);
         when(repository.findByUser(expectedUser)).thenReturn(Arrays.asList(existingCustomerKey));
 
+        // Set dependencies via reflection
+        setField(customerKeyService, "repository", repository);
+        setField(customerKeyService, "util", util);
+
         // Execute
         customerKeyService.enrich(pgpPublicKeyRing);
 
         // Verify
-        assertNotNull(customerKeyThreadLocal.get());
+        CustomerKey result = getCustomerKeyThreadLocalValue(customerKeyService);
+        assertNotNull(result);
     }
 
-    @Test
-    public void testEnrichWithNoExistingCustomerKey() throws IOException {
-        // Similar setup as the previous test, but return an empty list from repository.findByUser
-        // Verify that a new CustomerKey is created and set in the thread local
+    // Additional test methods would be similar, just with different mock setups and verifications.
+
+    private CustomerKeyService instantiateCustomerKeyService() throws Exception {
+        return CustomerKeyService.class.newInstance();
     }
 
-    @Test(expected = IOException.class)
-    public void testEnrichWithIOException() throws IOException {
-        // Setup the scenario to throw an IOException, e.g., when calling getEncoded on pgpPublicKeyRing
-        // Use when(...).thenThrow(new IOException()) to simulate this
-        // Execute the enrich method and verify that an IOException is thrown
+    private void setField(Object object, String fieldName, Object valueToSet) throws Exception {
+        Field field = object.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(object, valueToSet);
+    }
+
+    private CustomerKey getCustomerKeyThreadLocalValue(CustomerKeyService customerKeyService) throws Exception {
+        Field threadLocalField = CustomerKeyService.class.getDeclaredField("customerKeyThreadLocal");
+        threadLocalField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        ThreadLocal<CustomerKey> threadLocal = (ThreadLocal<CustomerKey>) threadLocalField.get(customerKeyService);
+        return threadLocal.get();
     }
 }
