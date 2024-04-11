@@ -1,26 +1,31 @@
-import javax.net.ssl.SSLContext;
+package com.example.ssl_example;
+
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.ssl.SSLContextBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
+import javax.net.ssl.SSLContext;
 
-public RestTemplate restTemplate() throws Exception {
-    // Create an SSLContext that trusts all certificates
-    SSLContext sslContext = SSLContextBuilder.create()
-        .loadTrustMaterial(null, (certificate, authType) -> true)
-        .build();
+@Configuration
+public class RestClientConfig {
 
-    // Create a CloseableHttpClient that uses the custom SSLContext
-    CloseableHttpClient httpClient = HttpClients.custom()
-        .setSSLContext(sslContext)
-        .setSSLHostnameVerifier(new NoopHostnameVerifier())
-        .build();
+    @Bean
+    public RestTemplate restTemplate() throws Exception {
+        SSLContext sslContext = SSLContextBuilder.create()
+                .loadTrustMaterial(null, (certificate, authType) -> true) // Trust all certificates
+                .build();
 
-    // Use the CloseableHttpClient with the RestTemplate
-    HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
-    requestFactory.setHttpClient(httpClient);
+        CloseableHttpClient httpClient = HttpClients.custom()
+                .setSSLContext(sslContext)
+                .setSSLHostnameVerifier(new NoopHostnameVerifier()) // No hostname verification
+                .build();
 
-    return new RestTemplate(requestFactory);
+        HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
+
+        return new RestTemplate(requestFactory);
+    }
 }
