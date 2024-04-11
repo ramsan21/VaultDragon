@@ -1,28 +1,26 @@
 import javax.net.ssl.SSLContext;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.http.ssl.TrustStrategy;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
-// ...
-
-TrustStrategy acceptingTrustStrategy = (X509Certificate[] chain, String authType) -> true;
-
-SSLContext sslContext = org.apache.http.ssl.SSLContexts.custom()
-        .loadTrustMaterial(null, acceptingTrustStrategy)
+public RestTemplate restTemplate() throws Exception {
+    // Create an SSLContext that trusts all certificates
+    SSLContext sslContext = SSLContextBuilder.create()
+        .loadTrustMaterial(null, (certificate, authType) -> true)
         .build();
 
-SSLConnectionSocketFactory csf = new SSLConnectionSocketFactory(sslContext);
-
-CloseableHttpClient httpClient = HttpClients.custom()
-        .setSSLSocketFactory(csf)
+    // Create a CloseableHttpClient that uses the custom SSLContext
+    CloseableHttpClient httpClient = HttpClients.custom()
+        .setSSLContext(sslContext)
+        .setSSLHostnameVerifier(new NoopHostnameVerifier())
         .build();
 
-HttpComponentsClientHttpRequestFactory requestFactory =
-        new HttpComponentsClientHttpRequestFactory();
+    // Use the CloseableHttpClient with the RestTemplate
+    HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
+    requestFactory.setHttpClient(httpClient);
 
-requestFactory.setHttpClient(httpClient);
-
-RestTemplate restTemplate = new RestTemplate(requestFactory);
+    return new RestTemplate(requestFactory);
+}
