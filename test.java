@@ -1,35 +1,28 @@
-public static PGPPublicKeyRingCollection addOrUpdatePublicKeyRing(PGPPublicKeyRingCollection keyRingCollection, PGPPublicKeyRing keyRing) {
+public void exportPublicKey(String userEmail, String outputFile) {
+        ProcessBuilder processBuilder = new ProcessBuilder(gpgExecutablePath, "--export", "-a", userEmail);
+        processBuilder.redirectOutput(ProcessBuilder.Redirect.PIPE);
+
         try {
-            List<PGPPublicKeyRing> keyRings = new ArrayList<>();
-            boolean isUpdated = false;
-
-            // Iterate through the existing key rings
-            for (Iterator<PGPPublicKeyRing> it = keyRingCollection.getKeyRings(); it.hasNext(); ) {
-                PGPPublicKeyRing existingKeyRing = it.next();
-
-                // If the key ring is already present, update it
-                if (existingKeyRing.getPublicKey().getKeyID() == keyRing.getPublicKey().getKeyID()) {
-                    keyRings.add(keyRing);
-                    isUpdated = true;
-                } else {
-                    keyRings.add(existingKeyRing);
+            Process process = processBuilder.start();
+            
+            try (OutputStream fos = new FileOutputStream(outputFile)) {
+                byte[] buffer = new byte[1024];
+                int length;
+                
+                // Read from the output stream of the process
+                while ((length = process.getInputStream().read(buffer)) != -1) {
+                    fos.write(buffer, 0, length);
                 }
             }
 
-            // If the key ring was not found, add it to the collection
-            if (!isUpdated) {
-                keyRings.add(keyRing);
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                System.out.println("Public key successfully exported to " + outputFile);
+            } else {
+                System.err.println("Failed to export public key, GPG exited with code " + exitCode);
             }
-
-            // Create a new PGPPublicKeyRingCollection with the updated key rings
-            return new PGPPublicKeyRingCollection(keyRings);
-        } catch (PGPException | IOException e) {
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
-            return keyRingCollection;
+            Thread.currentThread().interrupt(); // Restore the interrupted status
         }
     }
-
-TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
-
-        server.ssl.ciphers=TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-server.ssl.enabled-protocols=TLSv1.2,TLSv1.3
