@@ -1,31 +1,33 @@
-package com.example.ssl_example;
+try {
+            RestTemplate restTemplate = new RestTemplate();
 
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.ssl.SSLContextBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
-import org.springframework.web.client.RestTemplate;
-import javax.net.ssl.SSLContext;
+            KeyStore keyStore = KeyStore.getInstance("jks");
 
-@Configuration
-public class RestClientConfig {
+            File keyFile = new File(KEY_STORE_FILE);
+            FileSystemResource fileSystemResource = new FileSystemResource(keyFile);
 
-    @Bean
-    public RestTemplate restTemplate() throws Exception {
-        SSLContext sslContext = SSLContextBuilder.create()
-                .loadTrustMaterial(null, (certificate, authType) -> true) // Trust all certificates
-                .build();
+            InputStream inputStream = fileSystemResource.getInputStream();
+            keyStore.load(inputStream,
+                    Objects.requireNonNull(KEY_STORE_PASS).toCharArray());
 
-        CloseableHttpClient httpClient = HttpClients.custom()
-                .setSSLContext(sslContext)
-                .setSSLHostnameVerifier(new NoopHostnameVerifier()) // No hostname verification
-                .build();
+            SSLConnectionSocketFactory socketFactory = new SSLConnectionSocketFactory(new SSLContextBuilder()
+                    .loadTrustMaterial(null, new TrustSelfSignedStrategy())
+                    .loadKeyMaterial(keyStore,
+                            KEY_PASS.toCharArray()).build(),
+                    NoopHostnameVerifier.INSTANCE);
 
-        HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
+            HttpClient httpClient = HttpClients.custom().setSSLSocketFactory(socketFactory)
+                    .build();
 
-        return new RestTemplate(requestFactory);
-    }
-}
+            HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
+
+            restTemplate.setRequestFactory(requestFactory);
+
+            return restTemplate;
+
+        } catch (Exception e) {
+            logger.debug("SSL keystore exception", e);
+            throw new BlahBlahException(e);
+        }
+
+
