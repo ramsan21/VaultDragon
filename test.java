@@ -38,14 +38,9 @@ public class PGPFileEncryptorDecryptor {
             // Execute the command
             Process process = pb.start();
 
-            // Write the file content to the stdin of the gpg process
-            byte[] fileBytes = Files.readAllBytes(Paths.get(inputFile.replace("\"", "")));
-            process.getOutputStream().write(fileBytes);
-            process.getOutputStream().flush();
-            process.getOutputStream().close();
-
             // Handle user input prompts
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            BufferedReader stdInReader = new BufferedReader(new InputStreamReader(System.in));
             String line;
             while ((line = reader.readLine()) != null) {
                 System.out.println(line);
