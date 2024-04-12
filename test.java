@@ -9,27 +9,27 @@ import java.util.concurrent.TimeUnit;
 
 public class PGPFileEncryptorDecryptor {
     public static void encryptFile(String fileToEncrypt, String recipientEmails, String outputFile, String signingKeyPassphrase) {
-        displayAndExecuteGPGCommand("--encrypt", fileToEncrypt, outputFile, signingKeyPassphrase, "--recipient", recipientEmails.split(","));
+        displayAndExecuteGPGCommand("--encrypt", "--recipient", recipientEmails, "--output", outputFile, fileToEncrypt);
     }
 
     public static void decryptFile(String fileToDecrypt, String outputFile, String signingKeyPassphrase) {
-        displayAndExecuteGPGCommand("--decrypt", fileToDecrypt, outputFile, signingKeyPassphrase);
+        displayAndExecuteGPGCommand("--decrypt", "--output", outputFile, fileToDecrypt);
     }
 
     public static void signFile(String fileToSign, String outputFile, String signingKeyPassphrase, String localUserEmail) {
-        displayAndExecuteGPGCommand("--sign", fileToSign, outputFile, signingKeyPassphrase, "--local-user", localUserEmail);
+        displayAndExecuteGPGCommand("--sign", "--local-user", localUserEmail, "--output", outputFile, fileToSign);
     }
 
     public static void verifyFile(String fileToVerify, String signerEmails, String outputFile) {
-        displayAndExecuteGPGCommand("--verify", fileToVerify, outputFile, null, "--trusted-key", signerEmails.split(","));
+        displayAndExecuteGPGCommand("--verify", "--trusted-key", signerEmails, "--output", outputFile, fileToVerify);
     }
 
     public static void signAndEncryptFile(String fileToSign, String fileToEncrypt, String recipientEmails, String signingKeyPassphrase, String localUserEmail) {
-        displayAndExecuteGPGCommand("--sign", "--encrypt", fileToSign, fileToEncrypt, signingKeyPassphrase, "--recipient", recipientEmails.split(","), "--local-user", localUserEmail);
+        displayAndExecuteGPGCommand("--sign", "--encrypt", "--recipient", recipientEmails, "--local-user", localUserEmail, "--output", fileToEncrypt, fileToSign);
     }
 
     public static void decryptAndVerifyFile(String fileToDecrypt, String outputFile, String signerEmails, String signingKeyPassphrase) {
-        displayAndExecuteGPGCommand("--decrypt", "--verify", fileToDecrypt, outputFile, signingKeyPassphrase, "--trusted-key", signerEmails.split(","));
+        displayAndExecuteGPGCommand("--decrypt", "--verify", "--trusted-key", signerEmails, "--output", outputFile, fileToDecrypt);
     }
 
     private static void displayAndExecuteGPGCommand(String... args) {
