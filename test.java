@@ -8,27 +8,27 @@ import java.util.List;
 
 public class PGPFileEncryptorDecryptor {
     public static void encryptFile(String fileToEncrypt, String recipientEmails, String outputFile, String signingKeyPassphrase) {
-        performGPGOperation("--encrypt", fileToEncrypt, outputFile, signingKeyPassphrase, "--recipient", recipientEmails.split(","));
+        performGPGOperation("--encrypt", fileToEncrypt, outputFile, signingKeyPassphrase, "--recipient", recipientEmails.split(","), "--output", outputFile);
     }
 
     public static void decryptFile(String fileToDecrypt, String outputFile, String signingKeyPassphrase) {
-        performGPGOperation("--decrypt", fileToDecrypt, outputFile, signingKeyPassphrase);
+        performGPGOperation("--decrypt", fileToDecrypt, outputFile, signingKeyPassphrase, "--output", outputFile);
     }
 
     public static void signFile(String fileToSign, String outputFile, String signingKeyPassphrase, String localUserEmail) {
-        performGPGOperation("--sign", fileToSign, outputFile, signingKeyPassphrase, "--local-user", localUserEmail);
+        performGPGOperation("--sign", fileToSign, outputFile, signingKeyPassphrase, "--local-user", localUserEmail, "--output", outputFile);
     }
 
-    public static void verifyFile(String fileToVerify, String signerEmails) {
-        performGPGOperation("--verify", fileToVerify, null, null, "--trusted-key", signerEmails.split(","));
+    public static void verifyFile(String fileToVerify, String signerEmails, String outputFile) {
+        performGPGOperation("--verify", fileToVerify, outputFile, null, "--trusted-key", signerEmails.split(","), "--output", outputFile);
     }
 
     public static void signAndEncryptFile(String fileToSign, String fileToEncrypt, String recipientEmails, String signingKeyPassphrase, String localUserEmail) {
-        performGPGOperation("--sign --encrypt", fileToSign, fileToEncrypt, signingKeyPassphrase, "--recipient", recipientEmails.split(","), "--local-user", localUserEmail);
+        performGPGOperation("--sign --encrypt", fileToSign, fileToEncrypt, signingKeyPassphrase, "--recipient", recipientEmails.split(","), "--local-user", localUserEmail, "--output", fileToEncrypt);
     }
 
     public static void decryptAndVerifyFile(String fileToDecrypt, String outputFile, String signerEmails, String signingKeyPassphrase) {
-        performGPGOperation("--decrypt --verify", fileToDecrypt, outputFile, signingKeyPassphrase, "--trusted-key", signerEmails.split(","));
+        performGPGOperation("--decrypt --verify", fileToDecrypt, outputFile, signingKeyPassphrase, "--trusted-key", signerEmails.split(","), "--output", outputFile);
     }
 
     private static void performGPGOperation(String gpgOperation, String inputFile, String outputFile, String signingKeyPassphrase, String... extraArgs) {
@@ -51,11 +51,6 @@ public class PGPFileEncryptorDecryptor {
             }
 
             command.add(inputFile);
-
-            if (outputFile != null) {
-                command.add("-o");
-                command.add(outputFile);
-            }
 
             Process process = pb.start();
 
@@ -101,7 +96,8 @@ public class PGPFileEncryptorDecryptor {
         // Verify a file
         String fileToVerify = "path/to/signed_file.txt.sig";
         String signerEmails = "signer1@example.com,signer2@example.com";
-        verifyFile(fileToVerify, signerEmails);
+        String verifiedOutputFile = "path/to/verified_file.txt";
+        verifyFile(fileToVerify, signerEmails, verifiedOutputFile);
 
         // Sign and encrypt a file
         String fileToSignAndEncrypt = "path/to/file.txt";
