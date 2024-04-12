@@ -26,3 +26,5 @@ public static void importPublicKey(String publicKeyFile) {
             e.printStackTrace();
         }
     }
+Map<String, String> env = processBuilder.environment();
+env.put("GPG_TTY", "/dev/tty");
