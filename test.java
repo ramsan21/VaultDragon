@@ -4,22 +4,22 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-public class PGPKeyImporter {
-    public static void importPGPPublicKey(String publicKeyFilePath) {
+public class PGPFileSignerEncryptor {
+    public static void signAndEncryptFile(String fileToSign, String fileToEncrypt, String recipientEmail, String signingKeyPassphrase) {
         try {
-            // Read the public key from the file
-            byte[] publicKeyBytes = Files.readAllBytes(Paths.get(publicKeyFilePath));
+            // Read the file content to be signed and encrypted
+            byte[] fileBytes = Files.readAllBytes(Paths.get(fileToSign));
 
-            // Create a ProcessBuilder to run the 'gpg --import' command
-            ProcessBuilder pb = new ProcessBuilder("gpg", "--import");
+            // Create a ProcessBuilder to run the 'gpg --sign --encrypt' command
+            ProcessBuilder pb = new ProcessBuilder("gpg", "--batch", "--yes", "--passphrase", signingKeyPassphrase, "--recipient", recipientEmail, "--sign", "--encrypt");
             Process process = pb.start();
 
-            // Write the public key bytes to the stdin of the 'gpg --import' process
-            process.getOutputStream().write(publicKeyBytes);
+            // Write the file content to the stdin of the 'gpg --sign --encrypt' process
+            process.getOutputStream().write(fileBytes);
             process.getOutputStream().flush();
             process.getOutputStream().close();
 
-            // Read the output from the 'gpg --import' process
+            // Read the output from the 'gpg --sign --encrypt' process
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
             while ((line = reader.readLine()) != null) {
@@ -29,13 +29,19 @@ public class PGPKeyImporter {
             // Wait for the process to finish and get the exit code
             int exitCode = process.waitFor();
             System.out.println("Process exit code: " + exitCode);
+
+            // Save the signed and encrypted file
+            byte[] encryptedFileBytes = Files.readAllBytes(Paths.get(fileToEncrypt));
+            Files.write(Paths.get(fileToEncrypt + ".gpg"), encryptedFileBytes);
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
     }
 
     public static void main(String[] args) {
-        String publicKeyFilePath = "path/to/public/key.asc";
-        importPGPPublicKey(publicKeyFilePath);
+        String fileToSign = "path/to/file.txt";
+        String recipientEmail = "recipient@example.com";
+        String signingKeyPassphrase = "your_signing_key_passphrase";
+        signAndEncryptFile(fileToSign, fileToSign, recipientEmail, signingKeyPassphrase);
     }
 }
