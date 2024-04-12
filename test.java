@@ -1,56 +1,84 @@
-package com.example.demo.service;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.commons.CommonsMultipartResolver;
 
-import com.jcraft.jsch.*;
-import java.nio.file.Path;
+@Configuration
+public class RestClientConfig {
 
-public class ScpService {
-
-    private String host;
-    private int port;
-    private String username;
-    private String privateKeyPath;
-
-    public ScpService(String host, int port, String username, String privateKeyPath) {
-        this.host = host;
-        this.port = port;
-        this.username = username;
-        this.privateKeyPath = privateKeyPath;
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 
-    private Session createSession() throws JSchException {
-        JSch jsch = new JSch();
-        jsch.addIdentity(privateKeyPath); // Add the private key path here
-
-        Session session = jsch.getSession(username, host, port);
-        session.setConfig("StrictHostKeyChecking", "no"); // Consider handling the host key checking differently for production
-        session.connect();
-
-        return session;
+    @Bean
+    public CommonsMultipartResolver multipartResolver() {
+        CommonsMultipartResolver multipartResolver = new CommonsMultipartResolver();
+        multipartResolver.setMaxUploadSize(10000000);
+        return multipartResolver;
     }
+}
 
-    public void upload(Path localPath, String remotePath) throws JSchException, SftpException {
-        Session session = createSession();
-        Channel channel = session.openChannel("sftp");
-        channel.connect();
 
-        ChannelSftp sftpChannel = (ChannelSftp) channel;
-        sftpChannel.put(localPath.toString(), remotePath, ChannelSftp.OVERWRITE);
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 
-        sftpChannel.exit();
-        channel.disconnect();
-        session.disconnect();
+@Service
+public class FileUploadService {
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    public String uploadFile(MultipartFile file) throws IOException {
+        // Header
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        // Body
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", new ByteArrayResource(file.getBytes()) {
+            @Override
+            public String getFilename() {
+                return file.getOriginalFilename();
+            }
+        });
+
+        // HttpEntity
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+        // Send it!
+        String serverUrl = "https://example.com/upload";
+        ResponseEntity<String> response = restTemplate.postForEntity(serverUrl, requestEntity, String.class);
+        return response.getBody();
     }
+}
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.ResponseEntity;
 
-    public void download(String remotePath, Path localPath) throws JSchException, SftpException {
-        Session session = createSession();
-        Channel channel = session.openChannel("sftp");
-        channel.connect();
+@RestController
+public class FileUploadController {
 
-        ChannelSftp sftpChannel = (ChannelSftp) channel;
-        sftpChannel.get(remotePath, localPath.toString());
+    @Autowired
+    private FileUploadService fileUploadService;
 
-        sftpChannel.exit();
-        channel.disconnect();
-        session.disconnect();
+    @PostMapping("/upload")
+    public ResponseEntity<String> handleFileUpload(@RequestParam("file") MultipartFile file) {
+        try {
+            String result = fileUploadService.uploadFile(file);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to upload file: " + e.getMessage());
+        }
     }
 }
