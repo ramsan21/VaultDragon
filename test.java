@@ -1,9 +1,10 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class PGPFileEncryptorDecryptor {
     public static void encryptFile(String fileToEncrypt, String recipientEmails, String outputFile, String signingKeyPassphrase) {
@@ -38,17 +39,34 @@ public class PGPFileEncryptorDecryptor {
             // Execute the command
             Process process = pb.start();
 
-            // Handle user input prompts
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            BufferedReader stdInReader = new BufferedReader(new InputStreamReader(System.in));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                System.out.println(line);
-                if (line.contains("[y/N]")) {
-                    process.getOutputStream().write("y".getBytes());
-                    process.getOutputStream().flush();
+            ExecutorService executor = Executors.newFixedThreadPool(2);
+
+            // Handle input stream
+            executor.execute(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        System.out.println(line);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-            }
+            });
+
+            // Handle error stream
+            executor.execute(() -> {
+                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                    String line;
+                    while ((line = errorReader.readLine()) != null) {
+                        System.err.println(line);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+
+            executor.shutdown();
+            executor.awaitTermination(1, TimeUnit.MINUTES);
 
             // Wait for the process to finish and get the exit code
             int exitCode = process.waitFor();
