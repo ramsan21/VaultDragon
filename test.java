@@ -15,16 +15,16 @@ public class PGPFileEncryptorDecryptor {
         performGPGOperation("--decrypt", fileToDecrypt, outputFile, signingKeyPassphrase);
     }
 
-    public static void signFile(String fileToSign, String outputFile, String signingKeyPassphrase) {
-        performGPGOperation("--sign", fileToSign, outputFile, signingKeyPassphrase);
+    public static void signFile(String fileToSign, String outputFile, String signingKeyPassphrase, String localUserEmail) {
+        performGPGOperation("--sign", fileToSign, outputFile, signingKeyPassphrase, "--local-user", localUserEmail);
     }
 
     public static void verifyFile(String fileToVerify, String signerEmails) {
         performGPGOperation("--verify", fileToVerify, null, null, "--trusted-key", signerEmails.split(","));
     }
 
-    public static void signAndEncryptFile(String fileToSign, String fileToEncrypt, String recipientEmails, String signingKeyPassphrase) {
-        performGPGOperation("--sign --encrypt", fileToSign, fileToEncrypt, signingKeyPassphrase, "--recipient", recipientEmails.split(","));
+    public static void signAndEncryptFile(String fileToSign, String fileToEncrypt, String recipientEmails, String signingKeyPassphrase, String localUserEmail) {
+        performGPGOperation("--sign --encrypt", fileToSign, fileToEncrypt, signingKeyPassphrase, "--recipient", recipientEmails.split(","), "--local-user", localUserEmail);
     }
 
     public static void decryptAndVerifyFile(String fileToDecrypt, String outputFile, String signerEmails, String signingKeyPassphrase) {
@@ -95,7 +95,8 @@ public class PGPFileEncryptorDecryptor {
         // Sign a file
         String fileToSign = "path/to/file.txt";
         String signedOutputFile = "path/to/signed_file.txt.sig";
-        signFile(fileToSign, signedOutputFile, signingKeyPassphrase);
+        String localUserEmail = "your_email@example.com";
+        signFile(fileToSign, signedOutputFile, signingKeyPassphrase, localUserEmail);
 
         // Verify a file
         String fileToVerify = "path/to/signed_file.txt.sig";
@@ -105,7 +106,7 @@ public class PGPFileEncryptorDecryptor {
         // Sign and encrypt a file
         String fileToSignAndEncrypt = "path/to/file.txt";
         String signedAndEncryptedOutputFile = "path/to/signed_and_encrypted_file.gpg";
-        signAndEncryptFile(fileToSignAndEncrypt, signedAndEncryptedOutputFile, recipientEmails, signingKeyPassphrase);
+        signAndEncryptFile(fileToSignAndEncrypt, signedAndEncryptedOutputFile, recipientEmails, signingKeyPassphrase, localUserEmail);
 
         // Decrypt and verify a file
         String fileToDecryptAndVerify = "path/to/signed_and_encrypted_file.gpg";
