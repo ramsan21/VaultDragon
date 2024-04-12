@@ -1,5 +1,5 @@
-public static void signAndEncryptFile(String fileToSign, String fileToEncrypt, String recipientEmails, String signingKeyPassphrase, String localUserEmail) {
-    displayAndExecuteGPGCommand("--sign --encrypt", fileToSign, fileToEncrypt, signingKeyPassphrase, "--recipient", recipientEmails.split(","), "--local-user", localUserEmail);
+public static void encryptFile(String fileToEncrypt, String recipientEmails, String outputFile, String signingKeyPassphrase) {
+    displayAndExecuteGPGCommand("--encrypt", "\"" + fileToEncrypt + "\"", "\"" + outputFile + "\"", signingKeyPassphrase, "--recipient", recipientEmails.split(","));
 }
 
 private static void displayAndExecuteGPGCommand(String gpgOperation, String inputFile, String outputFile, String signingKeyPassphrase, String... extraArgs) {
@@ -19,6 +19,8 @@ private static void displayAndExecuteGPGCommand(String gpgOperation, String inpu
         }
 
         command.add(inputFile);
+        command.add("-o");
+        command.add(outputFile);
 
         // Display the command
         System.out.println("Executing command: " + String.join(" ", command));
@@ -27,7 +29,7 @@ private static void displayAndExecuteGPGCommand(String gpgOperation, String inpu
         Process process = pb.start();
 
         // Write the file content to the stdin of the gpg process
-        byte[] fileBytes = Files.readAllBytes(Paths.get(inputFile));
+        byte[] fileBytes = Files.readAllBytes(Paths.get(inputFile.replace("\"", "")));
         process.getOutputStream().write(fileBytes);
         process.getOutputStream().flush();
         process.getOutputStream().close();
@@ -42,6 +44,10 @@ private static void displayAndExecuteGPGCommand(String gpgOperation, String inpu
         // Wait for the process to finish and get the exit code
         int exitCode = process.waitFor();
         System.out.println("Process exit code: " + exitCode);
+
+        if (exitCode != 0) {
+            throw new RuntimeException("GPG command failed with exit code: " + exitCode);
+        }
     } catch (IOException | InterruptedException e) {
         e.printStackTrace();
     }
