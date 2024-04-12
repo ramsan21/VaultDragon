@@ -1,6 +1,7 @@
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -8,35 +9,46 @@ import java.util.concurrent.TimeUnit;
 
 public class PGPFileEncryptorDecryptor {
     public static void encryptFile(String fileToEncrypt, String recipientEmails, String outputFile, String signingKeyPassphrase) {
-        displayAndExecuteGPGCommand("--encrypt", "\"" + fileToEncrypt + "\"", "\"" + outputFile + "\"", signingKeyPassphrase, "--recipient", recipientEmails.split(","));
+        displayAndExecuteGPGCommand("--encrypt", fileToEncrypt, outputFile, signingKeyPassphrase, "--recipient", recipientEmails.split(","));
     }
 
-    // Other methods remain the same
+    public static void decryptFile(String fileToDecrypt, String outputFile, String signingKeyPassphrase) {
+        displayAndExecuteGPGCommand("--decrypt", fileToDecrypt, outputFile, signingKeyPassphrase);
+    }
 
-    private static void displayAndExecuteGPGCommand(String gpgOperation, String inputFile, String outputFile, String signingKeyPassphrase, String... extraArgs) {
+    public static void signFile(String fileToSign, String outputFile, String signingKeyPassphrase, String localUserEmail) {
+        displayAndExecuteGPGCommand("--sign", fileToSign, outputFile, signingKeyPassphrase, "--local-user", localUserEmail);
+    }
+
+    public static void verifyFile(String fileToVerify, String signerEmails, String outputFile) {
+        displayAndExecuteGPGCommand("--verify", fileToVerify, outputFile, null, "--trusted-key", signerEmails.split(","));
+    }
+
+    public static void signAndEncryptFile(String fileToSign, String fileToEncrypt, String recipientEmails, String signingKeyPassphrase, String localUserEmail) {
+        displayAndExecuteGPGCommand("--sign", "--encrypt", fileToSign, fileToEncrypt, signingKeyPassphrase, "--recipient", recipientEmails.split(","), "--local-user", localUserEmail);
+    }
+
+    public static void decryptAndVerifyFile(String fileToDecrypt, String outputFile, String signerEmails, String signingKeyPassphrase) {
+        displayAndExecuteGPGCommand("--decrypt", "--verify", fileToDecrypt, outputFile, signingKeyPassphrase, "--trusted-key", signerEmails.split(","));
+    }
+
+    private static void displayAndExecuteGPGCommand(String... args) {
         try {
             // Create a ProcessBuilder with the appropriate gpg command
-            ProcessBuilder pb = new ProcessBuilder("gpg", "--batch", "--yes");
-            List<String> command = pb.command();
-            command.add(gpgOperation);
+            List<String> command = new ArrayList<>();
+            command.add("C:\\Program Files (x86)\\GnuPG\\bin\\gpg.exe"); // Replace with the full path to gpg.exe
+            command.add("--batch");
+            command.add("--yes");
 
-            if (signingKeyPassphrase != null) {
-                command.add("--passphrase");
-                command.add(signingKeyPassphrase);
-            }
-
-            for (String arg : extraArgs) {
+            for (String arg : args) {
                 command.add(arg);
             }
-
-            command.add(inputFile);
-            command.add("-o");
-            command.add(outputFile);
 
             // Display the command
             System.out.println("Executing command: " + String.join(" ", command));
 
             // Execute the command
+            ProcessBuilder pb = new ProcessBuilder(command);
             Process process = pb.start();
 
             ExecutorService executor = Executors.newFixedThreadPool(2);
