@@ -11,4 +11,14 @@ session.setConfig("mac.c2s", "hmac-md5,hmac-sha1,hmac-sha2-256,hmac-sha1-96,hmac
 session.setConfig("compression.s2c", "none");
 session.setConfig("compression.c2s", "none");
 
+
+config.put("PreferredAuthentications", "publickey");
+            
+            // Set preferred algorithms
+            config.put("kex", "diffie-hellman-group14-sha1");
+            config.put("cipher.s2c", "aes256-ctr,aes192-ctr,aes128-ctr");
+            config.put("cipher.c2s", "aes256-ctr,aes192-ctr,aes128-ctr");
+            config.put("mac.s2c", "hmac-sha2-256,hmac-sha2-512");
+            config.put("mac.c2s", "hmac-sha2-256,hmac-sha2-512");
+
 session.connect();
