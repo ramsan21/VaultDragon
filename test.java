@@ -1,24 +1,52 @@
-Session session = jsch.getSession(username, host, port);
-session.setConfig("StrictHostKeyChecking", "no");
+import org.springframework.http.*;
+import org.springframework.web.client.RestTemplate;
 
-// Specify the preferred encryption algorithms
-session.setConfig("kex", "diffie-hellman-group1-sha1,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha1,diffie-hellman-group-exchange-sha256");
-session.setConfig("server_host_key", "ssh-rsa,ssh-dss");
-session.setConfig("cipher.s2c", "aes128-ctr,aes128-cbc,3des-ctr,3des-cbc,blowfish-cbc,aes192-ctr,aes192-cbc,aes256-ctr,aes256-cbc");
-session.setConfig("cipher.c2s", "aes128-ctr,aes128-cbc,3des-ctr,3des-cbc,blowfish-cbc,aes192-ctr,aes192-cbc,aes256-ctr,aes256-cbc");
-session.setConfig("mac.s2c", "hmac-md5,hmac-sha1,hmac-sha2-256,hmac-sha1-96,hmac-md5-96");
-session.setConfig("mac.c2s", "hmac-md5,hmac-sha1,hmac-sha2-256,hmac-sha1-96,hmac-md5-96");
-session.setConfig("compression.s2c", "none");
-session.setConfig("compression.c2s", "none");
+public class FileProcessor {
+    private final RestTemplate restTemplate;
 
+    public FileProcessor(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
-config.put("PreferredAuthentications", "publickey");
-            
-            // Set preferred algorithms
-            config.put("kex", "diffie-hellman-group14-sha1");
-            config.put("cipher.s2c", "aes256-ctr,aes192-ctr,aes128-ctr");
-            config.put("cipher.c2s", "aes256-ctr,aes192-ctr,aes128-ctr");
-            config.put("mac.s2c", "hmac-sha2-256,hmac-sha2-512");
-            config.put("mac.c2s", "hmac-sha2-256,hmac-sha2-512");
+    public String processFile(String inputFile, String outputFile, String bankIdentity, String clientIdentity,
+                              boolean armor, String encAlgo, String hashAlgo) {
+        // Create the request body as a map
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("inputFile", inputFile);
+        requestBody.put("outputFile", outputFile);
+        requestBody.put("bankIdentity", bankIdentity);
+        requestBody.put("clientIdentity", clientIdentity);
+        requestBody.put("armor", armor);
+        requestBody.put("encAlgo", encAlgo);
+        requestBody.put("hashAlgo", hashAlgo);
 
-session.connect();
+        // Create the HTTP headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        // Create the HTTP entity with the request body and headers
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+        try {
+            // Send the POST request to the API endpoint
+            ResponseEntity<Map> responseEntity = restTemplate.postForEntity("API_ENDPOINT_URL", requestEntity, Map.class);
+
+            // Check the response status code
+            if (responseEntity.getStatusCode() == HttpStatus.OK) {
+                Map<String, Object> responseBody = responseEntity.getBody();
+                int statusCode = (int) responseBody.get("statusCode");
+                String statusMessage = (String) responseBody.get("statusMessage");
+
+                if (statusCode == 0 && statusMessage.equals("success")) {
+                    return (String) responseBody.get("outputFile");
+                } else {
+                    throw new RuntimeException("File processing failed. Status code: " + statusCode + ", Message: " + statusMessage);
+                }
+            } else {
+                throw new RuntimeException("API request failed. HTTP status code: " + responseEntity.getStatusCode());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error occurred while processing the file.", e);
+        }
+    }
+}
