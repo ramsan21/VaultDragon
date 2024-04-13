@@ -1,52 +1,25 @@
-import org.springframework.http.*;
-import org.springframework.web.client.RestTemplate;
+#!/bin/ksh
+APP_HOME=/prd/starss/pgp-rest
 
-public class FileProcessor {
-    private final RestTemplate restTemplate;
+echo "Running pgpUtility"
 
-    public FileProcessor(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
-    }
+# Ensure JAVA_HOME is set correctly, replace this path with your actual JAVA_HOME if it's not set in the environment
+JAVA_HOME={{ java_home }}
+LOGS_DIR={{ logs_dir }}
 
-    public String processFile(String inputFile, String outputFile, String bankIdentity, String clientIdentity,
-                              boolean armor, String encAlgo, String hashAlgo) {
-        // Create the request body as a map
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("inputFile", inputFile);
-        requestBody.put("outputFile", outputFile);
-        requestBody.put("bankIdentity", bankIdentity);
-        requestBody.put("clientIdentity", clientIdentity);
-        requestBody.put("armor", armor);
-        requestBody.put("encAlgo", encAlgo);
-        requestBody.put("hashAlgo", hashAlgo);
+# Running Java application with the main class specified
+nohup $JAVA_HOME/bin/java -cp $APP_HOME/lib/pgp-rest.jar com.scb.dcda.ss.pgp.util.pgpUtility $* > $LOGS_DIR/pgpUtility.log 2>&1 &
 
-        // Create the HTTP headers
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
+echo "pgpUtility is running"
 
-        // Create the HTTP entity with the request body and headers
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
 
-        try {
-            // Send the POST request to the API endpoint
-            ResponseEntity<Map> responseEntity = restTemplate.postForEntity("API_ENDPOINT_URL", requestEntity, Map.class);
 
-            // Check the response status code
-            if (responseEntity.getStatusCode() == HttpStatus.OK) {
-                Map<String, Object> responseBody = responseEntity.getBody();
-                int statusCode = (int) responseBody.get("statusCode");
-                String statusMessage = (String) responseBody.get("statusMessage");
+    #!/bin/ksh
 
-                if (statusCode == 0 && statusMessage.equals("success")) {
-                    return (String) responseBody.get("outputFile");
-                } else {
-                    throw new RuntimeException("File processing failed. Status code: " + statusCode + ", Message: " + statusMessage);
-                }
-            } else {
-                throw new RuntimeException("API request failed. HTTP status code: " + responseEntity.getStatusCode());
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Error occurred while processing the file.", e);
-        }
-    }
-}
+APP_HOME=/prd/starss/pgp-rest
+
+echo "Running pgpUtility"
+
+{{ java_home }}/bin/java -classpath $APP_HOME/lib/pgp-rest.jar com.scb.dcda.ss.pgp.util.pgpUtility
+
+echo "pgpUtility execution completed"
