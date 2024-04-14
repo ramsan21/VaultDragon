@@ -1,34 +1,49 @@
 #!/bin/bash
 
-# Check if an output filename was provided without extension
-if [ -z "$1" ]; then
-    echo "Usage: $0 <output_filename_base>"
+# Check if the required arguments are provided
+if [ $# -ne 2 ]; then
+    echo "Usage: $0 localuser recipient"
     exit 1
 fi
 
-# Hardcoded URL of the public key
-KEY_URL="http://example.com/somefile.bin"
-OUTPUT_FILE="$1.asc"
+localuser="$1@example.com"
+recipient="$2"
 
-# Use curl to download the public key and overwrite if exists
-curl -o "$OUTPUT_FILE" "$KEY_URL"
+# Paths to the files involved
+input_file="/data/signenc_in_gpg.txt"
+encrypted_file="/data/signenc_out_pgp.txt"
+decrypted_file="/data/decverify_out_api.txt"
 
-# Check if the download was successful
-if [ -f "$OUTPUT_FILE" ]; then
-    # Retrieve any existing key associated with the file
-    KEY_ID=$(gpg --with-fingerprint "$OUTPUT_FILE" | awk '/Key fingerprint = / {print $5}')
-    
-    if [ -n "$KEY_ID" ]; then
-        # Delete the key if it exists
-        gpg --batch --yes --delete-keys "$KEY_ID"
-    fi
-    
-    # Import the public key using GPG
-    gpg --import "$OUTPUT_FILE"
+# Sign and encrypt the file
+gpg --local-user "$localuser" --sign --encrypt --armor --recipient "$recipient" --output "$encrypted_file" "$input_file"
 
-    # Optionally, inform the user that the process was successful
-    echo "Public key imported successfully. File is saved as $OUTPUT_FILE"
+# Check if GPG operation was successful
+if [ $? -ne 0 ]; then
+    echo "GPG encryption failed."
+    exit 2
+fi
+
+# Replace '<url>' and '<token>' with actual URL and JWT token values
+curl --location --request POST '<url>' \
+--header 'X-Service-JWT: <token>' \
+--header 'Content-Type: application/json' \
+--data-raw "{
+    \"inputFile\":\"$encrypted_file\",
+    \"outputFile\":\"$decrypted_file\",
+    \"groupId\":\"groupId\",
+    \"keyId\":\"$recipient\",
+    \"format\":\"format\"
+}"
+
+# Check if curl operation was successful
+if [ $? -ne 0 ]; then
+    echo "API call failed."
+    exit 3
+fi
+
+# Verify that the content of the original and decrypted files are the same
+if cmp -s "$input_file" "$decrypted_file"; then
+    echo "Success: File contents are identical."
 else
-    echo "Failed to download the public key."
-    exit 1
+    echo "Failure: File contents differ."
 fi
