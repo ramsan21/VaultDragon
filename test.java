@@ -25,3 +25,25 @@ if cmp -s "$1" "$2"; then
 else
     echo "Files are different."
 fi
+
+
+
+    #!/bin/bash
+
+echo "Starting script..."
+echo "Number of arguments passed: $#"
+
+# Check if two files were provided
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 file1 file2"
+    exit 1
+fi
+
+echo "Comparing files $1 and $2"
+
+# Compare files
+if cmp -s "$1" "$2"; then
+    echo "Files are the same."
+else
+    echo "Files are different."
+fi
