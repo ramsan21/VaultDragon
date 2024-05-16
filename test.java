@@ -1,49 +1,89 @@
-#!/bin/bash
+import java.nio.charset.StandardCharsets;
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.spec.RSAPublicKeySpec;
+import java.util.Base64;
+import java.util.Map;
+import java.util.stream.Collectors;
+import javax.crypto.Cipher;
 
-# Usage: ./script.sh file1.txt file2.txt
+public class EncryptionManager {
 
-# Check if two files were provided
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 file1 file2"
-    exit 1
-fi
+    private static final String ALGORITHM = "RSA";
+    private static final String TRANSFORMATION = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding";
 
-# Check if files exist
-if [ ! -e "$1" ]; then
-    echo "Error: $1 does not exist."
-    exit 1
-fi
+    public static String removeSpace(String str) {
+        return str.replaceAll("\\s+", "");
+    }
 
-if [ ! -e "$2" ]; then
-    echo "Error: $2 does not exist."
-    exit 1
-fi
+    private byte[] stringToArrayBuffer(String str) {
+        return str.getBytes(StandardCharsets.UTF_8);
+    }
 
-# Compare files
-if cmp -s "$1" "$2"; then
-    echo "Files are the same."
-else
-    echo "Files are different."
-fi
+    private String arrayBufferToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
 
+    private byte[] encryptDataWithPublicKey(PublicKey key, byte[] data) throws Exception {
+        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+        cipher.init(Cipher.ENCRYPT_MODE, key);
+        return cipher.doFinal(data);
+    }
 
+    private PublicKey getCryptoKey(String exponent, String modulus) throws Exception {
+        byte[] decodedExponent = Base64.getUrlDecoder().decode(exponent);
+        byte[] decodedModulus = Base64.getUrlDecoder().decode(modulus);
 
-    #!/bin/bash
+        RSAPublicKeySpec spec = new RSAPublicKeySpec(new java.math.BigInteger(1, decodedModulus), new java.math.BigInteger(1, decodedExponent));
+        KeyFactory factory = KeyFactory.getInstance(ALGORITHM);
+        return factory.generatePublic(spec);
+    }
 
-echo "Starting script..."
-echo "Number of arguments passed: $#"
+    private String addHashSetToPword(String randomString, String str) {
+        return removeSpace(str) + "_-_" + removeSpace(randomString);
+    }
 
-# Check if two files were provided
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 file1 file2"
-    exit 1
-fi
+    public String processEncryptResponse(String strToEncrypt, Map<String, String> response) throws Exception {
+        String randomString = response.get("randomString");
+        String modulus = response.get("modulus");
+        String exponent = response.get("exponent");
 
-echo "Comparing files $1 and $2"
+        if (randomString == null || modulus == null || exponent == null) {
+            throw new IllegalArgumentException("No expected Parameters");
+        }
 
-# Compare files
-if cmp -s "$1" "$2"; then
-    echo "Files are the same."
-else
-    echo "Files are different."
-fi
+        PublicKey cryptoKey = getCryptoKey(exponent, modulus);
+        String hashedStr = addHashSetToPword(randomString, strToEncrypt);
+        byte[] encryptedData = encryptDataWithPublicKey(cryptoKey, stringToArrayBuffer(hashedStr));
+        return arrayBufferToHex(encryptedData);
+    }
+
+    public Map<String, String> processEncryptResponse(Map<String, String> strToEncrypt, Map<String, String> response) throws Exception {
+        String randomString = response.get("randomString");
+        String modulus = response.get("modulus");
+        String exponent = response.get("exponent");
+
+        if (randomString == null || modulus == null || exponent == null) {
+            throw new IllegalArgumentException("No expected Parameters");
+        }
+
+        PublicKey cryptoKey = getCryptoKey(exponent, modulus);
+
+        return strToEncrypt.entrySet().stream().collect(Collectors.toMap(
+                Map.Entry::getKey,
+                entry -> {
+                    try {
+                        String hashedStr = addHashSetToPword(randomString, entry.getValue());
+                        byte[] encryptedData = encryptDataWithPublicKey(cryptoKey, stringToArrayBuffer(hashedStr));
+                        return arrayBufferToHex(encryptedData);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+        ));
+    }
+}
