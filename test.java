@@ -87,3 +87,46 @@ public class EncryptionManager {
         ));
     }
 }
+
+
+
+
+import java.util.Map;
+
+public class EncryptionManager {
+    
+    // Other methods as before...
+
+    public static String processEncryptResponse(String randomString, String modulus, String exponent, String strToEncrypt) throws Exception {
+        if (randomString == null || modulus == null || exponent == null) {
+            throw new IllegalArgumentException("No expected Parameters");
+        }
+
+        PublicKey cryptoKey = getCryptoKey(exponent, modulus);
+        String hashedStr = addHashSetToPword(randomString, strToEncrypt);
+        byte[] encryptedData = encryptDataWithPublicKey(cryptoKey, stringToArrayBuffer(hashedStr));
+        return arrayBufferToHex(encryptedData);
+    }
+
+    public static Map<String, String> processEncryptResponse(String randomString, String modulus, String exponent, Map<String, String> strToEncrypt) throws Exception {
+        if (randomString == null || modulus == null || exponent == null) {
+            throw new IllegalArgumentException("No expected Parameters");
+        }
+
+        PublicKey cryptoKey = getCryptoKey(exponent, modulus);
+
+        return strToEncrypt.entrySet().stream().collect(Collectors.toMap(
+                Map.Entry::getKey,
+                entry -> {
+                    try {
+                        String hashedStr = addHashSetToPword(randomString, entry.getValue());
+                        byte[] encryptedData = encryptDataWithPublicKey(cryptoKey, stringToArrayBuffer(hashedStr));
+                        return arrayBufferToHex(encryptedData);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+        ));
+    }
+}
+
