@@ -1,3 +1,10 @@
+<dependency>
+    <groupId>org.graalvm.js</groupId>
+    <artifactId>js</artifactId>
+    <version>21.3.0</version>
+</dependency>
+
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import java.nio.file.Files;
