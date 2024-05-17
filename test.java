@@ -1,132 +1,44 @@
-import java.nio.charset.StandardCharsets;
-import java.security.KeyFactory;
-import java.security.PublicKey;
-import java.security.spec.RSAPublicKeySpec;
-import java.util.Base64;
-import java.util.Map;
-import java.util.stream.Collectors;
-import javax.crypto.Cipher;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.io.IOException;
 
-public class EncryptionManager {
+public class JavaScriptExecutor {
+    public static void main(String[] args) {
+        try (Context context = Context.create()) {
+            // Load JavaScript file content
+            String jsFilePath = "path/to/encryptionManager.js"; // Update the path to your JavaScript file
+            String jsCode = new String(Files.readAllBytes(Paths.get(jsFilePath)));
 
-    private static final String ALGORITHM = "RSA";
-    private static final String TRANSFORMATION = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding";
+            // Evaluate the JavaScript code
+            context.eval("js", jsCode);
 
-    public static String removeSpace(String str) {
-        return str.replaceAll("\\s+", "");
-    }
+            // Call the JavaScript function
+            Value encryptionManager = context.eval("js", "EncryptionManager()");
+            Value processEncryptResponse = encryptionManager.getMember("processEncryptResponse");
 
-    private byte[] stringToArrayBuffer(String str) {
-        return str.getBytes(StandardCharsets.UTF_8);
-    }
+            // Prepare the JavaScript parameters
+            String randomString = "randomString";
+            String modulus = "modulus";
+            String exponent = "exponent";
+            String publicKey = modulus + "|" + exponent;
+            String strToEncrypt = "abyte1";
 
-    private String arrayBufferToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
+            Value response = context.eval("js", "({ randomString: '" + randomString + "', publickey: '" + publicKey + "' })");
+
+            // Execute the function and get the response
+            Value encryptedDataPromise = processEncryptResponse.execute(strToEncrypt, response);
+            Value encryptedData = encryptedDataPromise.invokeMember("then", (Value res) -> {
+                System.out.println("Received response: " + res);
+                return res;
+            });
+
+            // Wait for the promise to resolve (if needed)
+            context.getEngine().getLanguages().get("js").getPolyglotContext().eval("js", "async () => await " + encryptedDataPromise.toString());
+
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        return sb.toString();
-    }
-
-    private byte[] encryptDataWithPublicKey(PublicKey key, byte[] data) throws Exception {
-        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-        cipher.init(Cipher.ENCRYPT_MODE, key);
-        return cipher.doFinal(data);
-    }
-
-    private PublicKey getCryptoKey(String exponent, String modulus) throws Exception {
-        byte[] decodedExponent = Base64.getUrlDecoder().decode(exponent);
-        byte[] decodedModulus = Base64.getUrlDecoder().decode(modulus);
-
-        RSAPublicKeySpec spec = new RSAPublicKeySpec(new java.math.BigInteger(1, decodedModulus), new java.math.BigInteger(1, decodedExponent));
-        KeyFactory factory = KeyFactory.getInstance(ALGORITHM);
-        return factory.generatePublic(spec);
-    }
-
-    private String addHashSetToPword(String randomString, String str) {
-        return removeSpace(str) + "_-_" + removeSpace(randomString);
-    }
-
-    public String processEncryptResponse(String strToEncrypt, Map<String, String> response) throws Exception {
-        String randomString = response.get("randomString");
-        String modulus = response.get("modulus");
-        String exponent = response.get("exponent");
-
-        if (randomString == null || modulus == null || exponent == null) {
-            throw new IllegalArgumentException("No expected Parameters");
-        }
-
-        PublicKey cryptoKey = getCryptoKey(exponent, modulus);
-        String hashedStr = addHashSetToPword(randomString, strToEncrypt);
-        byte[] encryptedData = encryptDataWithPublicKey(cryptoKey, stringToArrayBuffer(hashedStr));
-        return arrayBufferToHex(encryptedData);
-    }
-
-    public Map<String, String> processEncryptResponse(Map<String, String> strToEncrypt, Map<String, String> response) throws Exception {
-        String randomString = response.get("randomString");
-        String modulus = response.get("modulus");
-        String exponent = response.get("exponent");
-
-        if (randomString == null || modulus == null || exponent == null) {
-            throw new IllegalArgumentException("No expected Parameters");
-        }
-
-        PublicKey cryptoKey = getCryptoKey(exponent, modulus);
-
-        return strToEncrypt.entrySet().stream().collect(Collectors.toMap(
-                Map.Entry::getKey,
-                entry -> {
-                    try {
-                        String hashedStr = addHashSetToPword(randomString, entry.getValue());
-                        byte[] encryptedData = encryptDataWithPublicKey(cryptoKey, stringToArrayBuffer(hashedStr));
-                        return arrayBufferToHex(encryptedData);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-        ));
     }
 }
-
-
-
-
-import java.util.Map;
-
-public class EncryptionManager {
-    
-    // Other methods as before...
-
-    public static String processEncryptResponse(String randomString, String modulus, String exponent, String strToEncrypt) throws Exception {
-        if (randomString == null || modulus == null || exponent == null) {
-            throw new IllegalArgumentException("No expected Parameters");
-        }
-
-        PublicKey cryptoKey = getCryptoKey(exponent, modulus);
-        String hashedStr = addHashSetToPword(randomString, strToEncrypt);
-        byte[] encryptedData = encryptDataWithPublicKey(cryptoKey, stringToArrayBuffer(hashedStr));
-        return arrayBufferToHex(encryptedData);
-    }
-
-    public static Map<String, String> processEncryptResponse(String randomString, String modulus, String exponent, Map<String, String> strToEncrypt) throws Exception {
-        if (randomString == null || modulus == null || exponent == null) {
-            throw new IllegalArgumentException("No expected Parameters");
-        }
-
-        PublicKey cryptoKey = getCryptoKey(exponent, modulus);
-
-        return strToEncrypt.entrySet().stream().collect(Collectors.toMap(
-                Map.Entry::getKey,
-                entry -> {
-                    try {
-                        String hashedStr = addHashSetToPword(randomString, entry.getValue());
-                        byte[] encryptedData = encryptDataWithPublicKey(cryptoKey, stringToArrayBuffer(hashedStr));
-                        return arrayBufferToHex(encryptedData);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-        ));
-    }
-}
-
