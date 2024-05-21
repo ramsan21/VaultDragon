@@ -1,23 +1,33 @@
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 
-public class JavaScriptRunner {
+public class JavaScriptExample {
     public static void main(String[] args) {
+        // Create a Context instance
         try (Context context = Context.create("js")) {
-            // Load the JavaScript code
-            String javaScriptCode = "/* Your JavaScript code goes here */";
-            Value bindings = context.eval("js", javaScriptCode);
+            // Evaluate the JavaScript code
+            context.eval("js", "/* JavaScript code goes here */");
 
-            // Call the EncryptionManager function
-            Value encryptionManager = bindings.getMember("EncryptionManager");
-            Value processEncryptResponse = encryptionManager.getMember("processEncryptResponse");
-
-            // Pass arguments to the processEncryptResponse function
-            String strToEncrypt = "Hello, World!";
-            Value response = context.eval("js", "({ randomString: 'abc123', publickey: '...' })");
-            Value encryptedData = processEncryptResponse.execute(strToEncrypt, response);
-
-            System.out.println("Encrypted data: " + encryptedData.asString());
+            // Call the processEncryptResponse function
+            callProcessEncryptResponse(context);
         }
+    }
+
+    private static void callProcessEncryptResponse(Context context) {
+        // Define the response object
+        Value response = context.eval("js", "({" +
+                "randomString: 'ranS'," +
+                "publickey: 'modulus|exponent'" +
+                "})");
+
+        // Define the strToEncrypt parameter
+        Value strToEncrypt = context.asValue("abyte1");
+
+        // Call the processEncryptResponse function
+        Value processEncryptResponseFunction = context.eval("js", "processEncryptResponse");
+        Value result = processEncryptResponseFunction.execute(strToEncrypt, response);
+
+        // Handle the result
+        System.out.println("Received response: " + result.toString());
     }
 }
