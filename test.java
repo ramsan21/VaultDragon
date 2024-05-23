@@ -1,33 +1,14 @@
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.*;
 
-public class JavaScriptExample {
+public class ReturnParameter {
     public static void main(String[] args) {
-        // Create a Context instance
-        try (Context context = Context.create("js")) {
-            // Evaluate the JavaScript code
-            context.eval("js", "/* JavaScript code goes here */");
-
-            // Call the processEncryptResponse function
-            callProcessEncryptResponse(context);
+        try (Context context = Context.create()) {
+            Value bindFunction = context.eval("js", "function returnParameter(param) { return param; }");
+            Value result = bindFunction.execute(args[0]);
+            System.out.println("Input parameter: " + args[0]);
+            System.out.println("Result: " + result.asString());
+        } catch (PolyglotException e) {
+            e.printStackTrace();
         }
-    }
-
-    private static void callProcessEncryptResponse(Context context) {
-        // Define the response object
-        Value response = context.eval("js", "({" +
-                "randomString: 'ranS'," +
-                "publickey: 'modulus|exponent'" +
-                "})");
-
-        // Define the strToEncrypt parameter
-        Value strToEncrypt = context.asValue("abyte1");
-
-        // Call the processEncryptResponse function
-        Value processEncryptResponseFunction = context.eval("js", "processEncryptResponse");
-        Value result = processEncryptResponseFunction.execute(strToEncrypt, response);
-
-        // Handle the result
-        System.out.println("Received response: " + result.toString());
     }
 }
