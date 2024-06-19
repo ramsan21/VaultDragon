@@ -1,73 +1,96 @@
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import javax.servlet.FilterChain;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+public class JsonNodeExample {
 
-@ExtendWith(MockitoExtension.class)
-public class YourFilterTest {
+    public static void main(String[] args) {
+        String jsonString = "{\n" +
+                "\t\"request\":{\n" +
+                "\t\"adminuser\": {\n" +
+                "\t\"appId\": \"IDC\",\n" +
+                "\t\"groupId\":\"\",\n" +
+                "\t\"userid\":\"\",\n" +
+                "\t\"Password\":{\n" +
+                "\t\t\"Password\": \"\",\n" +
+                "\t\t\"type\":13\n" +
+                "\t}\n" +
+                "\t},\n" +
+                "\t\"users\": [\n" +
+                "\t\t{\n" +
+                "\t\t\t\"appId\": \"IDC\",\n" +
+                "\t\"groupId\":\"\",\n" +
+                "\t\"userid\":\"\",\n" +
+                "\t\t}\n" +
+                "\t]\n" +
+                "\t}\n" +
+                "}";
 
-    @Mock
-    private HttpServletRequest request;
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(jsonString);
 
-    @Mock
-    private HttpServletResponse response;
+            // Map for adminuser specific replacement values
+            Map<String, String> adminUserReplacements = new HashMap<>();
+            adminUserReplacements.put("appId", "adminAppId");
+            adminUserReplacements.put("groupId", "adminGroupId");
+            adminUserReplacements.put("userid", "adminUserId");
 
-    @Mock
-    private FilterChain filterChain;
+            // Map for user specific replacement values
+            Map<String, String> userReplacements = new HashMap<>();
+            userReplacements.put("appId", "userAppId");
+            userReplacements.put("groupId", "userGroupId");
+            userReplacements.put("userid", "userId");
 
-    @InjectMocks
-    private YourFilter yourFilter;
+            // Handle adminuser node
+            if (root.has("request") && root.get("request").has("adminuser")) {
+                replaceAdminUserValues((ObjectNode) root.get("request").get("adminuser"), adminUserReplacements);
+            }
 
-    @BeforeEach
-    void setUp() {
-        // Setup the filter if needed
+            // Handle users array
+            if (root.has("request") && root.get("request").has("users")) {
+                replaceUserArrayValues((ObjectNode) root.get("request"), userReplacements);
+            }
+
+            String updatedJsonString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+            System.out.println(updatedJsonString);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    @Test
-    void testDoFilterInternal() throws Exception {
-        // Mock the request
-        when(request.getProtocol()).thenReturn("HTTP/1.1");
-        when(request.getMethod()).thenReturn("GET");
-        when(request.getServletPath()).thenReturn("/test");
-        when(request.getContentType()).thenReturn("application/json");
-        when(request.getHeader("X-Service-JWT")).thenReturn("token");
-        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
-
-        // Mock the response
-        when(response.getStatus()).thenReturn(200);
-
-        // Call the method under test
-        yourFilter.doFilterInternal(request, response, filterChain);
-
-        // Verify that the filter chain's doFilter method was called
-        verify(filterChain).doFilter(request, response);
-        
-        // Add assertions or verifications as needed
+    private static void replaceAdminUserValues(ObjectNode adminUserNode, Map<String, String> replacements) {
+        adminUserNode.fields().forEachRemaining(entry -> {
+            String key = entry.getKey();
+            if (replacements.containsKey(key)) {
+                adminUserNode.put(key, replacements.get(key));
+            } else if (entry.getValue().isObject()) {
+                replaceAdminUserValues((ObjectNode) entry.getValue(), replacements);
+            }
+        });
     }
 
-    @Test
-    void testDoFilterInternalWithHealthPath() throws Exception {
-        // Mock the request for a health path
-        when(request.getServletPath()).thenReturn("/health");
-
-        // Call the method under test
-        yourFilter.doFilterInternal(request, response, filterChain);
-
-        // Verify that the filter chain's doFilter method was called
-        verify(filterChain).doFilter(request, response);
-
-        // Ensure logMessage is not logged in this case
-        // You might need a logger mock to verify this
+    private static void replaceUserArrayValues(ObjectNode requestNode, Map<String, String> replacements) {
+        JsonNode usersArray = requestNode.get("users");
+        if (usersArray.isArray()) {
+            for (JsonNode userNode : usersArray) {
+                if (userNode.isObject()) {
+                    replaceUserValues((ObjectNode) userNode, replacements);
+                }
+            }
+        }
     }
 
-    // Additional tests for different paths and scenarios
+    private static void replaceUserValues(ObjectNode userNode, Map<String, String> replacements) {
+        userNode.fields().forEachRemaining(entry -> {
+            String key = entry.getKey();
+            if (replacements.containsKey(key)) {
+                userNode.put(key, replacements.get(key));
+            }
+        });
+    }
 }
