@@ -1,96 +1,134 @@
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+public class RequestPayload {
+    private Request request;
 
-public class JsonNodeExample {
+    public Request getRequest() {
+        return request;
+    }
 
-    public static void main(String[] args) {
-        String jsonString = "{\n" +
-                "\t\"request\":{\n" +
-                "\t\"adminuser\": {\n" +
-                "\t\"appId\": \"IDC\",\n" +
-                "\t\"groupId\":\"\",\n" +
-                "\t\"userid\":\"\",\n" +
-                "\t\"Password\":{\n" +
-                "\t\t\"Password\": \"\",\n" +
-                "\t\t\"type\":13\n" +
-                "\t}\n" +
-                "\t},\n" +
-                "\t\"users\": [\n" +
-                "\t\t{\n" +
-                "\t\t\t\"appId\": \"IDC\",\n" +
-                "\t\"groupId\":\"\",\n" +
-                "\t\"userid\":\"\",\n" +
-                "\t\t}\n" +
-                "\t]\n" +
-                "\t}\n" +
-                "}";
+    public void setRequest(Request request) {
+        this.request = request;
+    }
 
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode root = mapper.readTree(jsonString);
+    public static class Request {
+        private AdminUser adminuser;
+        private List<User> users;
 
-            // Map for adminuser specific replacement values
-            Map<String, String> adminUserReplacements = new HashMap<>();
-            adminUserReplacements.put("appId", "adminAppId");
-            adminUserReplacements.put("groupId", "adminGroupId");
-            adminUserReplacements.put("userid", "adminUserId");
+        public AdminUser getAdminuser() {
+            return adminuser;
+        }
 
-            // Map for user specific replacement values
-            Map<String, String> userReplacements = new HashMap<>();
-            userReplacements.put("appId", "userAppId");
-            userReplacements.put("groupId", "userGroupId");
-            userReplacements.put("userid", "userId");
+        public void setAdminuser(AdminUser adminuser) {
+            this.adminuser = adminuser;
+        }
 
-            // Handle adminuser node
-            if (root.has("request") && root.get("request").has("adminuser")) {
-                replaceAdminUserValues((ObjectNode) root.get("request").get("adminuser"), adminUserReplacements);
-            }
+        public List<User> getUsers() {
+            return users;
+        }
 
-            // Handle users array
-            if (root.has("request") && root.get("request").has("users")) {
-                replaceUserArrayValues((ObjectNode) root.get("request"), userReplacements);
-            }
-
-            String updatedJsonString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(root);
-            System.out.println(updatedJsonString);
-        } catch (IOException e) {
-            e.printStackTrace();
+        public void setUsers(List<User> users) {
+            this.users = users;
         }
     }
 
-    private static void replaceAdminUserValues(ObjectNode adminUserNode, Map<String, String> replacements) {
-        adminUserNode.fields().forEachRemaining(entry -> {
-            String key = entry.getKey();
-            if (replacements.containsKey(key)) {
-                adminUserNode.put(key, replacements.get(key));
-            } else if (entry.getValue().isObject()) {
-                replaceAdminUserValues((ObjectNode) entry.getValue(), replacements);
-            }
-        });
-    }
+    public static class AdminUser {
+        private String appId;
+        private String groupId;
+        private String userid;
+        private Password password;
 
-    private static void replaceUserArrayValues(ObjectNode requestNode, Map<String, String> replacements) {
-        JsonNode usersArray = requestNode.get("users");
-        if (usersArray.isArray()) {
-            for (JsonNode userNode : usersArray) {
-                if (userNode.isObject()) {
-                    replaceUserValues((ObjectNode) userNode, replacements);
-                }
-            }
+        @JsonProperty("appId")
+        public String getAppId() {
+            return appId;
+        }
+
+        public void setAppId(String appId) {
+            this.appId = appId;
+        }
+
+        @JsonProperty("groupId")
+        public String getGroupId() {
+            return groupId;
+        }
+
+        public void setGroupId(String groupId) {
+            this.groupId = groupId;
+        }
+
+        @JsonProperty("userid")
+        public String getUserid() {
+            return userid;
+        }
+
+        public void setUserid(String userid) {
+            this.userid = userid;
+        }
+
+        @JsonProperty("Password")
+        public Password getPassword() {
+            return password;
+        }
+
+        public void setPassword(Password password) {
+            this.password = password;
         }
     }
 
-    private static void replaceUserValues(ObjectNode userNode, Map<String, String> replacements) {
-        userNode.fields().forEachRemaining(entry -> {
-            String key = entry.getKey();
-            if (replacements.containsKey(key)) {
-                userNode.put(key, replacements.get(key));
-            }
-        });
+    public static class Password {
+        private String password;
+        private int type;
+
+        @JsonProperty("Password")
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        @JsonProperty("type")
+        public int getType() {
+            return type;
+        }
+
+        public void setType(int type) {
+            this.type = type;
+        }
+    }
+
+    public static class User {
+        private String appId;
+        private String groupId;
+        private String userid;
+
+        @JsonProperty("appId")
+        public String getAppId() {
+            return appId;
+        }
+
+        public void setAppId(String appId) {
+            this.appId = appId;
+        }
+
+        @JsonProperty("groupId")
+        public String getGroupId() {
+            return groupId;
+        }
+
+        public void setGroupId(String groupId) {
+            this.groupId = groupId;
+        }
+
+        @JsonProperty("userid")
+        public String getUserid() {
+            return userid;
+        }
+
+        public void setUserid(String userid) {
+            this.userid = userid;
+        }
     }
 }
