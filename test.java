@@ -1,17 +1,19 @@
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.ssl.SSLContextBuilder;
+import org.apache.hc.core5.ssl.SSLContext;
+import org.apache.hc.core5.ssl.TrustStrategy;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
+import javax.net.ssl.SSLConnectionSocketFactory;
+import javax.net.ssl.NoopHostnameVerifier;
 import java.security.cert.X509Certificate;
-
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.TrustStrategy;
-import org.apache.http.ssl.SSLContextBuilder;
 
 public class RestTemplateTrustAllExample {
 
@@ -21,15 +23,15 @@ public class RestTemplateTrustAllExample {
 
         // Build an SSL context using the trust strategy
         SSLContext sslContext = SSLContextBuilder.create()
-                .loadTrustMaterial(null, acceptingTrustStrategy)
+                .loadTrustMaterial(acceptingTrustStrategy)
                 .build();
 
         // Create an SSL socket factory using the SSL context
-        SSLConnectionSocketFactory csf = new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE);
+        SSLConnectionSocketFactory socketFactory = new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE);
 
         // Create an HTTP client using the SSL socket factory
         CloseableHttpClient httpClient = HttpClients.custom()
-                .setSSLSocketFactory(csf)
+                .setSSLSocketFactory(socketFactory)
                 .build();
 
         // Create a request factory using the HTTP client
