@@ -1,61 +1,37 @@
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.ssl.SSLContextBuilder;
-import org.apache.hc.core5.ssl.SSLContext;
-import org.apache.hc.core5.ssl.TrustStrategy;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
-import org.springframework.web.client.HttpStatusCodeException;
-import org.springframework.web.client.RestTemplate;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.List;
 
-import javax.net.ssl.SSLConnectionSocketFactory;
-import javax.net.ssl.NoopHostnameVerifier;
-import java.security.cert.X509Certificate;
+public class CreateCSVFile {
+    public static void main(String[] args) {
+        // Define the headers
+        String[] headers = {"Name", "Age", "City"};
 
-public class RestTemplateTrustAllExample {
+        // Define the data
+        List<String> data = Arrays.asList("John,25,New York", "Jane,30,London", "Bob,35,Paris");
 
-    public static void main(String[] args) throws Exception {
-        // Create a trust strategy that trusts all certificates
-        TrustStrategy acceptingTrustStrategy = (X509Certificate[] chain, String authType) -> true;
+        // Get the current date and time
+        LocalDateTime now = LocalDateTime.now();
+        String timestamp = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmmss"));
 
-        // Build an SSL context using the trust strategy
-        SSLContext sslContext = SSLContextBuilder.create()
-                .loadTrustMaterial(acceptingTrustStrategy)
-                .build();
+        // Create the file name with the timestamp
+        String fileName = "data_" + timestamp + ".csv";
 
-        // Create an SSL socket factory using the SSL context
-        SSLConnectionSocketFactory socketFactory = new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE);
+        try (FileWriter writer = new FileWriter(fileName)) {
+            // Write the headers
+            writer.write(String.join(",", headers) + "\n");
 
-        // Create an HTTP client using the SSL socket factory
-        CloseableHttpClient httpClient = HttpClients.custom()
-                .setSSLSocketFactory(socketFactory)
-                .build();
+            // Write the data
+            for (String line : data) {
+                writer.write(line + "\n");
+            }
 
-        // Create a request factory using the HTTP client
-        HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
-
-        // Create a RestTemplate using the request factory
-        RestTemplate restTemplate = new RestTemplate(requestFactory);
-
-        String url = "https://api.example.com/resource";
-        String jsonString = "{ \"key1\": \"value1\", \"key2\": \"value2\" }";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        HttpEntity<String> request = new HttpEntity<>(jsonString, headers);
-
-        try {
-            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
-            System.out.println(response.getBody());
-        } catch (HttpStatusCodeException e) {
-            System.err.println("Error: " + e.getStatusCode());
-            System.err.println("Response Body: " + e.getResponseBodyAsString());
-        } catch (Exception e) {
-            System.err.println("Exception: " + e.getMessage());
+            System.out.println("CSV file created: " + fileName);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
