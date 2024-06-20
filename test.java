@@ -1,79 +1,59 @@
-import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.List;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.web.client.RestTemplate;
 
-public class ApiResponse {
-    private List<Response> response;
-    private List<Detail> details;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import java.security.cert.X509Certificate;
 
-    public List<Response> getResponse() {
-        return response;
-    }
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.conn.ssl.TrustStrategy;
+import org.apache.http.ssl.SSLContextBuilder;
 
-    public void setResponse(List<Response> response) {
-        this.response = response;
-    }
+public class RestTemplateTrustAllExample {
 
-    public List<Detail> getDetails() {
-        return details;
-    }
+    public static void main(String[] args) throws Exception {
+        // Create a trust strategy that trusts all certificates
+        TrustStrategy acceptingTrustStrategy = (X509Certificate[] chain, String authType) -> true;
 
-    public void setDetails(List<Detail> details) {
-        this.details = details;
-    }
+        // Build an SSL context using the trust strategy
+        SSLContext sslContext = SSLContextBuilder.create()
+                .loadTrustMaterial(null, acceptingTrustStrategy)
+                .build();
 
-    public static class Response {
-        private String response;
+        // Create an SSL socket factory using the SSL context
+        SSLConnectionSocketFactory csf = new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE);
 
-        @JsonProperty("response")
-        public String getResponse() {
-            return response;
-        }
+        // Create an HTTP client using the SSL socket factory
+        CloseableHttpClient httpClient = HttpClients.custom()
+                .setSSLSocketFactory(csf)
+                .build();
 
-        public void setResponse(String response) {
-            this.response = response;
-        }
-    }
+        // Create a request factory using the HTTP client
+        HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
 
-    public static class Detail {
-        private String appId;
-        private String groupId;
-        private String userId;
-        private int statusCode;
+        // Create a RestTemplate using the request factory
+        RestTemplate restTemplate = new RestTemplate(requestFactory);
 
-        @JsonProperty("appId")
-        public String getAppId() {
-            return appId;
-        }
+        String url = "https://api.example.com/resource";
+        String jsonString = "{ \"key1\": \"value1\", \"key2\": \"value2\" }";
 
-        public void setAppId(String appId) {
-            this.appId = appId;
-        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
 
-        @JsonProperty("groupId")
-        public String getGroupId() {
-            return groupId;
-        }
+        HttpEntity<String> request = new HttpEntity<>(jsonString, headers);
 
-        public void setGroupId(String groupId) {
-            this.groupId = groupId;
-        }
-
-        @JsonProperty("userId")
-        public String getUserId() {
-            return userId;
-        }
-
-        public void setUserId(String userId) {
-            this.userId = userId;
-        }
-
-        @JsonProperty("statusCode")
-        public int getStatusCode() {
-            return statusCode;
-        }
-
-        public void setStatusCode(int statusCode) {
-            this.statusCode = statusCode;
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            System.out.println(response.getBody());
+        } catch (HttpStatusCodeException e) {
+            System.err.println("Error: " + e.getStatusCode());
+            System.err.println("Response Body: " + e.getResponseBodyAsString());
+        } catch (Exception e) {
+            System.err.println("Exception: " + e.getMessage());
         }
     }
 }
