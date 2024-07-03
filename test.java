@@ -12,8 +12,12 @@ log_file="output.log"
 # Ensure the log file is empty
 > "$log_file"
 
+echo "Processing file: $input_file"
+
 # Read the CSV file line by line
 while IFS=, read -r appId groupId userId rest; do
+    echo "Processing record: appId=$appId, groupId=$groupId, userId=$userId"
+
     # Prepare the JSON payload with the current appId, groupId, and userId
     json_payload=$(cat <<EOF
 {
@@ -42,6 +46,11 @@ EOF
         --data-raw "$json_payload" \
         --silent)
 
+    # Check if the response contains an error
+    if [[ "$response" == *"error"* ]]; then
+        echo "Error processing record: appId=$appId, groupId=$groupId, userId=$userId, response=$response"
+    fi
+
     # Log the output
     echo "$appId, $groupId, $userId, $response" >> "$log_file"
 
@@ -49,3 +58,5 @@ EOF
     sleep 1
 
 done < "$input_file"
+
+echo "Processing complete. Logs are saved in $log_file"
