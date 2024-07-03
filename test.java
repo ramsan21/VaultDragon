@@ -1,82 +1,51 @@
 #!/bin/bash
 
-# Check if the CSV file path is provided
-if [ -z "$1" ]; then
-    echo "Usage: $0 path/to/csvfile"
+# Check if the CSV file is provided as an argument
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <input_csv_file>"
     exit 1
 fi
 
-# Get the CSV file path from the first argument
-CSV_FILE="$1"
+input_file="$1"
+log_file="output.log"
 
-# Set the URL
-URL="http://example.com/api"  # Replace with your URL
-
-# Output log file
-LOG_FILE="curl_logs.txt"
-
-# Ensure the log file is empty before starting
-> $LOG_FILE
-
-# Check if jq is installed
-if ! command -v jq &> /dev/null; then
-    echo "jq is not installed. Please install jq to proceed."
-    exit 1
-fi
+# Ensure the log file is empty
+> "$log_file"
 
 # Read the CSV file line by line
-while IFS=, read -r appid groupid userid; do
-    # Build the JSON payload
-    jsonPayload=$(jq -n --arg appid "$appid" --arg groupid "$groupid" --arg userid "$userid" '{appid: $appid, groupid: $groupid, userid: $userid}')
-    
-    # Execute the curl command and capture the response
-    response=$(curl -s -X POST -H "Content-Type: application/json" -d "$jsonPayload" "$URL")
-    
-    # Check if the curl command was successful
-    if [ $? -ne 0 ]; then
-        echo "Curl command failed for $appid, $groupid, $userid" >> $LOG_FILE
-    fi
-    
-    # Log the results to the log file
-    echo "$appid,$groupid,$userid,$response" >> $LOG_FILE
-    
-    # Optional: Print progress to the console
-    echo "Processed appid: $appid, groupid: $groupid, userid: $userid"
-done < "$CSV_FILE"
+while IFS=, read -r appId groupId userId rest; do
+    # Prepare the JSON payload with the current appId, groupId, and userId
+    json_payload=$(cat <<EOF
+{
+    "request": {
+        "adminuser": {
+            "appId"   : "IDC",
+            "groupId" : "ADMINGROUP",
+            "userId": "ADMINUSER5",
+            "password": {"password":"04a1880d4acfa50439499c68f0337159", "type": 13}
+        },
+        "users": [
+            {
+                "appId": "$appId",
+                "groupId": "$groupId",
+                "userId": "$userId"
+            }
+        ]
+    }
+}
+EOF
+)
 
-echo "All requests have been processed. Logs are stored in $LOG_FILE."
-    
+    # Execute the curl command with the generated JSON payload
+    response=$(curl --location --request POST 'https://cibuaasuat.global.standardchartered.com:543/uaasadmv2/adminservices/DeleteUser' \
+        --header 'Content-Type: application/json' \
+        --data-raw "$json_payload" \
+        --silent)
 
-# Set the URL
-URL="http://example.com/api"  # Replace with your URL
+    # Log the output
+    echo "$appId, $groupId, $userId, $response" >> "$log_file"
 
-# Output log file
-LOG_FILE="curl_logs.txt"
+    # Wait for the response before proceeding
+    sleep 1
 
-# Ensure the log file is empty before starting
-> $LOG_FILE
-
-# Read the CSV file line by line
-while IFS=, read -r appid groupid userid; do
-    # Build the JSON payload
-    jsonPayload=$(jq -n --arg appid "$appid" --arg groupid "$groupid" --arg userid "$userid" '{appid: $appid, groupid: $groupid, userid: $userid}')
-    
-    # Execute the curl command and capture the response
-    response=$(curl -s -X POST -H "Content-Type: application/json" -d "$jsonPayload" "$URL")
-    
-    # Check if the curl command was successful
-    if [ $? -ne 0 ]; then
-        echo "Curl command failed for $appid, $groupid, $userid" >> $LOG_FILE
-    fi
-    
-    # Log the results to the log file
-    echo "$appid,$groupid,$userid,$response" >> $LOG_FILE
-    
-    # Optional: Print progress to the console
-    echo "Processed appid: $appid, groupid: $groupid, userid: $userid"
-done < data.csv
-
-echo "All requests have been processed. Logs are stored in $LOG_FILE."
-
-  
-
+done < "$input_file"
