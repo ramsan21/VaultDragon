@@ -19,3 +19,7 @@ SELECT index_name, column_name, column_position
 FROM user_ind_columns
 WHERE table_name = 'YOUR_TABLE_NAME'
 ORDER BY index_name, column_position;
+
+SELECT owner, synonym_name, table_owner, table_name, db_link
+FROM all_synonyms
+WHERE table_name = 'YOUR_TABLE_NAME';
