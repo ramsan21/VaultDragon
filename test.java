@@ -9,3 +9,13 @@ WHERE t.table_name = 'YOUR_TABLE_NAME';
 
 SELECT DBMS_METADATA.GET_DDL('TABLE', 'YOUR_TABLE_NAME') AS DDL_SCRIPT
 FROM DUAL;
+
+
+SELECT index_name, index_type, uniqueness
+FROM user_indexes
+WHERE table_name = 'YOUR_TABLE_NAME';
+
+SELECT index_name, column_name, column_position
+FROM user_ind_columns
+WHERE table_name = 'YOUR_TABLE_NAME'
+ORDER BY index_name, column_position;
