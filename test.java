@@ -1,3 +1,7 @@
-SELECT owner, table_name, ROUND((num_rows * avg_row_len + 38) / 1024 / 1024, 2) AS size_mb
-FROM all_tables
-ORDER BY size_mb DESC;
+SELECT DBMS_METADATA.GET_DDL('TABLE', 'YOUR_TABLE_NAME') AS TABLE_DDL,
+       DBMS_METADATA.GET_DDL('INDEX', index_name) AS INDEX_DDL,
+       DBMS_METADATA.GET_DDL('CONSTRAINT', constraint_name) AS CONSTRAINT_DDL
+FROM all_tables t
+LEFT JOIN all_indexes i ON t.table_name = i.table_name
+LEFT JOIN all_constraints c ON t.table_name = c.table_name
+WHERE t.table_name = 'YOUR_TABLE_NAME';
