@@ -10,3 +10,7 @@ WHERE
     AND owner = 'HR'
 ORDER BY 
     size_mb DESC;
+
+
+SELECT DBMS_METADATA.GET_DDL('TABLE', 'EMPLOYEES') AS ddl_script
+FROM dual;
