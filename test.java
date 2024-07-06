@@ -1,44 +1,29 @@
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVRecord;
 
+import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.Reader;
-import java.util.Iterator;
-
-<dependencies>
-    <dependency>
-        <groupId>org.apache.commons</groupId>
-        <artifactId>commons-csv</artifactId>
-        <version>1.8</version>
-    </dependency>
-    <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-databind</artifactId>
-        <version>2.12.3</version>
-    </dependency>
-</dependencies>
-
 
 public class CSVToJson {
     public static void main(String[] args) {
         String csvFilePath = "path/to/your/file.csv";
 
-        try (Reader reader = new FileReader(csvFilePath)) {
-            Iterable<CSVRecord> records = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(reader);
+        try (BufferedReader br = new BufferedReader(new FileReader(csvFilePath))) {
             ObjectMapper objectMapper = new ObjectMapper();
             ArrayNode jsonArray = objectMapper.createArrayNode();
 
+            String line;
             int index = 0;
-            for (CSVRecord record : records) {
+            while ((line = br.readLine()) != null) {
                 if (index % 10 == 0) {
+                    String[] fields = line.split(",");
+
                     ObjectNode jsonNode = objectMapper.createObjectNode();
                     jsonNode.put("appId", "IDC");
                     jsonNode.put("groupId", "PH01");
-                    jsonNode.put("userId", record.get("userId")); // Change this to the appropriate column name from your CSV
+                    jsonNode.put("userId", fields[0]); // Assuming the userId is in the first column
 
                     jsonArray.add(jsonNode);
                 }
