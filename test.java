@@ -7,9 +7,6 @@ import org.springframework.web.client.RestTemplate;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class CSVToJsonWithRestTemplate {
     private static final String CSV_FILE_PATH = "path/to/your/file.csv";
@@ -18,28 +15,38 @@ public class CSVToJsonWithRestTemplate {
     public static void main(String[] args) {
         try (BufferedReader br = new BufferedReader(new FileReader(CSV_FILE_PATH))) {
             RestTemplate restTemplate = new RestTemplate();
-            List<String> batch = new ArrayList<>();
+            StringBuilder batch = new StringBuilder();
             String line;
             int index = 0;
 
             while ((line = br.readLine()) != null) {
                 String[] fields = line.split(",");
+                
+                // Replace these values dynamically from CSV or another source
+                String userId = fields[0];  // Assuming the userId is in the first column
+                String groupId = fields.length > 1 ? fields[1] : "PH01";  // Example: Taking groupId from second column if exists, otherwise default value
+                String appId = fields.length > 2 ? fields[2] : "IDC";  // Example: Taking appId from third column if exists, otherwise default value
+                
                 // Construct JSON string for each record
-                String jsonString = String.format("{\"appId\":\"IDC\",\"groupId\":\"PH01\",\"userId\":\"%s\"}", fields[0]);
+                String jsonString = String.format("{\"appId\":\"%s\",\"groupId\":\"%s\",\"userId\":\"%s\"}", appId, groupId, userId);
 
-                batch.add(jsonString);
+                // Append to batch string
+                if (batch.length() > 0) {
+                    batch.append(",");
+                }
+                batch.append(jsonString);
 
-                if (batch.size() == 10) {
-                    sendBatchToRestEndpoint(restTemplate, batch);
-                    batch.clear();
+                if ((index + 1) % 10 == 0) {
+                    sendBatchToRestEndpoint(restTemplate, batch.toString());
+                    batch.setLength(0); // Clear the batch
                 }
 
                 index++;
             }
 
             // Process remaining records
-            if (!batch.isEmpty()) {
-                sendBatchToRestEndpoint(restTemplate, batch);
+            if (batch.length() > 0) {
+                sendBatchToRestEndpoint(restTemplate, batch.toString());
             }
 
         } catch (IOException e) {
@@ -47,8 +54,8 @@ public class CSVToJsonWithRestTemplate {
         }
     }
 
-    private static void sendBatchToRestEndpoint(RestTemplate restTemplate, List<String> batch) {
-        String jsonArrayString = batch.stream().collect(Collectors.joining(",", "[", "]"));
+    private static void sendBatchToRestEndpoint(RestTemplate restTemplate, String batch) {
+        String jsonArrayString = "[" + batch + "]";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
