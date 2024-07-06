@@ -1,34 +1,41 @@
-import java.util.Properties;
-import java.util.Set;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
 
-public class PropertiesCopy {
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
+import java.util.Iterator;
+
+public class CSVToJson {
     public static void main(String[] args) {
-        // Example properties
-        Properties originalProperties = new Properties();
-        originalProperties.setProperty("vault.url", "https://vault.example.com");
-        originalProperties.setProperty("vault.token", "sometoken");
-        originalProperties.setProperty("db.username", "user");
-        originalProperties.setProperty("db.password", "password");
+        String csvFilePath = "path/to/your/file.csv";
 
-        // New properties object to hold the copied properties
-        Properties vaultProperties = new Properties();
+        try (Reader reader = new FileReader(csvFilePath)) {
+            Iterable<CSVRecord> records = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(reader);
+            ObjectMapper objectMapper = new ObjectMapper();
+            ArrayNode jsonArray = objectMapper.createArrayNode();
 
-        // Prefix to look for
-        String prefix = "vault.";
+            int index = 0;
+            for (CSVRecord record : records) {
+                if (index % 10 == 0) {
+                    ObjectNode jsonNode = objectMapper.createObjectNode();
+                    jsonNode.put("appId", "IDC");
+                    jsonNode.put("groupId", "PH01");
+                    jsonNode.put("userId", record.get("userId")); // Change this to the appropriate column name from your CSV
 
-        // Copy properties with the specified prefix
-        copyPropertiesWithPrefix(originalProperties, vaultProperties, prefix);
-
-        // Print the copied properties
-        vaultProperties.forEach((key, value) -> System.out.println(key + ": " + value));
-    }
-
-    private static void copyPropertiesWithPrefix(Properties source, Properties target, String prefix) {
-        Set<String> propertyNames = source.stringPropertyNames();
-        for (String propertyName : propertyNames) {
-            if (propertyName.startsWith(prefix)) {
-                target.setProperty(propertyName, source.getProperty(propertyName));
+                    jsonArray.add(jsonNode);
+                }
+                index++;
             }
+
+            // Convert ArrayNode to JSON string
+            String jsonString = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonArray);
+            System.out.println(jsonString);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
