@@ -1,39 +1,63 @@
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
-public class CSVToJson {
+public class CSVToJsonWithRestTemplate {
+    private static final String CSV_FILE_PATH = "path/to/your/file.csv";
+    private static final String REST_ENDPOINT = "http://example.com/api/endpoint";
+
     public static void main(String[] args) {
-        String csvFilePath = "path/to/your/file.csv";
-
-        try (BufferedReader br = new BufferedReader(new FileReader(csvFilePath))) {
-            ObjectMapper objectMapper = new ObjectMapper();
-            ArrayNode jsonArray = objectMapper.createArrayNode();
-
+        try (BufferedReader br = new BufferedReader(new FileReader(CSV_FILE_PATH))) {
+            RestTemplate restTemplate = new RestTemplate();
+            List<String> batch = new ArrayList<>();
             String line;
             int index = 0;
+
             while ((line = br.readLine()) != null) {
-                if (index % 10 == 0) {
-                    String[] fields = line.split(",");
+                String[] fields = line.split(",");
+                // Construct JSON string for each record
+                String jsonString = String.format("{\"appId\":\"IDC\",\"groupId\":\"PH01\",\"userId\":\"%s\"}", fields[0]);
 
-                    ObjectNode jsonNode = objectMapper.createObjectNode();
-                    jsonNode.put("appId", "IDC");
-                    jsonNode.put("groupId", "PH01");
-                    jsonNode.put("userId", fields[0]); // Assuming the userId is in the first column
+                batch.add(jsonString);
 
-                    jsonArray.add(jsonNode);
+                if (batch.size() == 10) {
+                    sendBatchToRestEndpoint(restTemplate, batch);
+                    batch.clear();
                 }
+
                 index++;
             }
 
-            // Convert ArrayNode to JSON string
-            String jsonString = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonArray);
-            System.out.println(jsonString);
+            // Process remaining records
+            if (!batch.isEmpty()) {
+                sendBatchToRestEndpoint(restTemplate, batch);
+            }
+
         } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void sendBatchToRestEndpoint(RestTemplate restTemplate, List<String> batch) {
+        String jsonArrayString = batch.stream().collect(Collectors.joining(",", "[", "]"));
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<String> entity = new HttpEntity<>(jsonArrayString, headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(REST_ENDPOINT, entity, String.class);
+            System.out.println("Response: " + response.getBody());
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
