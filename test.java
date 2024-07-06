@@ -9,6 +9,20 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.Iterator;
 
+<dependencies>
+    <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-csv</artifactId>
+        <version>1.8</version>
+    </dependency>
+    <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>2.12.3</version>
+    </dependency>
+</dependencies>
+
+
 public class CSVToJson {
     public static void main(String[] args) {
         String csvFilePath = "path/to/your/file.csv";
