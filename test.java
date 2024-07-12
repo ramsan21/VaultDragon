@@ -1,71 +1,37 @@
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
-
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.regex.Pattern;
 
-public class CSVToJsonWithRestTemplate {
-    private static final String CSV_FILE_PATH = "path/to/your/file.csv";
-    private static final String REST_ENDPOINT = "http://example.com/api/endpoint";
+public class RemoveBlockComments {
 
-    public static void main(String[] args) {
-        try (BufferedReader br = new BufferedReader(new FileReader(CSV_FILE_PATH))) {
-            RestTemplate restTemplate = new RestTemplate();
-            StringBuilder batch = new StringBuilder();
-            String line;
-            int index = 0;
+    public static void main(String[] args) throws IOException {
+        // Define the starting directory. Change this to the directory you want to start with.
+        Path startDir = Paths.get("path/to/your/directory");
 
-            while ((line = br.readLine()) != null) {
-                String[] fields = line.split(",");
-                
-                // Replace these values dynamically from CSV or another source
-                String userId = fields[0];  // Assuming the userId is in the first column
-                String groupId = fields.length > 1 ? fields[1] : "PH01";  // Example: Taking groupId from second column if exists, otherwise default value
-                String appId = fields.length > 2 ? fields[2] : "IDC";  // Example: Taking appId from third column if exists, otherwise default value
-                
-                // Construct JSON string for each record
-                String jsonString = String.format("{\"appId\":\"%s\",\"groupId\":\"%s\",\"userId\":\"%s\"}", appId, groupId, userId);
-
-                // Append to batch string
-                if (batch.length() > 0) {
-                    batch.append(",");
+        // Use Files.walkFileTree to traverse the directory and its subdirectories
+        Files.walkFileTree(startDir, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                if (file.toString().endsWith(".java")) {
+                    removeBlockComments(file);
                 }
-                batch.append(jsonString);
-
-                if ((index + 1) % 10 == 0) {
-                    sendBatchToRestEndpoint(restTemplate, batch.toString());
-                    batch.setLength(0); // Clear the batch
-                }
-
-                index++;
+                return FileVisitResult.CONTINUE;
             }
-
-            // Process remaining records
-            if (batch.length() > 0) {
-                sendBatchToRestEndpoint(restTemplate, batch.toString());
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        });
     }
 
-    private static void sendBatchToRestEndpoint(RestTemplate restTemplate, String batch) {
-        String jsonArrayString = "[" + batch + "]";
+    private static void removeBlockComments(Path file) throws IOException {
+        // Read the content of the file
+        String content = new String(Files.readAllBytes(file));
+        
+        // Define a regex pattern to find block comments
+        Pattern blockCommentPattern = Pattern.compile("/\\*.*?\\*/", Pattern.DOTALL);
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<String> entity = new HttpEntity<>(jsonArrayString, headers);
+        // Replace block comments with an empty string
+        String modifiedContent = blockCommentPattern.matcher(content).replaceAll("");
 
-        try {
-            ResponseEntity<String> response = restTemplate.postForEntity(REST_ENDPOINT, entity, String.class);
-            System.out.println("Response: " + response.getBody());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        // Write the modified content back to the file
+        Files.write(file, modifiedContent.getBytes());
     }
 }
