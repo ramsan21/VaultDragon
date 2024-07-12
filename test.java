@@ -3,7 +3,7 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.regex.Pattern;
 
-public class RemoveBlockComments {
+public class RemoveBlockCommentsAndExtraLines {
 
     public static void main(String[] args) throws IOException {
         // Define the starting directory. Change this to the directory you want to start with.
@@ -14,14 +14,14 @@ public class RemoveBlockComments {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 if (file.toString().endsWith(".java")) {
-                    removeBlockComments(file);
+                    removeBlockCommentsAndExtraLines(file);
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
     }
 
-    private static void removeBlockComments(Path file) throws IOException {
+    private static void removeBlockCommentsAndExtraLines(Path file) throws IOException {
         // Read the content of the file
         String content = new String(Files.readAllBytes(file));
         
@@ -30,6 +30,12 @@ public class RemoveBlockComments {
 
         // Replace block comments with an empty string
         String modifiedContent = blockCommentPattern.matcher(content).replaceAll("");
+
+        // Define a regex pattern to replace multiple line breaks with a single line break
+        Pattern multipleNewLinesPattern = Pattern.compile("\\n{2,}");
+        
+        // Replace multiple line breaks with a single line break
+        modifiedContent = multipleNewLinesPattern.matcher(modifiedContent).replaceAll("\n");
 
         // Write the modified content back to the file
         Files.write(file, modifiedContent.getBytes());
