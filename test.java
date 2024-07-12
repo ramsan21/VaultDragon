@@ -1,9 +1,10 @@
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.regex.Pattern;
+import java.util.List;
+import java.util.stream.Collectors;
 
-public class RemoveBlockCommentsAndExtraLines {
+public class ProcessJavaFiles {
 
     public static void main(String[] args) throws IOException {
         // Define the starting directory. Change this to the directory you want to start with.
@@ -14,30 +15,36 @@ public class RemoveBlockCommentsAndExtraLines {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 if (file.toString().endsWith(".java")) {
-                    removeBlockCommentsAndExtraLines(file);
+                    processFile(file);
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
     }
 
-    private static void removeBlockCommentsAndExtraLines(Path file) throws IOException {
-        // Read the content of the file
-        String content = new String(Files.readAllBytes(file));
-        
-        // Define a regex pattern to find block comments
-        Pattern blockCommentPattern = Pattern.compile("/\\*.*?\\*/", Pattern.DOTALL);
+    private static void processFile(Path file) throws IOException {
+        // Read all lines from the file
+        List<String> lines = Files.readAllLines(file);
 
-        // Replace block comments with an empty string
-        String modifiedContent = blockCommentPattern.matcher(content).replaceAll("");
+        // Flag to indicate if we should stop processing lines
+        boolean skipRemainingLines = false;
 
-        // Define a regex pattern to replace multiple line breaks with a single line break
-        Pattern multipleNewLinesPattern = Pattern.compile("\\n{2,}");
-        
-        // Replace multiple line breaks with a single line break
-        modifiedContent = multipleNewLinesPattern.matcher(modifiedContent).replaceAll("\n");
+        // Replace the first 9 characters of each line and remove lines after "/* Location:"
+        List<String> modifiedLines = lines.stream()
+            .map(line -> {
+                if (skipRemainingLines) {
+                    return null;
+                }
+                if (line.startsWith("/* Location:")) {
+                    skipRemainingLines = true;
+                    return null;
+                }
+                return line.length() > 9 ? "REPLACED" + line.substring(9) : "REPLACED";
+            })
+            .filter(line -> line != null)
+            .collect(Collectors.toList());
 
-        // Write the modified content back to the file
-        Files.write(file, modifiedContent.getBytes());
+        // Write the modified lines back to the file
+        Files.write(file, modifiedLines);
     }
 }
