@@ -1,50 +1,36 @@
-import java.io.IOException;
-import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.List;
-import java.util.stream.Collectors;
+#!/bin/bash
 
-public class ProcessJavaFiles {
+# Get current date in YYYYMMDD format
+current_date=$(date +%Y%m%d)
 
-    public static void main(String[] args) throws IOException {
-        // Define the starting directory. Change this to the directory you want to start with.
-        Path startDir = Paths.get("path/to/your/directory");
+# Backup files
+cp /prd/starss/uaas/secrets/hc.cer /prd/starss/uaas/secrets/hc.cer.$current_date.bak
+cp /prd/starss/uaas/secrets/hc-pkcs8.key /prd/starss/uaas/secrets/hc-pkcs8.key.$current_date.bak
+cp /prd/starss/uaas/conf_v2/uaas_server.properties /prd/starss/uaas/conf_v2/uaas_server.properties.$current_date.bak
+cp /prd/starss/uaasadm/conf_v2/uaas_server.properties /prd/starss/uaasadm/conf_v2/uaas_server.properties.$current_date.bak
 
-        // Use Files.walkFileTree to traverse the directory and its subdirectories
-        Files.walkFileTree(startDir, new SimpleFileVisitor<Path>() {
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                if (file.toString().endsWith(".java")) {
-                    processFile(file);
-                }
-                return FileVisitResult.CONTINUE;
-            }
-        });
-    }
+# Copy new files
+cp /tmp/uaas/hc.cer /prd/starss/uaas/secrets/hc.cer
+cp /tmp/uaas/hc-pkcs8.key /prd/starss/uaas/secrets/hc-pkcs8.key
+cp /tmp/uaas/uaas_server.properties /prd/starss/uaas/conf_v2/uaas_server.properties
+cp /tmp/uaasadm/uaas_server.properties /prd/starss/uaasadm/conf_v2/uaas_server.properties
 
-    private static void processFile(Path file) throws IOException {
-        // Read all lines from the file
-        List<String> lines = Files.readAllLines(file);
+echo "Backup and copy operation completed successfully."
+#!/bin/bash
 
-        // Flag to indicate if we should stop processing lines
-        boolean skipRemainingLines = false;
+# Get current date in YYYYMMDD format
+current_date=$(date +%Y%m%d)
 
-        // Replace the first 9 characters of each line and remove lines after "/* Location:"
-        List<String> modifiedLines = lines.stream()
-            .map(line -> {
-                if (skipRemainingLines) {
-                    return null;
-                }
-                if (line.startsWith("/* Location:")) {
-                    skipRemainingLines = true;
-                    return null;
-                }
-                return line.length() > 9 ? "REPLACED" + line.substring(9) : "REPLACED";
-            })
-            .filter(line -> line != null)
-            .collect(Collectors.toList());
+# Backup files
+cp /prd/starss/uaas/secrets/hc.cer /prd/starss/uaas/secrets/hc.cer.$current_date.bak
+cp /prd/starss/uaas/secrets/hc-pkcs8.key /prd/starss/uaas/secrets/hc-pkcs8.key.$current_date.bak
+cp /prd/starss/uaas/conf_v2/uaas_server.properties /prd/starss/uaas/conf_v2/uaas_server.properties.$current_date.bak
+cp /prd/starss/uaasadm/conf_v2/uaas_server.properties /prd/starss/uaasadm/conf_v2/uaas_server.properties.$current_date.bak
 
-        // Write the modified lines back to the file
-        Files.write(file, modifiedLines);
-    }
-}
+# Copy new files
+cp /tmp/uaas/hc.cer /prd/starss/uaas/secrets/hc.cer
+cp /tmp/uaas/hc-pkcs8.key /prd/starss/uaas/secrets/hc-pkcs8.key
+cp /tmp/uaas/uaas_server.properties /prd/starss/uaas/conf_v2/uaas_server.properties
+cp /tmp/uaasadm/uaas_server.properties /prd/starss/uaasadm/conf_v2/uaas_server.properties
+
+echo "Backup and copy operation completed successfully."
