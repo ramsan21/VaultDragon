@@ -1,40 +1,84 @@
-#!/bin/bash
+import org.junit.jupiter.api.Test;
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-# Start maintenance
-echo "Starting maintenance..."
-./prd/starss/maintenance.sh start
+public class KeyChainHandlerTest {
 
-# Wait for 20 seconds
-sleep 20
+    @Test
+    public void testLogUserIdCheck_UserIdIsBlank() throws Exception {
+        // Arrange
+        KeyChainHandler keyChainHandler = mock(KeyChainHandler.class);
+        String groupId = "group1";
+        String inputUser = "testUser";
+        long keyId = 123456L;
 
-# Switch user to "nfast" and run installation command
-echo "Switching user to 'nfast' and running install command..."
-sudo -u nfast /opt/nfast/sbin/install
+        // Mock behavior
+        when(keyChainHandler.getCustUserByKeyId(keyId)).thenReturn("");
 
-# Switch to 'jbossadm' user
-echo "Switching user to 'jbossadm'..."
-su - jbossadm <<'EOF'
+        // Act
+        keyChainHandler.logUserIdCheck(groupId, inputUser, keyId);
 
-# Shutdown instances
-echo "Shutting down STARSEC instance..."
-/jboss/tomcat/jws6/instances/SIT_01_CIB_STARSEC_HK/bin/shutdown.sh
-echo "Shutting down STARSECADMIN instance..."
-/jboss/tomcat/jws6/instances/SIT_01_CIB_STARSECADMIN_HK/bin/shutdown.sh
+        // Assert
+        // Verify that the method logged the correct message for subkey
+        verify(keyChainHandler).log.info("The message is signed by subkey");
+    }
 
-# Wait for 10 seconds
-echo "Waiting for 10 seconds..."
-sleep 10
+    @Test
+    public void testLogUserIdCheck_UserIdMatchesInputUser() throws Exception {
+        // Arrange
+        KeyChainHandler keyChainHandler = mock(KeyChainHandler.class);
+        String groupId = "group1";
+        String inputUser = "testUser";
+        long keyId = 123456L;
+        String userId = "testUser";
 
-# Start instances
-echo "Starting STARSECADMIN instance..."
-/jboss/tomcat/jws6/instances/SIT_01_CIB_STARSECADMIN_HK/bin/startup.sh
-echo "Starting STARSEC instance..."
-/jboss/tomcat/jws6/instances/SIT_01_CIB_STARSEC_HK/bin/startup.sh
+        // Mock behavior
+        when(keyChainHandler.getCustUserByKeyId(keyId)).thenReturn(userId);
 
-EOF
+        // Act
+        keyChainHandler.logUserIdCheck(groupId, inputUser, keyId);
 
-# Stop maintenance
-echo "Stopping maintenance..."
-./prd/starss/maintenance.sh stop
+        // Assert
+        // Verify that the method logged the successful validation message
+        verify(keyChainHandler).log.info("The Key ID Validation is Successful for GroupID = group1 & KeyID = 123456 = testUser");
+    }
 
-echo "Script execution completed."
+    @Test
+    public void testLogUserIdCheck_UserIdDoesNotMatchInputUser() throws Exception {
+        // Arrange
+        KeyChainHandler keyChainHandler = mock(KeyChainHandler.class);
+        String groupId = "group1";
+        String inputUser = "testUser";
+        long keyId = 123456L;
+        String userId = "anotherUser";
+
+        // Mock behavior
+        when(keyChainHandler.getCustUserByKeyId(keyId)).thenReturn(userId);
+
+        // Act
+        keyChainHandler.logUserIdCheck(groupId, inputUser, keyId);
+
+        // Assert
+        // Verify that the method logged the failed validation message
+        verify(keyChainHandler).log.info("The Key ID Validation is Failed for GroupID = group1 & KeyID = testUser used KeyID is = anotherUser");
+    }
+
+    @Test
+    public void testLogUserIdCheck_SubkeySigned() throws Exception {
+        // Arrange
+        KeyChainHandler keyChainHandler = mock(KeyChainHandler.class);
+        String groupId = "group1";
+        String inputUser = "testUser";
+        long keyId = 123456L;
+
+        // Mock behavior
+        when(keyChainHandler.getCustUserByKeyId(keyId)).thenReturn(null); // simulating subkey signing
+
+        // Act
+        keyChainHandler.logUserIdCheck(groupId, inputUser, keyId);
+
+        // Assert
+        // Verify that the method logged the message for subkey signing
+        verify(keyChainHandler).log.info("The message is signed by subkey");
+    }
+}
