@@ -1,70 +1,89 @@
-import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.config.Config;
-import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.config.EvictionConfig;
+import com.hazelcast.config.EvictionPolicy;
+import com.hazelcast.config.MapConfig;
+import com.hazelcast.config.MaxSizePolicy;
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.util.TestPropertyValues;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest(classes = HazelcastConfig.class)
+@SpringJUnitConfig
 @ActiveProfiles("test")
 public class HazelcastConfigTest {
 
-    @Autowired
+    @InjectMocks
     private HazelcastConfig hazelcastConfig;
 
-    @MockBean
-    private Config config;
+    @Mock
+    private String hazelcastDNSName;
 
-    @MockBean
-    private ClientConfig clientConfig;
+    @Mock
+    private String projectVersion;
+
+    @Mock
+    private String commitId;
 
     @Test
-    public void testConfigBeanCreation_WhenModeIsMember() {
-        // Simulate that the "hazelcast.mode" is set to "member"
-        System.setProperty("hazelcast.mode", "member");
+    public void testConfigCreationWhenPropertyIsSetToServerMode() {
+        // Simulate property "tmx-hazelcast.mode" being set to "HAZELCAST_SERVER_MODE"
+        System.setProperty("tmx-hazelcast.mode", "HAZELCAST_SERVER_MODE");
 
-        Config resultConfig = hazelcastConfig.config();
-        assertNotNull(resultConfig, "Config bean should not be null when hazelcast.mode is member.");
+        // Set mocked properties
+        when(hazelcastDNSName).thenReturn("mock-dns-name");
+        when(projectVersion).thenReturn("1.0.0");
+        when(commitId).thenReturn("abc123");
+
+        Config config = hazelcastConfig.config();
+
+        // Validate that the config object is not null
+        assertNotNull(config, "Config bean should not be null when tmx-hazelcast.mode is set to HAZELCAST_SERVER_MODE");
+
+        // Verify that JetConfig is enabled
+        assertTrue(config.getJetConfig().isEnabled(), "JetConfig should be enabled");
+
+        // Verify Kubernetes configuration
+        assertTrue(config.getNetworkConfig().getJoin().getKubernetesConfig().isEnabled(), "KubernetesConfig should be enabled");
+        assertEquals("mock-dns-name", config.getNetworkConfig().getJoin().getKubernetesConfig().getProperty("service-dns"));
+
+        // Verify cluster name
+        assertEquals("TMX-v1.0.0.abc123", config.getClusterName(), "Cluster name should be properly set");
+
+        // Verify the ORIG_LOGIN_EVENTS map configuration
+        MapConfig origLoginEventsMap = config.getMapConfig(HazelcastConfig.ORIG_LOGIN_EVENTS);
+        assertNotNull(origLoginEventsMap, "ORIG_LOGIN_EVENTS MapConfig should be present");
+        assertEquals(360, origLoginEventsMap.getTimeToLiveSeconds(), "Time to live should be 360 seconds");
+        assertEquals(EvictionPolicy.NONE, origLoginEventsMap.getEvictionConfig().getEvictionPolicy(), "Eviction policy should be NONE");
+        assertEquals(MaxSizePolicy.FREE_HEAP_PERCENTAGE, origLoginEventsMap.getEvictionConfig().getMaxSizePolicy(), "Max size policy should be FREE_HEAP_PERCENTAGE");
+        assertEquals(10, origLoginEventsMap.getEvictionConfig().getSize(), "Map size should be 10");
+
+        // Verify the SYS_LOGIN_EVENTS map configuration
+        MapConfig sysLoginEventsMap = config.getMapConfig(HazelcastConfig.SYS_LOGIN_EVENTS);
+        assertNotNull(sysLoginEventsMap, "SYS_LOGIN_EVENTS MapConfig should be present");
+        assertEquals(360, sysLoginEventsMap.getTimeToLiveSeconds(), "Time to live should be 360 seconds");
+        assertEquals(EvictionPolicy.NONE, sysLoginEventsMap.getEvictionConfig().getEvictionPolicy(), "Eviction policy should be NONE");
+        assertEquals(MaxSizePolicy.FREE_HEAP_PERCENTAGE, sysLoginEventsMap.getEvictionConfig().getMaxSizePolicy(), "Max size policy should be FREE_HEAP_PERCENTAGE");
+        assertEquals(10, sysLoginEventsMap.getEvictionConfig().getSize(), "Map size should be 10");
     }
 
     @Test
-    public void testClientConfigBeanCreation_WhenModeIsClient() {
-        // Simulate that the "hazelcast.mode" is set to "client"
-        System.setProperty("hazelcast.mode", "client");
+    public void testConfigNotCreatedWhenPropertyIsNotServerMode() {
+        // Simulate property "tmx-hazelcast.mode" being set to something other than "HAZELCAST_SERVER_MODE"
+        System.setProperty("tmx-hazelcast.mode", "some-other-mode");
 
-        ClientConfig resultClientConfig = hazelcastConfig.clientConfig();
-        assertNotNull(resultClientConfig, "ClientConfig bean should not be null when hazelcast.mode is client.");
-    }
+        Config config = hazelcastConfig.config();
 
-    @Test
-    public void testHazelcastInstanceCreation_ClientMode() {
-        // Simulate client mode
-        System.setProperty("hazelcast.mode", "client");
-
-        HazelcastInstance mockInstance = Mockito.mock(HazelcastInstance.class);
-
-        when(hazelcastConfig.hazelcastInstance(clientConfig, config, "client")).thenReturn(mockInstance);
-
-        HazelcastInstance instance = hazelcastConfig.hazelcastInstance(config, clientConfig, "client");
-        assertNotNull(instance, "HazelcastInstance should not be null for client mode.");
-    }
-
-    @Test
-    public void testHazelcastInstanceCreation_MemberMode() {
-        // Simulate member mode
-        System.setProperty("hazelcast.mode", "member");
-
-        HazelcastInstance mockInstance = Mockito.mock(HazelcastInstance.class);
-
-        when(hazelcastConfig.hazelcastInstance(clientConfig, config, "member")).thenReturn(mockInstance);
-
-        HazelcastInstance instance = hazelcastConfig.hazelcastInstance(config, clientConfig, "member");
-        assertNotNull(instance, "HazelcastInstance should not be null for member mode.");
+        // Expect config to be null since the bean should not be created
+        assertNull(config, "Config bean should not be created when tmx-hazelcast.mode is not HAZELCAST_SERVER_MODE");
     }
 }
