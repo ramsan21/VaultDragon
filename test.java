@@ -1,52 +1,109 @@
-import java.io.*;
-import java.nio.file.*;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-public class FileProcessor {
+import com.bettercloud.vault.api.AuthResponse;
+import com.bettercloud.vault.api.VaultException;
+import com.bettercloud.vault.rest.RestResponse;
+import org.apache.commons.lang3.tuple.Pair;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
-    public static void main(String[] args) {
-        // Provide the root directory path
-        String rootDir = "path/to/root/directory";
+import java.nio.charset.StandardCharsets;
 
-        try (Stream<Path> filePaths = Files.walk(Paths.get(rootDir))) {
-            List<Path> files = filePaths
-                    .filter(Files::isRegularFile) // Only regular files
-                    .collect(Collectors.toList());
+public class VaultAuthTest {
 
-            for (Path file : files) {
-                processFile(file);
-            }
+    @Mock
+    private VaultConfig mockConfig;
 
-            System.out.println("File processing completed.");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    @Mock
+    private Rest mockRest;
+
+    @Mock
+    private RestResponse mockRestResponse;
+
+    private VaultAuth vaultAuth;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        when(mockConfig.getAddress()).thenReturn("http://localhost:8200");
+        when(mockConfig.getNameSpace()).thenReturn("namespace");
+        when(mockConfig.getOpenTimeout()).thenReturn(5);
+        when(mockConfig.getReadTimeout()).thenReturn(5);
+        when(mockConfig.getSslConfig().isVerify()).thenReturn(true);
+
+        vaultAuth = spy(new VaultAuth(mockConfig));
     }
 
-    private static void processFile(Path filePath) {
-        try {
-            // Read all lines from the file
-            List<String> lines = Files.readAllLines(filePath);
-            
-            // Process each line
-            List<String> processedLines = lines.stream()
-                    .filter(line -> !line.trim().isEmpty()) // Remove empty lines
-                    .map(line -> {
-                        if (line.startsWith("/*")) {
-                            return line.length() > 9 ? line.substring(9) : ""; // Trim first 9 characters
-                        }
-                        return line;
-                    })
-                    .collect(Collectors.toList());
+    @Test
+    void testLoginByAppRole_SuccessfulResponse() throws Exception {
+        // Arrange
+        String path = "approle";
+        String roleId = "test-role-id";
+        String secretId = "test-secret-id";
+        String url = "http://localhost:8200/v1/auth/approle/login";
 
-            // Write back the modified lines to the same file
-            Files.write(filePath, processedLines);
+        when(mockRestResponse.getStatus()).thenReturn(200);
+        when(mockRestResponse.getBody()).thenReturn("{"token":"test-token"}".getBytes(StandardCharsets.UTF_8));
+        when(mockRest.post()).thenReturn(mockRestResponse);
 
-        } catch (IOException e) {
-            System.err.println("Error processing file: " + filePath);
-            e.printStackTrace();
-        }
+        doReturn(mockRest).when(vaultAuth).buildRest(anyString(), any(), anyString(), anyInt(), anyInt(), anyBoolean());
+
+        // Act
+        AuthResponse authResponse = vaultAuth.loginByAppRole(path, roleId, secretId);
+
+        // Assert
+        assertNotNull(authResponse);
+        assertEquals(200, authResponse.getRestResponse().getStatus());
+        verify(mockRest, times(1)).post();
+    }
+
+    @Test
+    void testLoginByAppRole_FailedResponse() {
+        // Arrange
+        String path = "approle";
+        String roleId = "test-role-id";
+        String secretId = "test-secret-id";
+        String url = "http://localhost:8200/v1/auth/approle/login";
+
+        when(mockRestResponse.getStatus()).thenReturn(400);
+        when(mockRestResponse.getBody()).thenReturn("Error response".getBytes(StandardCharsets.UTF_8));
+        when(mockRest.post()).thenReturn(mockRestResponse);
+
+        doReturn(mockRest).when(vaultAuth).buildRest(anyString(), any(), anyString(), anyInt(), anyInt(), anyBoolean());
+
+        // Act & Assert
+        VaultException exception = assertThrows(VaultException.class, () -> 
+            vaultAuth.loginByAppRole(path, roleId, secretId)
+        );
+
+        assertTrue(exception.getMessage().contains("Vault responded with HTTP status code: 400"));
+        verify(mockRest, times(1)).post();
+    }
+
+    @Test
+    void testLoginByAppRole_MaxRetries() {
+        // Arrange
+        String path = "approle";
+        String roleId = "test-role-id";
+        String secretId = "test-secret-id";
+        String url = "http://localhost:8200/v1/auth/approle/login";
+
+        when(mockRestResponse.getStatus()).thenReturn(500);
+        when(mockRest.post()).thenReturn(mockRestResponse);
+
+        doReturn(mockRest).when(vaultAuth).buildRest(anyString(), any(), anyString(), anyInt(), anyInt(), anyBoolean());
+        when(mockConfig.getMaxRetries()).thenReturn(3);
+        when(mockConfig.getRetryIntervalMilliseconds()).thenReturn(100);
+
+        // Act & Assert
+        VaultException exception = assertThrows(VaultException.class, () -> 
+            vaultAuth.loginByAppRole(path, roleId, secretId)
+        );
+
+        assertTrue(exception.getMessage().contains("Vault responded with HTTP status code: 500"));
+        verify(mockRest, times(4)).post(); // Initial attempt + 3 retries
     }
 }
