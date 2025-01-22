@@ -1,12 +1,12 @@
 import static org.mockito.Mockito.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.Assert.*;
 
 import com.bettercloud.vault.api.AuthResponse;
 import com.bettercloud.vault.api.VaultException;
 import com.bettercloud.vault.rest.RestResponse;
 import org.apache.commons.lang3.tuple.Pair;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -25,9 +25,9 @@ public class VaultAuthTest {
 
     private VaultAuth vaultAuth;
 
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
+    @Before
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
         when(mockConfig.getAddress()).thenReturn("http://localhost:8200");
         when(mockConfig.getNameSpace()).thenReturn("namespace");
         when(mockConfig.getOpenTimeout()).thenReturn(5);
@@ -38,7 +38,7 @@ public class VaultAuthTest {
     }
 
     @Test
-    void testLoginByAppRole_SuccessfulResponse() throws Exception {
+    public void testLoginByAppRole_SuccessfulResponse() throws Exception {
         // Arrange
         String path = "approle";
         String roleId = "test-role-id";
@@ -61,7 +61,7 @@ public class VaultAuthTest {
     }
 
     @Test
-    void testLoginByAppRole_FailedResponse() {
+    public void testLoginByAppRole_FailedResponse() {
         // Arrange
         String path = "approle";
         String roleId = "test-role-id";
@@ -75,16 +75,18 @@ public class VaultAuthTest {
         doReturn(mockRest).when(vaultAuth).buildRest(anyString(), any(), anyString(), anyInt(), anyInt(), anyBoolean());
 
         // Act & Assert
-        VaultException exception = assertThrows(VaultException.class, () -> 
-            vaultAuth.loginByAppRole(path, roleId, secretId)
-        );
+        try {
+            vaultAuth.loginByAppRole(path, roleId, secretId);
+            fail("Expected VaultException to be thrown");
+        } catch (VaultException e) {
+            assertTrue(e.getMessage().contains("Vault responded with HTTP status code: 400"));
+        }
 
-        assertTrue(exception.getMessage().contains("Vault responded with HTTP status code: 400"));
         verify(mockRest, times(1)).post();
     }
 
     @Test
-    void testLoginByAppRole_MaxRetries() {
+    public void testLoginByAppRole_MaxRetries() {
         // Arrange
         String path = "approle";
         String roleId = "test-role-id";
@@ -99,11 +101,13 @@ public class VaultAuthTest {
         when(mockConfig.getRetryIntervalMilliseconds()).thenReturn(100);
 
         // Act & Assert
-        VaultException exception = assertThrows(VaultException.class, () -> 
-            vaultAuth.loginByAppRole(path, roleId, secretId)
-        );
+        try {
+            vaultAuth.loginByAppRole(path, roleId, secretId);
+            fail("Expected VaultException to be thrown");
+        } catch (VaultException e) {
+            assertTrue(e.getMessage().contains("Vault responded with HTTP status code: 500"));
+        }
 
-        assertTrue(exception.getMessage().contains("Vault responded with HTTP status code: 500"));
         verify(mockRest, times(4)).post(); // Initial attempt + 3 retries
     }
 }
