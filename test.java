@@ -111,3 +111,15 @@ public class VaultAuthTest {
         verify(mockRest, times(4)).post(); // Initial attempt + 3 retries
     }
 }
+
+protected Rest buildRest(String url, Pair<String, String> headers, String body, int connectTimeout, int readTimeout, boolean verifySsl) {
+    Rest rest = new Rest()
+            .url(url)
+            .header(headers.getLeft(), headers.getRight())
+            .body(body.getBytes(StandardCharsets.UTF_8))
+            .connectTimeoutSeconds(connectTimeout)
+            .readTimeoutSeconds(readTimeout)
+            .sslVerification(verifySsl);
+    return rest;
+}
+
