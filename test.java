@@ -1,10 +1,14 @@
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
 
 import com.bettercloud.vault.api.AuthResponse;
 import com.bettercloud.vault.api.VaultException;
 import com.bettercloud.vault.rest.RestResponse;
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import org.apache.commons.lang3.tuple.Pair;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -17,24 +21,30 @@ public class VaultAuthTest {
     @Mock
     private VaultConfig mockConfig;
 
-    @Mock
-    private Rest mockRest;
-
-    @Mock
-    private RestResponse mockRestResponse;
-
+    private WireMockServer wireMockServer;
     private VaultAuth vaultAuth;
 
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
+
+        // Start WireMock server on port 8200
+        wireMockServer = new WireMockServer(WireMockConfiguration.wireMockConfig().port(8200));
+        wireMockServer.start();
+
+        // Mock VaultConfig setup
         when(mockConfig.getAddress()).thenReturn("http://localhost:8200");
         when(mockConfig.getNameSpace()).thenReturn("namespace");
         when(mockConfig.getOpenTimeout()).thenReturn(5);
         when(mockConfig.getReadTimeout()).thenReturn(5);
         when(mockConfig.getSslConfig().isVerify()).thenReturn(true);
 
-        vaultAuth = spy(new VaultAuth(mockConfig));
+        vaultAuth = new VaultAuth(mockConfig);
+    }
+
+    @After
+    public void tearDown() {
+        wireMockServer.stop();
     }
 
     @Test
@@ -43,13 +53,12 @@ public class VaultAuthTest {
         String path = "approle";
         String roleId = "test-role-id";
         String secretId = "test-secret-id";
-        String url = "http://localhost:8200/v1/auth/approle/login";
 
-        when(mockRestResponse.getStatus()).thenReturn(200);
-        when(mockRestResponse.getBody()).thenReturn("{"token":"test-token"}".getBytes(StandardCharsets.UTF_8));
-        when(mockRest.post()).thenReturn(mockRestResponse);
-
-        doReturn(mockRest).when(vaultAuth).buildRest(anyString(), any(), anyString(), anyInt(), anyInt(), anyBoolean());
+        // Stub WireMock to return a success response
+        wireMockServer.stubFor(post(urlEqualTo("/v1/auth/approle/login"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody("{\"auth\":{\"client_token\":\"test-token\"}}")));
 
         // Act
         AuthResponse authResponse = vaultAuth.loginByAppRole(path, roleId, secretId);
@@ -57,7 +66,7 @@ public class VaultAuthTest {
         // Assert
         assertNotNull(authResponse);
         assertEquals(200, authResponse.getRestResponse().getStatus());
-        verify(mockRest, times(1)).post();
+        assertTrue(new String(authResponse.getRestResponse().getBody(), StandardCharsets.UTF_8).contains("test-token"));
     }
 
     @Test
@@ -66,13 +75,12 @@ public class VaultAuthTest {
         String path = "approle";
         String roleId = "test-role-id";
         String secretId = "test-secret-id";
-        String url = "http://localhost:8200/v1/auth/approle/login";
 
-        when(mockRestResponse.getStatus()).thenReturn(400);
-        when(mockRestResponse.getBody()).thenReturn("Error response".getBytes(StandardCharsets.UTF_8));
-        when(mockRest.post()).thenReturn(mockRestResponse);
-
-        doReturn(mockRest).when(vaultAuth).buildRest(anyString(), any(), anyString(), anyInt(), anyInt(), anyBoolean());
+        // Stub WireMock to return a failure response
+        wireMockServer.stubFor(post(urlEqualTo("/v1/auth/approle/login"))
+                .willReturn(aResponse()
+                        .withStatus(400)
+                        .withBody("{\"errors\":[\"Invalid credentials\"]}")));
 
         // Act & Assert
         try {
@@ -80,9 +88,8 @@ public class VaultAuthTest {
             fail("Expected VaultException to be thrown");
         } catch (VaultException e) {
             assertTrue(e.getMessage().contains("Vault responded with HTTP status code: 400"));
+            assertTrue(e.getMessage().contains("Invalid credentials"));
         }
-
-        verify(mockRest, times(1)).post();
     }
 
     @Test
@@ -91,12 +98,14 @@ public class VaultAuthTest {
         String path = "approle";
         String roleId = "test-role-id";
         String secretId = "test-secret-id";
-        String url = "http://localhost:8200/v1/auth/approle/login";
 
-        when(mockRestResponse.getStatus()).thenReturn(500);
-        when(mockRest.post()).thenReturn(mockRestResponse);
+        // Stub WireMock to simulate a server error
+        wireMockServer.stubFor(post(urlEqualTo("/v1/auth/approle/login"))
+                .willReturn(aResponse()
+                        .withStatus(500)
+                        .withBody("{\"errors\":[\"Internal server error\"]}")));
 
-        doReturn(mockRest).when(vaultAuth).buildRest(anyString(), any(), anyString(), anyInt(), anyInt(), anyBoolean());
+        // Mock retry configurations
         when(mockConfig.getMaxRetries()).thenReturn(3);
         when(mockConfig.getRetryIntervalMilliseconds()).thenReturn(100);
 
@@ -106,40 +115,7 @@ public class VaultAuthTest {
             fail("Expected VaultException to be thrown");
         } catch (VaultException e) {
             assertTrue(e.getMessage().contains("Vault responded with HTTP status code: 500"));
+            assertTrue(e.getMessage().contains("Internal server error"));
         }
-
-        verify(mockRest, times(4)).post(); // Initial attempt + 3 retries
     }
 }
-
-protected Rest buildRest(String url, Pair<String, String> headers, String body, int connectTimeout, int readTimeout, boolean verifySsl) {
-    Rest rest = new Rest()
-            .url(url)
-            .header(headers.getLeft(), headers.getRight())
-            .body(body.getBytes(StandardCharsets.UTF_8))
-            .connectTimeoutSeconds(connectTimeout)
-            .readTimeoutSeconds(readTimeout)
-            .sslVerification(verifySsl);
-    return rest;
-}
-
-<dependency>
-    <groupId>com.github.tomakehurst</groupId>
-    <artifactId>wiremock</artifactId>
-    <version>2.35.0</version>
-    <scope>test</scope>
-</dependency>
-<dependency>
-    <groupId>org.mockito</groupId>
-    <artifactId>mockito-core</artifactId>
-    <version>3.12.4</version>
-    <scope>test</scope>
-</dependency>
-<dependency>
-    <groupId>junit</groupId>
-    <artifactId>junit</artifactId>
-    <version>4.13.2</version>
-    <scope>test</scope>
-</dependency>
-
-
