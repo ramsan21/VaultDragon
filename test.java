@@ -1,121 +1,235 @@
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
-import static org.mockito.Mockito.*;
-import static org.junit.Assert.*;
+// Vault.java
+import java.util.Objects;
 
-import com.bettercloud.vault.api.AuthResponse;
-import com.bettercloud.vault.api.VaultException;
-import com.bettercloud.vault.rest.RestResponse;
-import com.github.tomakehurst.wiremock.WireMockServer;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import org.apache.commons.lang3.tuple.Pair;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+public class Vault {
+    private String id;
+    private String name;
+    private String owner;
+    private String location;
+    private boolean isEncrypted;
+    private String encryptionAlgorithm;
+    private int capacity;
+    private int usedSpace;
 
-import java.nio.charset.StandardCharsets;
-
-public class VaultAuthTest {
-
-    @Mock
-    private VaultConfig mockConfig;
-
-    private WireMockServer wireMockServer;
-    private VaultAuth vaultAuth;
-
-    @Before
-    public void setUp() {
-        MockitoAnnotations.initMocks(this);
-
-        // Start WireMock server on port 8200
-        wireMockServer = new WireMockServer(WireMockConfiguration.wireMockConfig().port(8200));
-        wireMockServer.start();
-
-        // Mock VaultConfig setup
-        when(mockConfig.getAddress()).thenReturn("http://localhost:8200");
-        when(mockConfig.getNameSpace()).thenReturn("namespace");
-        when(mockConfig.getOpenTimeout()).thenReturn(5);
-        when(mockConfig.getReadTimeout()).thenReturn(5);
-        when(mockConfig.getSslConfig().isVerify()).thenReturn(true);
-
-        vaultAuth = new VaultAuth(mockConfig);
+    // Default constructor
+    public Vault() {
     }
 
-    @After
-    public void tearDown() {
-        wireMockServer.stop();
+    // Parameterized constructor
+    public Vault(String id, String name, String owner, String location, boolean isEncrypted, String encryptionAlgorithm, int capacity, int usedSpace) {
+        this.id = id;
+        this.name = name;
+        this.owner = owner;
+        this.location = location;
+        this.isEncrypted = isEncrypted;
+        this.encryptionAlgorithm = encryptionAlgorithm;
+        this.capacity = capacity;
+        this.usedSpace = usedSpace;
     }
 
-    @Test
-    public void testLoginByAppRole_SuccessfulResponse() throws Exception {
-        // Arrange
-        String path = "approle";
-        String roleId = "test-role-id";
-        String secretId = "test-secret-id";
-
-        // Stub WireMock to return a success response
-        wireMockServer.stubFor(post(urlEqualTo("/v1/auth/approle/login"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withBody("{\"auth\":{\"client_token\":\"test-token\"}}")));
-
-        // Act
-        AuthResponse authResponse = vaultAuth.loginByAppRole(path, roleId, secretId);
-
-        // Assert
-        assertNotNull(authResponse);
-        assertEquals(200, authResponse.getRestResponse().getStatus());
-        assertTrue(new String(authResponse.getRestResponse().getBody(), StandardCharsets.UTF_8).contains("test-token"));
+    // Getters and setters
+    public String getId() {
+        return id;
     }
 
-    @Test
-    public void testLoginByAppRole_FailedResponse() {
-        // Arrange
-        String path = "approle";
-        String roleId = "test-role-id";
-        String secretId = "test-secret-id";
+    public void setId(String id) {
+        this.id = id;
+    }
 
-        // Stub WireMock to return a failure response
-        wireMockServer.stubFor(post(urlEqualTo("/v1/auth/approle/login"))
-                .willReturn(aResponse()
-                        .withStatus(400)
-                        .withBody("{\"errors\":[\"Invalid credentials\"]}")));
+    public String getName() {
+        return name;
+    }
 
-        // Act & Assert
-        try {
-            vaultAuth.loginByAppRole(path, roleId, secretId);
-            fail("Expected VaultException to be thrown");
-        } catch (VaultException e) {
-            assertTrue(e.getMessage().contains("Vault responded with HTTP status code: 400"));
-            assertTrue(e.getMessage().contains("Invalid credentials"));
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getOwner() {
+        return owner;
+    }
+
+    public void setOwner(String owner) {
+        this.owner = owner;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public boolean isEncrypted() {
+        return isEncrypted;
+    }
+
+    public void setEncrypted(boolean encrypted) {
+        isEncrypted = encrypted;
+    }
+
+    public String getEncryptionAlgorithm() {
+        return encryptionAlgorithm;
+    }
+
+    public void setEncryptionAlgorithm(String encryptionAlgorithm) {
+        this.encryptionAlgorithm = encryptionAlgorithm;
+    }
+
+    public int getCapacity() {
+        return capacity;
+    }
+
+    public void setCapacity(int capacity) {
+        this.capacity = capacity;
+    }
+
+    public int getUsedSpace() {
+        return usedSpace;
+    }
+
+    public void setUsedSpace(int usedSpace) {
+        this.usedSpace = usedSpace;
+    }
+
+    // Additional methods
+    public boolean isFull() {
+        return usedSpace >= capacity;
+    }
+
+    public void addData(int dataSize) {
+        if (usedSpace + dataSize > capacity) {
+            throw new IllegalStateException("Vault is full!");
         }
+        usedSpace += dataSize;
+    }
+
+    public void clearVault() {
+        usedSpace = 0;
+    }
+
+    // Equals and hashCode
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Vault vault = (Vault) o;
+        return isEncrypted == vault.isEncrypted &&
+                capacity == vault.capacity &&
+                usedSpace == vault.usedSpace &&
+                Objects.equals(id, vault.id) &&
+                Objects.equals(name, vault.name) &&
+                Objects.equals(owner, vault.owner) &&
+                Objects.equals(location, vault.location) &&
+                Objects.equals(encryptionAlgorithm, vault.encryptionAlgorithm);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, name, owner, location, isEncrypted, encryptionAlgorithm, capacity, usedSpace);
+    }
+
+    @Override
+    public String toString() {
+        return "Vault{" +
+                "id='" + id + '\'' +
+                ", name='" + name + '\'' +
+                ", owner='" + owner + '\'' +
+                ", location='" + location + '\'' +
+                ", isEncrypted=" + isEncrypted +
+                ", encryptionAlgorithm='" + encryptionAlgorithm + '\'' +
+                ", capacity=" + capacity +
+                ", usedSpace=" + usedSpace +
+                '}';
+    }
+}
+
+
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+public class VaultTest {
+
+    @Test
+    public void testDefaultConstructor() {
+        Vault vault = new Vault();
+        assertNotNull(vault);
     }
 
     @Test
-    public void testLoginByAppRole_MaxRetries() {
-        // Arrange
-        String path = "approle";
-        String roleId = "test-role-id";
-        String secretId = "test-secret-id";
+    public void testParameterizedConstructor() {
+        Vault vault = new Vault("1", "Vault A", "Owner1", "Location1", true, "AES", 100, 50);
+        assertEquals("1", vault.getId());
+        assertEquals("Vault A", vault.getName());
+        assertEquals("Owner1", vault.getOwner());
+        assertEquals("Location1", vault.getLocation());
+        assertTrue(vault.isEncrypted());
+        assertEquals("AES", vault.getEncryptionAlgorithm());
+        assertEquals(100, vault.getCapacity());
+        assertEquals(50, vault.getUsedSpace());
+    }
 
-        // Stub WireMock to simulate a server error
-        wireMockServer.stubFor(post(urlEqualTo("/v1/auth/approle/login"))
-                .willReturn(aResponse()
-                        .withStatus(500)
-                        .withBody("{\"errors\":[\"Internal server error\"]}")));
+    @Test
+    public void testGettersAndSetters() {
+        Vault vault = new Vault();
+        vault.setId("2");
+        vault.setName("Vault B");
+        vault.setOwner("Owner2");
+        vault.setLocation("Location2");
+        vault.setEncrypted(false);
+        vault.setEncryptionAlgorithm("RSA");
+        vault.setCapacity(200);
+        vault.setUsedSpace(100);
 
-        // Mock retry configurations
-        when(mockConfig.getMaxRetries()).thenReturn(3);
-        when(mockConfig.getRetryIntervalMilliseconds()).thenReturn(100);
+        assertEquals("2", vault.getId());
+        assertEquals("Vault B", vault.getName());
+        assertEquals("Owner2", vault.getOwner());
+        assertEquals("Location2", vault.getLocation());
+        assertFalse(vault.isEncrypted());
+        assertEquals("RSA", vault.getEncryptionAlgorithm());
+        assertEquals(200, vault.getCapacity());
+        assertEquals(100, vault.getUsedSpace());
+    }
 
-        // Act & Assert
-        try {
-            vaultAuth.loginByAppRole(path, roleId, secretId);
-            fail("Expected VaultException to be thrown");
-        } catch (VaultException e) {
-            assertTrue(e.getMessage().contains("Vault responded with HTTP status code: 500"));
-            assertTrue(e.getMessage().contains("Internal server error"));
-        }
+    @Test
+    public void testIsFull() {
+        Vault vault = new Vault("3", "Vault C", "Owner3", "Location3", true, "AES", 100, 100);
+        assertTrue(vault.isFull());
+    }
+
+    @Test
+    public void testAddData() {
+        Vault vault = new Vault("4", "Vault D", "Owner4", "Location4", false, "AES", 100, 90);
+        vault.addData(5);
+        assertEquals(95, vault.getUsedSpace());
+    }
+
+    @Test
+    public void testAddDataThrowsException() {
+        Vault vault = new Vault("5", "Vault E", "Owner5", "Location5", false, "AES", 100, 95);
+        assertThrows(IllegalStateException.class, () -> vault.addData(10));
+    }
+
+    @Test
+    public void testClearVault() {
+        Vault vault = new Vault("6", "Vault F", "Owner6", "Location6", false, "AES", 100, 50);
+        vault.clearVault();
+        assertEquals(0, vault.getUsedSpace());
+    }
+
+    @Test
+    public void testEqualsAndHashCode() {
+        Vault vault1 = new Vault("7", "Vault G", "Owner7", "Location7", true, "AES", 150, 75);
+        Vault vault2 = new Vault("7", "Vault G", "Owner7", "Location7", true, "AES", 150, 75);
+
+        assertEquals(vault1, vault2);
+        assertEquals(vault1.hashCode(), vault2.hashCode());
+    }
+
+    @Test
+    public void testToString() {
+        Vault vault = new Vault("8", "Vault H", "Owner8", "Location8", true, "AES", 200, 100);
+        String expected = "Vault{id='8', name='Vault H', owner='Owner8', location='Location8', isEncrypted=true, encryptionAlgorithm='AES', capacity=200, usedSpace=100}";
+        assertEquals(expected, vault.toString());
     }
 }
