@@ -1,4 +1,4 @@
-// Vault.java
+// Vault.keytool -importkeystore -srckeystore keystore.p12 -srcstoretype PKCS12 -srcstorepass your_p12_password -destkeystore keystore.jks -deststoretype JKS -deststorepass your_jks_password
 import java.util.Objects;
 
 public class Vault {
