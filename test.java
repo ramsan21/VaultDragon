@@ -1,53 +1,73 @@
-To check if a certificate has been imported into a Java KeyStore (JKS) file, you can use the keytool command, which comes with the Java Development Kit (JDK). Here’s the process:
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.FileInputStream;
+import java.io.OutputStream;
+import java.net.URL;
+import java.security.KeyStore;
+import java.util.Base64;
 
-Steps to Check for a Certificate in a JKS File
-	1.	Locate the JKS file: Identify the path of your Java KeyStore file (e.g., mykeystore.jks).
-	2.	Run the keytool command:
-Use the following command to list the contents of the KeyStore:
+public class SecureEndpointConnector {
+    public static void main(String[] args) {
+        String truststorePath = "path/to/truststore.jks"; // Path to your truststore.jks file
+        String truststorePassword = "your-truststore-password"; // Truststore password
+        String endpointUrl = "https://example.com/api"; // The endpoint URL
+        String username = "your-username"; // Basic authentication username
+        String password = "your-password"; // Basic authentication password
 
-keytool -list -v -keystore <keystore-file>
+        try {
+            // Load the truststore
+            KeyStore truststore = KeyStore.getInstance("JKS");
+            try (FileInputStream truststoreStream = new FileInputStream(truststorePath)) {
+                truststore.load(truststoreStream, truststorePassword.toCharArray());
+            }
 
-Replace <keystore-file> with the path to your JKS file.
+            // Initialize TrustManagerFactory with the truststore
+            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            trustManagerFactory.init(truststore);
 
-	3.	Enter the KeyStore password:
-When prompted, provide the password for the KeyStore. If you don’t know the password, you’ll need to contact the person or system administrator who created it.
-	4.	Check the output:
-The output will show detailed information about the certificates and keys in the KeyStore. Look for the following details:
-	•	Aliases: Each certificate/key entry in the KeyStore is identified by an alias.
-	•	Certificate Information: Verify details like issuer, subject, validity dates, etc.
-Example Output:
+            // Initialize SSLContext with the TrustManager
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(null, trustManagerFactory.getTrustManagers(), null);
 
-Keystore type: JKS
-Keystore provider: SUN
+            // Set the SSLContext to the default
+            HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
 
-Your keystore contains 1 entry
+            // Create a connection to the endpoint
+            URL url = new URL(endpointUrl);
+            HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
+            connection.setRequestMethod("POST"); // Change to GET/PUT/DELETE if needed
+            connection.setDoOutput(true); // Enable output for POST/PUT requests
 
-Alias name: mycert
-Creation date: Jan 28, 2025
-Entry type: PrivateKeyEntry
-Certificate chain length: 1
-Certificate[1]:
-Owner: CN=example.com, OU=IT, O=Example Org, L=City, ST=State, C=US
-Issuer: CN=example CA, OU=CA, O=Example Org, L=City, ST=State, C=US
-Serial number: 1234567890abcdef
-Valid from: Tue Jan 01 00:00:00 UTC 2025 until: Fri Dec 31 23:59:59 UTC 2025
+            // Set Basic Authentication header
+            String auth = username + ":" + password;
+            String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
+            connection.setRequestProperty("Authorization", "Basic " + encodedAuth);
 
+            // Set other headers (if needed)
+            connection.setRequestProperty("Content-Type", "application/json");
 
-	5.	Verify by alias or subject:
-If you know the alias or subject of the certificate, ensure it matches what is listed in the KeyStore.
+            // Write data to the request body (if required)
+            String requestBody = "{\"key\": \"value\"}"; // Example JSON payload
+            try (OutputStream outputStream = connection.getOutputStream()) {
+                outputStream.write(requestBody.getBytes());
+                outputStream.flush();
+            }
 
-Additional Tips
-	•	Search for a specific alias:
+            // Send the request and get the response
+            int responseCode = connection.getResponseCode();
+            System.out.println("Response Code: " + responseCode);
 
-keytool -list -keystore <keystore-file> -alias <alias>
+            // Process the response (if needed)
+            if (responseCode == HttpsURLConnection.HTTP_OK) {
+                System.out.println("Request was successful!");
+                // Handle the response here (e.g., read from connection.getInputStream())
+            } else {
+                System.out.println("Request failed with response code: " + responseCode);
+            }
 
-Replace <alias> with the alias you want to check.
-
-	•	Use a different KeyStore type:
-If your KeyStore is of a different type (e.g., PKCS12), specify it using the -storetype option:
-
-keytool -list -keystore <keystore-file> -storetype PKCS12
-
-
-
-If you encounter any issues (e.g., incorrect password or missing tools), let me know, and I can help troubleshoot!
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
