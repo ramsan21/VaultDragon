@@ -1,14 +1,42 @@
-xsi:schemaLocation="
-    http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
-    http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
-    http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
-    http://cxf.apache.org/jaxws http://cxf.apache.org/schemas/jaxws.xsd">
+<dependency>
+    <groupId>org.apache.cxf</groupId>
+    <artifactId>cxf-core</artifactId>
+    <version>3.2.7</version>
+</dependency>
+<dependency>
+    <groupId>org.apache.cxf</groupId>
+    <artifactId>cxf-rt-frontend-jaxws</artifactId>
+    <version>3.2.7</version>
+</dependency>
+<dependency>
+    <groupId>org.apache.cxf</groupId>
+    <artifactId>cxf-rt-transports-http</artifactId>
+    <version>3.2.7</version>
+</dependency>
+<dependency>
+    <groupId>org.apache.cxf</groupId>
+    <artifactId>cxf-rt-databinding-jaxb</artifactId>
+    <version>3.2.7</version>
+</dependency>
+<dependency>
+    <groupId>org.apache.cxf</groupId>
+    <artifactId>cxf-rt-wsdl</artifactId>
+    <version>3.2.7</version>
+</dependency>
+<dependency>
+    <groupId>org.apache.cxf</groupId>
+    <artifactId>cxf-rt-bindings-soap</artifactId>
+    <version>3.2.7</version>
+</dependency>
+<dependency>
+    <groupId>org.apache.cxf</groupId>
+    <artifactId>cxf-rt-ws-policy</artifactId>
+    <version>3.2.7</version>
+</dependency>
 
-<jaxws:endpoint 
-    id="CryptoServiceEndPoint" 
-    implementor="#cryptoService"
-    address="/services/CryptoService"
-    xmlns:s="http://server.uaas.starsec.scb.com"
-    serviceName="s:CryptoServiceService"
-    endpointName="s:CryptoService">
-</jaxws:endpoint>
+<!-- JAXB for Java 8 -->
+<dependency>
+    <groupId>org.glassfish.jaxb</groupId>
+    <artifactId>jaxb-runtime</artifactId>
+    <version>2.3.3</version>
+</dependency>
