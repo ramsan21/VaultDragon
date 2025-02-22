@@ -1,93 +1,73 @@
-Your Kubernetes pod is stuck in the “ContainerCreating” state, meaning the container is not yet running. To troubleshoot further, follow these steps:
+To create the admin user token and mount it to /opt/secrets, follow these steps:
 
-1. Check Events for More Information
+1. Create a Kubernetes Secret for the Admin User Token
 
-Run:
+Run the following command to create a secret named bot-token:
 
-kubectl describe pod uaas-bot-65989d8bcb-tf6hf -n <namespace>
+kubectl create secret generic bot-token \
+    --from-literal=adminuser.token='your-admin-user-token-value' \
+    --from-literal=edmi.token='your-edmi-token-value'
 
-Look under the Events section for reasons such as:
-	•	ImagePullBackOff (Issue pulling the image)
-	•	CreateContainerConfigError (Invalid configuration)
-	•	FailedMount (Volume mount issues)
+Alternatively, if you have the token values in files:
 
-2. Check if the Image is Pulling Properly
+kubectl create secret generic bot-token \
+    --from-file=adminuser.token=./adminuser.token \
+    --from-file=edmi.token=./edmi.token
 
-If your image is not pulling correctly, check:
+Check if the secret was created:
 
-kubectl get pod uaas-bot-65989d8bcb-tf6hf -o jsonpath="{.status.containerStatuses[*].state.waiting.reason}" -n <namespace>
+kubectl get secrets bot-token -o yaml
 
-If the output is ImagePullBackOff or ErrImagePull, verify:
+2. Update Your Deployment or Pod YAML
 
-kubectl describe pod uaas-bot-65989d8bcb-tf6hf -n <namespace>
+Modify your Deployment or Pod manifest to mount the secret.
 
-	•	Ensure the image exists in the registry.
-	•	Check if you need authentication (imagePullSecrets).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+    - name: my-container
+      image: my-image
+      volumeMounts:
+        - name: bot-token
+          mountPath: /opt/secrets
+          readOnly: true
+  volumes:
+    - name: bot-token
+      secret:
+        secretName: bot-token
+        items:
+          - key: adminuser.token
+            path: adminuser.token
+          - key: edmi.token
+            path: edmi.token
 
-3. Check Node Status
+3. Apply the YAML to Kubernetes
 
-kubectl get nodes
+Save the YAML file as pod.yaml and apply it:
 
-If nodes are NotReady, check logs:
+kubectl apply -f pod.yaml
 
-kubectl describe node <node-name>
+4. Verify the Secret Mount
 
-Common reasons:
-	•	Disk pressure
-	•	Network issues
-	•	Kubernetes components failing
+Once the pod is running, check if the secret is mounted correctly:
 
-4. Check Volume Mount Issues
+kubectl exec -it my-pod -- ls /opt/secrets
 
-If the pod uses persistent volumes, run:
+You should see:
 
-kubectl get pvc -n <namespace>
+adminuser.token
+edmi.token
 
-Then check if the volume is bound:
+To view the contents:
 
-kubectl describe pvc <pvc-name> -n <namespace>
+kubectl exec -it my-pod -- cat /opt/secrets/adminuser.token
 
-5. Check if Resource Limits Are Causing Issues
+Summary of Steps
+	1.	Create the secret using kubectl create secret generic bot-token.
+	2.	Update the pod or deployment YAML to mount the secret at /opt/secrets.
+	3.	Apply the YAML and verify the secret is mounted.
 
-kubectl describe pod uaas-bot-65989d8bcb-tf6hf -n <namespace> | grep -A5 "Limits"
-
-If memory or CPU limits are too low, the pod may fail to start.
-
-6. Check Logs from Previous Failing Pods
-
-kubectl logs uaas-bot-65989d8bcb-tf6hf -n <namespace> --previous
-
-If logs are unavailable, the container might not have started.
-
-7. Check Kubelet and Docker/Containerd Logs
-
-On the worker node running the pod, check logs:
-
-journalctl -u kubelet -f
-
-Or for Docker:
-
-docker ps -a | grep uaas-bot
-docker logs <container-id>
-
-For Containerd:
-
-crictl ps
-crictl logs <container-id>
-
-8. Restart Pod
-
-kubectl delete pod uaas-bot-65989d8bcb-tf6hf -n <namespace>
-
-If the issue persists, check deployments:
-
-kubectl get deployments -n <namespace>
-kubectl describe deployment uaas-bot -n <namespace>
-
-Next Steps
-	•	Check kubectl describe pod for event errors.
-	•	Ensure image is accessible and correctly referenced.
-	•	Check node status, storage mounts, and resource limits.
-	•	Look at logs for insights into failure reasons.
-
-Would you like me to help interpret the output of these commands if you run them?
+Let me know if you need further troubleshooting!
