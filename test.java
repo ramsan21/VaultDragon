@@ -1,73 +1,61 @@
-To create the admin user token and mount it to /opt/secrets, follow these steps:
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
 
-1. Create a Kubernetes Secret for the Admin User Token
+    <groupId>com.example</groupId>
+    <artifactId>logging-example</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
 
-Run the following command to create a secret named bot-token:
+    <dependencies>
+        <!-- Log4j API -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>2.23.1</version>
+        </dependency>
 
-kubectl create secret generic bot-token \
-    --from-literal=adminuser.token='your-admin-user-token-value' \
-    --from-literal=edmi.token='your-edmi-token-value'
+        <!-- Log4j to SLF4J -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-to-slf4j</artifactId>
+            <version>2.23.1</version>
+        </dependency>
 
-Alternatively, if you have the token values in files:
+        <!-- Logback Core -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>1.3.15</version>
+        </dependency>
 
-kubectl create secret generic bot-token \
-    --from-file=adminuser.token=./adminuser.token \
-    --from-file=edmi.token=./edmi.token
+        <!-- Logback Classic (SLF4J Implementation) -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.3.15</version>
+        </dependency>
 
-Check if the secret was created:
+        <!-- SLF4J API -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.9</version>
+        </dependency>
+    </dependencies>
 
-kubectl get secrets bot-token -o yaml
-
-2. Update Your Deployment or Pod YAML
-
-Modify your Deployment or Pod manifest to mount the secret.
-
-apiVersion: v1
-kind: Pod
-metadata:
-  name: my-pod
-spec:
-  containers:
-    - name: my-container
-      image: my-image
-      volumeMounts:
-        - name: bot-token
-          mountPath: /opt/secrets
-          readOnly: true
-  volumes:
-    - name: bot-token
-      secret:
-        secretName: bot-token
-        items:
-          - key: adminuser.token
-            path: adminuser.token
-          - key: edmi.token
-            path: edmi.token
-
-3. Apply the YAML to Kubernetes
-
-Save the YAML file as pod.yaml and apply it:
-
-kubectl apply -f pod.yaml
-
-4. Verify the Secret Mount
-
-Once the pod is running, check if the secret is mounted correctly:
-
-kubectl exec -it my-pod -- ls /opt/secrets
-
-You should see:
-
-adminuser.token
-edmi.token
-
-To view the contents:
-
-kubectl exec -it my-pod -- cat /opt/secrets/adminuser.token
-
-Summary of Steps
-	1.	Create the secret using kubectl create secret generic bot-token.
-	2.	Update the pod or deployment YAML to mount the secret at /opt/secrets.
-	3.	Apply the YAML and verify the secret is mounted.
-
-Let me know if you need further troubleshooting!
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
