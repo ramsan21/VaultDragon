@@ -18,27 +18,31 @@ parameters:
       - skecaasapp
     default: aks
 
-  - name: repositoryName
-    displayName: "Repository Name"
-    type: string
-    default: "dj-core/governed-templates"
-
-  - name: agentPool
-    displayName: "Agent Pool"
-    type: string
-    default: "sc-linux"
-
-resources:
-  repositories:
-    - repository: governed-templates
-      name: ${{ parameters.repositoryName }}
-      ref: main
-      type: git
-
 variables:
   - group: 26066-NonProd
   - name: artifactId
     value: "ms-tmx"
+
+  # **Dynamic Repository Name based on deployStackName**
+  - name: repositoryName
+    ${{ if eq(parameters.deployStackName, 'aks') }}:
+      value: "dj-core/governed-templates"
+    ${{ if eq(parameters.deployStackName, 'skecaasapp') }}:
+      value: "dj-core/ske-governed-templates"
+
+  # **Dynamic Agent Pool based on deployStackName**
+  - name: agentPool
+    ${{ if eq(parameters.deployStackName, 'aks') }}:
+      value: "sc-linux-devfactory"
+    ${{ if eq(parameters.deployStackName, 'skecaasapp') }}:
+      value: "sc-linux"
+
+resources:
+  repositories:
+    - repository: governed-templates
+      name: $(repositoryName)  # Uses dynamically set repository name
+      ref: main
+      type: git
 
 stages:
 # **1st Stage: Deploy to AKS Dev**
@@ -47,7 +51,7 @@ stages:
   jobs:
   - job: Deploy_AKS_Dev
     displayName: "Deploying to AKS Dev"
-    pool: ${{ parameters.agentPool }}  # Dynamic pool selection
+    pool: $(agentPool)  # Uses dynamically set pool
     steps:
     - script: |
         echo "Deploying to AKS Dev..."
@@ -62,7 +66,7 @@ stages:
   jobs:
   - job: Deploy_AKS_UAT
     displayName: "Deploying to AKS UAT"
-    pool: ${{ parameters.agentPool }}  # Dynamic pool selection
+    pool: $(agentPool)  # Uses dynamically set pool
     steps:
     - script: |
         echo "Deploying to AKS UAT..."
@@ -80,7 +84,7 @@ stages:
   jobs:
   - job: Deploy_SKE_HK
     displayName: "Deploying to SKE HK"
-    pool: ${{ parameters.agentPool }}  # Dynamic pool selection
+    pool: $(agentPool)  # Uses dynamically set pool
     steps:
     - script: |
         echo "Deploying to SKE HK..."
@@ -95,7 +99,7 @@ stages:
   jobs:
   - job: Deploy_SKE_SG
     displayName: "Deploying to SKE SG"
-    pool: ${{ parameters.agentPool }}  # Dynamic pool selection
+    pool: $(agentPool)  # Uses dynamically set pool
     steps:
     - script: |
         echo "Deploying to SKE SG..."
