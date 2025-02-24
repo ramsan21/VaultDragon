@@ -6,56 +6,41 @@ trigger:
 
 parameters:
   - name: releaseId
-    displayName: "Release WorkItem ID"
+    displayName: Release WorkItem ID
     type: string
     default: "000000"
 
   - name: deployStackName
-    displayName: "Place to deploy"
+    displayName: place to deploy
     type: string
     values:
-      - aks
-      - skecaasapp
-    default: aks
+      - "aks"
+      - "ske"  # Changed from "skecaasapp" to "ske" for clarity
+    default: "aks"
+
+resources:
+  repositories:
+    - repository: governed-templates
+      name: dj-core/governed-templates
+      ref: main
+      type: git
 
 variables:
   - group: 26066-NonProd
   - name: artifactId
     value: "ms-tmx"
 
-  # **Dynamic Repository Name based on deployStackName**
-  - name: repositoryName
-    ${{ if eq(parameters.deployStackName, 'aks') }}:
-      value: "dj-core/governed-templates"
-    ${{ if eq(parameters.deployStackName, 'skecaasapp') }}:
-      value: "dj-core/ske-governed-templates"
-
-  # **Dynamic Agent Pool based on deployStackName**
-  - name: agentPool
-    ${{ if eq(parameters.deployStackName, 'aks') }}:
-      value: "sc-linux-devfactory"
-    ${{ if eq(parameters.deployStackName, 'skecaasapp') }}:
-      value: "sc-linux"
-
-resources:
-  repositories:
-    - repository: governed-templates
-      name: $(repositoryName)  # Uses dynamically set repository name
-      ref: main
-      type: git
-
-# **Using Extended Template with Dynamic Parameters**
 extends:
-  template: governed-templates/build-and-deploy.yml@governed-templates
+  template: governed-template/build-and-deploy.yml@governed-template
   parameters:
     releaseId: ${{ parameters.releaseId }}
-    buildStackName: "maven"
     ITAM: "26066"
     adoManagedVault: true
     featureRelease: true
     runDevStage: true
+    buildStackName: maven
     buildStackParams:
-      pool: $(agentPool)  # Pass dynamically selected agent pool
+      pool: "sc-linux"
       goals: "clean install"
       jdkVersion: "17"
       packageVersion: $(Version)
@@ -65,7 +50,7 @@ extends:
       testResultsFiles: "**/surefire-reports/TEST-*.xml"
       binaryPath: "./target/classes"
       sonarSources: "./src/main"
-      sonarExclusions: "**/db/model/*,**/model/**,**/repository/*,**/vo/*,com/sc/dcd"
+      sonarExclusions: "**/db/model/*, **/model/**/*, **/repository/*, **/vo/*, com/sc/dcd"
       imageListFilePath: "images.yml"
       dockerBuild: true
       dockerRepository: "cib-ss"
@@ -73,82 +58,122 @@ extends:
         - path: "$(Build.Repository.Name)/ci/Dockerfile"
           imageName: "$(artifactId)"
           imageTag: "$(Version)"
-      dockerArguments: "--no-cache --pull --build-arg BUILD_ARTIFACT=target/$(artifactId)-$(Version).jar"
 
+    dockerArguments: "--no-cache --pull --build-arg BUILD_ARTIFACT=target/$(artifactId)-$(Version).jar"
+    dockerBuildContext: "$(Build.Repository.Name)"
     deployStackName: "helm"
-    deploymentFolderName: "ci/$(artifactId)/"
+    deploymentFolderName: "ci/$(artifactId)"
     targetPathArtifactory: "generic-release/cib-dcda/ado/helm/$(Build.Repository.Name)/"
     archiveType: "tar"
+    featureRelease: true
     featureBranchScan: true
     skipEarlyFeedback: true
     calculateImageDigest: true
-    postInputFileList: 
+    postInputFileList:
       - "ci/$(artifactId)/values.yaml"
     postVariableList:
       - name: __applicationImageDigest__
         value: "$(DockerImageDigest_ms-tmx)"
+    deployStackName: $(deployStackName)
     deployStackParams:
-      run_mode: "helm"
+      run_mode: helm
 
-stages:
-# **1st Stage: Deploy to AKS Dev**
-- stage: Deploy_AKS_Dev
-  displayName: "Deploy to AKS Dev"
-  jobs:
-  - job: Deploy_AKS_Dev
-    displayName: "Deploying to AKS Dev"
-    pool: $(agentPool)  # Uses dynamically set pool
-    steps:
-    - script: |
-        echo "Deploying to AKS Dev..."
-        helm upgrade --install $(artifactId) ./$(artifactId) \
-          --namespace s2b-security-dev \
-          --values ./$(artifactId)/aks-dev-values.yaml
+deployEnvironments:
+  # AKS Environments (run when deployStackName is 'aks')
+  - name: aks_dev
+    condition: eq('${{ parameters.deployStackName }}', 'aks')
+    environment: dev
+    displayName: DF_CUI
+    pool: sc-linux-devfactory
+    applicationSecretConfigs:
+      - secretName: dev_factory_uaas_dev_tmx_db_ssap
+        secretValue: $(dev_factory_uaas_dev_tmx_db_ssap)
+    notifyUsers:
+      - channels.security@sc.com
+    aks_helm_params:
+      tenanId: 4e84ad11-063a-42d0-b0a1-595b22d0db06
+      subscriptionName: catalyst-sg-dev
+      clustername: 51366-s2bapi-dev-sg-b7cbg
+      resourcegroup: 51366-S2B-API-RG
+      appId: 719f7b7f-63b6-4eb3-9de2-58bd51c916dc
+      SPN_Credentials: $(51366-S2B-API-SPN)
+      helm_chart_path: "./$(artifactId)/"
+      helm_chart_values: "./$(artifactId)/aks-dev-values.yaml"
+      releaseName: "$(artifactId)"
+      Namespace: "s2b-security-dev"
 
-# **2nd Stage: Deploy to AKS UAT**
-- stage: Deploy_AKS_UAT
-  displayName: "Deploy to AKS UAT"
-  dependsOn: Deploy_AKS_Dev
-  jobs:
-  - job: Deploy_AKS_UAT
-    displayName: "Deploying to AKS UAT"
-    pool: $(agentPool)  # Uses dynamically set pool
-    steps:
-    - script: |
-        echo "Deploying to AKS UAT..."
-        helm upgrade --install $(artifactId) ./$(artifactId) \
-          --namespace s2b-security-uat \
-          --values ./$(artifactId)/aks-uat-values.yaml
+  - name: aks_uat
+    condition: eq('${{ parameters.deployStackName }}', 'aks')
+    environment: dev
+    displayName: DF_UAT
+    pool: sc-linux-devfactory
+    applicationSecretConfigs:
+      - secretName: dev_factory_uaas_dev_tmx_db_ssap
+        secretValue: $(dev_factory_uaas_dev_tmx_db_ssap)
+    notifyUsers:
+      - channels.security@sc.com
+    aks_helm_params:
+      tenanId: 4e84ad11-063a-42d0-b0a1-595b22d0db06
+      subscriptionName: catalyst-sg-dev
+      clustername: 51366-s2bapi-dev-sg-b7cbg
+      resourcegroup: 51366-S2B-API-RG
+      appId: 719f7b7f-63b6-4eb3-9de2-58bd51c916dc
+      SPN_Credentials: $(51366-S2B-API-SPN)
+      helm_chart_path: "./$(artifactId)/"
+      helm_chart_values: "./$(artifactId)/aks-uat-values.yaml"
+      releaseName: "$(artifactId)"
+      Namespace: "s2b-security-uat"
 
-# **3rd Stage: Deploy to SKE HK (Runs if Either AKS Dev or AKS UAT is Successful)**
-- stage: Deploy_SKE_HK
-  displayName: "Deploy to SKE HK"
-  dependsOn:
-    - Deploy_AKS_Dev
-    - Deploy_AKS_UAT
-  condition: or(succeeded('Deploy_AKS_Dev'), succeeded('Deploy_AKS_UAT'))  # Runs if either AKS stage succeeds
-  jobs:
-  - job: Deploy_SKE_HK
-    displayName: "Deploying to SKE HK"
-    pool: $(agentPool)  # Uses dynamically set pool
-    steps:
-    - script: |
-        echo "Deploying to SKE HK..."
-        helm upgrade --install $(artifactId) ./$(artifactId) \
-          --namespace t-26066-s2bsec-s2b-security \
-          --values ./$(artifactId)/stg-prod-values.yaml
+  # SKE Environments (run when deployStackName is 'ske')
+  - name: ske_hk
+    condition: eq('${{ parameters.deployStackName }}', 'ske')
+    environment: dev
+    displayName: HK-SKE
+    notifyUsers:
+      - channels.security@sc.com
+    devApproval: false
+    dependsOn:  # Ensure SKE runs after AKS if both are triggered
+      - aks_dev
+      - aks_uat
+    pool: sc-linux
+    applicationSecretConfigs:
+      - secretName: tmxusr_hashicorp_uri_stg
+        secretPath: '/scb/26066/global/app/kv/data/api_token_tmxusrhashicorpuristg'
+    secretsFileSelector: "**/*.{yaml,yml}"
+    k8s_params:
+      server: https://api.skes006.50933.hk.app.standardchartered.com:6443
+      token: $(ske_k8s_params_token)
+    helm_params:
+      namespace: t-26066-s2bsec-s2b-security
+      release: $(artifactId)
+      chart: "./$(artifactId)"
+      values_file: "./$(artifactId)/stg-prod-values.yaml"
+      set_files: []
+      extra_args: "--debug"
 
-# **4th Stage: Deploy to SKE SG (Only Runs After SKE HK Completes Successfully)**
-- stage: Deploy_SKE_SG
-  displayName: "Deploy to SKE SG"
-  dependsOn: Deploy_SKE_HK  # Runs only after SKE HK
-  jobs:
-  - job: Deploy_SKE_SG
-    displayName: "Deploying to SKE SG"
-    pool: $(agentPool)  # Uses dynamically set pool
-    steps:
-    - script: |
-        echo "Deploying to SKE SG..."
-        helm upgrade --install $(artifactId) ./$(artifactId) \
-          --namespace t-26066-s2bsec-s2b-security \
-          --values ./$(artifactId)/stg-prod-values.yaml
+  - name: dev_sg
+    condition: eq('${{ parameters.deployStackName }}', 'ske')
+    environment: dev
+    displayName: SG-SKE
+    notifyUsers:
+      - channels.security@sc.com
+    devApproval: false
+    dependsOn:  # Ensure SKE runs after AKS if both are triggered
+      - aks_dev
+      - aks_uat
+    pool: sc-linux
+    applicationSecretConfigs:
+      - secretName: tmxusr_hashicorp_uri_stg
+        secretPath: '/scb/26066/global/app/kv/data/api_token_tmxusrhashicorpuristg'
+    secretsFileSelector: "**/*.{yaml,yml}"
+    k8s_params:
+      server: https://api.skes006.50933.sg.app.standardchartered.com:6443
+      token: $(sg_ske_k8s_params_token)
+    helm_params:
+      namespace: t-26066-s2bsec-s2b-security
+      release: $(artifactId)
+      chart: "./$(artifactId)"
+      values_file: "./$(artifactId)/stg-prod-values.yaml"
+      set_files: []
+      extra_args: "--debug"
+    
