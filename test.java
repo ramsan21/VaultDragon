@@ -44,6 +44,52 @@ resources:
       ref: main
       type: git
 
+# **Using Extended Template with Dynamic Parameters**
+extends:
+  template: governed-templates/build-and-deploy.yml@governed-templates
+  parameters:
+    releaseId: ${{ parameters.releaseId }}
+    buildStackName: "maven"
+    ITAM: "26066"
+    adoManagedVault: true
+    featureRelease: true
+    runDevStage: true
+    buildStackParams:
+      pool: $(agentPool)  # Pass dynamically selected agent pool
+      goals: "clean install"
+      jdkVersion: "17"
+      packageVersion: $(Version)
+      mavenPomFile: "pom.xml"
+      skipJacocoCoverage: true
+      publishJUnitResults: true
+      testResultsFiles: "**/surefire-reports/TEST-*.xml"
+      binaryPath: "./target/classes"
+      sonarSources: "./src/main"
+      sonarExclusions: "**/db/model/*,**/model/**,**/repository/*,**/vo/*,com/sc/dcd"
+      imageListFilePath: "images.yml"
+      dockerBuild: true
+      dockerRepository: "cib-ss"
+      dockerFilePaths:
+        - path: "$(Build.Repository.Name)/ci/Dockerfile"
+          imageName: "$(artifactId)"
+          imageTag: "$(Version)"
+      dockerArguments: "--no-cache --pull --build-arg BUILD_ARTIFACT=target/$(artifactId)-$(Version).jar"
+
+    deployStackName: "helm"
+    deploymentFolderName: "ci/$(artifactId)/"
+    targetPathArtifactory: "generic-release/cib-dcda/ado/helm/$(Build.Repository.Name)/"
+    archiveType: "tar"
+    featureBranchScan: true
+    skipEarlyFeedback: true
+    calculateImageDigest: true
+    postInputFileList: 
+      - "ci/$(artifactId)/values.yaml"
+    postVariableList:
+      - name: __applicationImageDigest__
+        value: "$(DockerImageDigest_ms-tmx)"
+    deployStackParams:
+      run_mode: "helm"
+
 stages:
 # **1st Stage: Deploy to AKS Dev**
 - stage: Deploy_AKS_Dev
