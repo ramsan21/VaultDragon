@@ -1,61 +1,49 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+parameters:
+  - name: releaseId
+    displayName: "Release WorkItem ID"
+    type: string
+    default: "000000"
 
-    <groupId>com.example</groupId>
-    <artifactId>logging-example</artifactId>
-    <version>1.0.0</version>
-    <packaging>jar</packaging>
+  - name: deployStackName
+    displayName: "Place to deploy"
+    type: string
+    values:
+      - aks
+      - skecaasapp
+    default: aks
 
-    <dependencies>
-        <!-- Log4j API -->
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-api</artifactId>
-            <version>2.23.1</version>
-        </dependency>
+stages:
+- stage: Deploy
+  jobs:
+  - job: DeployApp
+    displayName: "Deploy Application"
+    pool: sc-linux  # Common pool
 
-        <!-- Log4j to SLF4J -->
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-to-slf4j</artifactId>
-            <version>2.23.1</version>
-        </dependency>
+    steps:
+    - script: echo "Deployment Stack Selected: ${{ parameters.deployStackName }}"
 
-        <!-- Logback Core -->
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-core</artifactId>
-            <version>1.3.15</version>
-        </dependency>
+    - ${{ if eq(parameters.deployStackName, 'aks') }}:
+      - script: |
+          echo "Deploying to AKS..."
+          echo "Setting AKS Kubernetes Parameters"
+          echo "Cluster: 51366-s2bapi-dev-sg-b7cbg"
+          echo "Resource Group: 51366-S2B-API-RG"
+          echo "Namespace: s2b-security-dev"
+      - script: |
+          echo "Deploying using AKS Helm values"
+          helm upgrade --install $(artifactId) ./$(artifactId) \
+            --namespace s2b-security-dev \
+            --values ./$(artifactId)/aks-dev-values.yaml
 
-        <!-- Logback Classic (SLF4J Implementation) -->
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <version>1.3.15</version>
-        </dependency>
-
-        <!-- SLF4J API -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>2.0.9</version>
-        </dependency>
-    </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
-                <configuration>
-                    <source>17</source>
-                    <target>17</target>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-</project>
+    - ${{ if eq(parameters.deployStackName, 'skecaasapp') }}:
+      - script: |
+          echo "Deploying to SKE..."
+          echo "Setting SKE Kubernetes Parameters"
+          echo "Server: https://api.skes006.50933.hk.app.standardchartered.com:6443"
+          echo "Namespace: t-26066-s2bsec-s2b-security"
+      - script: |
+          echo "Deploying using SKE Helm values"
+          helm upgrade --install $(artifactId) ./$(artifactId) \
+            --namespace t-26066-s2bsec-s2b-security \
+            --values ./$(artifactId)/stg-prod-values.yaml \
+            --debug
