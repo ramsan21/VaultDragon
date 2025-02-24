@@ -18,10 +18,20 @@ parameters:
       - skecaasapp
     default: aks
 
+  - name: repositoryName
+    displayName: "Repository Name"
+    type: string
+    default: "dj-core/governed-templates"
+
+  - name: agentPool
+    displayName: "Agent Pool"
+    type: string
+    default: "sc-linux"
+
 resources:
   repositories:
     - repository: governed-templates
-      name: dj-core/governed-templates
+      name: ${{ parameters.repositoryName }}
       ref: main
       type: git
 
@@ -37,7 +47,7 @@ stages:
   jobs:
   - job: Deploy_AKS_Dev
     displayName: "Deploying to AKS Dev"
-    pool: sc-linux-devfactory
+    pool: ${{ parameters.agentPool }}  # Dynamic pool selection
     steps:
     - script: |
         echo "Deploying to AKS Dev..."
@@ -52,7 +62,7 @@ stages:
   jobs:
   - job: Deploy_AKS_UAT
     displayName: "Deploying to AKS UAT"
-    pool: sc-linux-devfactory
+    pool: ${{ parameters.agentPool }}  # Dynamic pool selection
     steps:
     - script: |
         echo "Deploying to AKS UAT..."
@@ -70,7 +80,7 @@ stages:
   jobs:
   - job: Deploy_SKE_HK
     displayName: "Deploying to SKE HK"
-    pool: sc-linux
+    pool: ${{ parameters.agentPool }}  # Dynamic pool selection
     steps:
     - script: |
         echo "Deploying to SKE HK..."
@@ -85,7 +95,7 @@ stages:
   jobs:
   - job: Deploy_SKE_SG
     displayName: "Deploying to SKE SG"
-    pool: sc-linux
+    pool: ${{ parameters.agentPool }}  # Dynamic pool selection
     steps:
     - script: |
         echo "Deploying to SKE SG..."
