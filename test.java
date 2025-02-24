@@ -15,16 +15,16 @@ parameters:
 stages:
 - stage: Deploy
   jobs:
-  - job: DeployApp
-    displayName: "Deploy Application"
-    pool: sc-linux  # Common pool
 
-    steps:
-    - script: echo "Deployment Stack Selected: ${{ parameters.deployStackName }}"
+  # Deploy to AKS (if deployStackName is aks)
+  - ${{ if eq(parameters.deployStackName, 'aks') }}:
+    - job: Deploy_AKS
+      displayName: "Deploy to AKS"
+      pool: sc-linux-devfactory  # Pool for AKS Deployment
 
-    - ${{ if eq(parameters.deployStackName, 'aks') }}:
+      steps:
+      - script: echo "Deploying to AKS..."
       - script: |
-          echo "Deploying to AKS..."
           echo "Setting AKS Kubernetes Parameters"
           echo "Cluster: 51366-s2bapi-dev-sg-b7cbg"
           echo "Resource Group: 51366-S2B-API-RG"
@@ -35,9 +35,15 @@ stages:
             --namespace s2b-security-dev \
             --values ./$(artifactId)/aks-dev-values.yaml
 
-    - ${{ if eq(parameters.deployStackName, 'skecaasapp') }}:
+  # Deploy to SKE (if deployStackName is skecaasapp)
+  - ${{ if eq(parameters.deployStackName, 'skecaasapp') }}:
+    - job: Deploy_SKE
+      displayName: "Deploy to SKE"
+      pool: sc-linux  # Pool for SKE Deployment
+
+      steps:
+      - script: echo "Deploying to SKE..."
       - script: |
-          echo "Deploying to SKE..."
           echo "Setting SKE Kubernetes Parameters"
           echo "Server: https://api.skes006.50933.hk.app.standardchartered.com:6443"
           echo "Namespace: t-26066-s2bsec-s2b-security"
