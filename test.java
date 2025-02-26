@@ -1,140 +1,36 @@
-trigger:
-  - develop
-  - release/*
-  - feature/*
-  - main
+Here is a streamlined version of your Performance Goals with clearly structured Description and Measures of Success:
 
-parameters:
-  - name: releaseId
-    displayName: Release WorkItem ID
-    type: string
-    default: "000000"
+Performance Goals for UAS, TMX, and Catalyst Applications
 
-  - name: deployStackName
-    displayName: Place to deploy
-    type: string
-    values:
-      - "aks"
-      - "skecaasapp"
-    default: "aks"
+Description:
+	1.	Catalyst Setup & Deployment
+	•	Implement Catalyst for UAAS applications in VM, SKE, and AKS.
+	•	Streamline the ADO pipeline deployment across OCP, AKS, and SKE to manage the code on a single branch.
+	2.	Application Stability & Maintenance
+	•	Ensure application enhancements and maintenance tasks are completed on schedule.
+	•	Minimize downtime by following a blue-green deployment approach when rebooting services.
+	3.	Change Management & Deployment Best Practices
+	•	Ensure zero issues related to changes through rigorous validation.
+	•	Avoid manual deployments by automating the deployment process.
+	•	Verify all technical changes with SIT, UAT, and Technical Validation before deployment.
+	4.	Training & Compliance
+	•	Attend and complete technical training sessions.
+	•	Ensure no timesheet exceptions to maintain compliance.
 
-variables:
-  - group: 26066-NonProd
-  - name: artifactId
-    value: "ms-tmx"
+Measures of Success:
+	1.	Successful Catalyst Implementation
+	•	Complete Catalyst setup for VM, SKE, and AKS within the defined timeline.
+	2.	Optimized ADO Pipeline Deployment
+	•	Ensure a streamlined ADO pipeline deployment across OCP, AKS, and SKE, ensuring code consistency across environments.
+	3.	Application Performance & Stability
+	•	Complete scheduled application enhancements and maintenance without delays.
+	•	Follow blue-green deployment to avoid service disruption.
+	•	Maintain zero change-related issues post-deployment.
+	4.	Deployment & Risk Management
+	•	Achieve 100% compliance with automated deployments (no manual deployments).
+	•	Verify 100% of changes through SIT, UAT, and technical validation before going live.
+	5.	Training & Compliance
+	•	Successfully complete all mandatory technical training.
+	•	Maintain zero timesheet exceptions.
 
-resources:
-  repositories:
-    - repository: governed-templates
-      name: dj-core/governed-templates
-      ref: main
-      type: git
-
-stages:
-# **1st Stage: Deploy to AKS Dev**
-- stage: Deploy_AKS_Dev
-  displayName: "Deploy to AKS Dev"
-  condition: eq('${{ parameters.deployStackName }}', 'aks')
-  jobs:
-  - job: Deploy_AKS_Dev
-    displayName: "Deploying to AKS Dev"
-    pool: sc-linux-devfactory
-    steps:
-    - script: |
-        echo "Deploying to AKS Dev..."
-        helm upgrade --install $(artifactId) ./$(artifactId) \
-          --namespace s2b-security-dev \
-          --values ./$(artifactId)/aks-dev-values.yaml
-
-    # **AKS Helm Parameters**
-    - script: |
-        echo "Setting Helm Parameters for AKS Dev..."
-        echo "Tenant ID: 4e84ad11-063a-42d0-b0a1-595b22d0db06"
-        echo "Subscription Name: catalyst-sg-dev"
-        echo "Cluster: 51366-s2bapi-dev-sg-b7cbg"
-        echo "Resource Group: 51366-S2B-API-RG"
-        echo "App ID: 719f7b7f-63b6-4eb3-9de2-58bd51c916dc"
-        echo "SPN Credentials: $(51366-S2B-API-SPN)"
-
-# **2nd Stage: Deploy to AKS UAT**
-- stage: Deploy_AKS_UAT
-  displayName: "Deploy to AKS UAT"
-  dependsOn: Deploy_AKS_Dev
-  condition: eq('${{ parameters.deployStackName }}', 'aks')
-  jobs:
-  - job: Deploy_AKS_UAT
-    displayName: "Deploying to AKS UAT"
-    pool: sc-linux-devfactory
-    steps:
-    - script: |
-        echo "Deploying to AKS UAT..."
-        helm upgrade --install $(artifactId) ./$(artifactId) \
-          --namespace s2b-security-uat \
-          --values ./$(artifactId)/aks-uat-values.yaml
-
-    # **AKS Helm Parameters**
-    - script: |
-        echo "Setting Helm Parameters for AKS UAT..."
-        echo "Tenant ID: 4e84ad11-063a-42d0-b0a1-595b22d0db06"
-        echo "Subscription Name: catalyst-sg-dev"
-        echo "Cluster: 51366-s2bapi-dev-sg-b7cbg"
-        echo "Resource Group: 51366-S2B-API-RG"
-        echo "App ID: 719f7b7f-63b6-4eb3-9de2-58bd51c916dc"
-        echo "SPN Credentials: $(51366-S2B-API-SPN)"
-
-# **3rd Stage: Deploy to SKE HK (Runs only after AKS is successfully deployed)**
-- stage: Deploy_SKE_HK
-  displayName: "Deploy to SKE HK"
-  dependsOn:
-    - Deploy_AKS_Dev
-    - Deploy_AKS_UAT
-  condition: and(succeeded('Deploy_AKS_Dev'), succeeded('Deploy_AKS_UAT'))
-  jobs:
-  - job: Deploy_SKE_HK
-    displayName: "Deploying to SKE HK"
-    pool: sc-linux
-    steps:
-    - script: |
-        echo "Deploying to SKE HK..."
-        helm upgrade --install $(artifactId) ./$(artifactId) \
-          --namespace t-26066-s2bsec-s2b-security \
-          --values ./$(artifactId)/stg-prod-values.yaml
-
-    # **K8s Parameters**
-    - script: |
-        echo "Setting Kubernetes Parameters for SKE HK..."
-        echo "Server: https://api.skes006.50933.hk.app.standardchartered.com:6443"
-        echo "Token: $(ske_k8s_params_token)"
-
-    # **Helm Parameters**
-    - script: |
-        echo "Setting Helm Parameters for SKE HK..."
-        echo "Namespace: t-26066-s2bsec-s2b-security"
-        echo "Chart Path: ./$(artifactId)"
-
-# **4th Stage: Deploy to SKE SG (Only Runs After SKE HK Completes Successfully)**
-- stage: Deploy_SKE_SG
-  displayName: "Deploy to SKE SG"
-  dependsOn: Deploy_SKE_HK
-  jobs:
-  - job: Deploy_SKE_SG
-    displayName: "Deploying to SKE SG"
-    pool: sc-linux
-    steps:
-    - script: |
-        echo "Deploying to SKE SG..."
-        helm upgrade --install $(artifactId) ./$(artifactId) \
-          --namespace t-26066-s2bsec-s2b-security \
-          --values ./$(artifactId)/stg-prod-values.yaml
-
-    # **K8s Parameters**
-    - script: |
-        echo "Setting Kubernetes Parameters for SKE SG..."
-        echo "Server: https://api.skes006.50933.sg.app.standardchartered.com:6443"
-        echo "Token: $(sg_ske_k8s_params_token)"
-
-    # **Helm Parameters**
-    - script: |
-        echo "Setting Helm Parameters for SKE SG..."
-        echo "Namespace: t-26066-s2bsec-s2b-security"
-        echo "Chart Path: ./$(artifactId)"
+This refined version is structured, precise, and measurable, ensuring alignment with business expectations. Let me know if you’d like any further modifications!
