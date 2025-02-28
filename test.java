@@ -1,1 +1,1 @@
-=MID(A1, FIND("source-address=", A1) + 15, FIND("""", A1, FIND("source-address=", A1) + 15) - FIND("source-address=", A1) - 15)
+=MID(I2, SEARCH("source-address=", I2) + 15, SEARCH("""", I2, SEARCH("source-address=", I2) + 15) - SEARCH("source-address=", I2) - 15)
