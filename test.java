@@ -1,24 +1,23 @@
-To create a Spring application packaged as a WAR file, follow these steps:
+Here’s a Spring WAR application with:
+	•	A REST endpoint
+	•	Beans initialized using applicationContext.xml
+	•	Hazelcast Client initialized using ClientConfig
+	•	Packaged as a WAR file for deployment in Tomcat
 
 1. Project Structure
 
-spring-war-example/
+spring-war-hazelcast/
 │── src/main/java/com/example/
-│   ├── controller/
-│   │   ├── HomeController.java
 │   ├── config/
-│   │   ├── WebAppInitializer.java
-│   │   ├── AppConfig.java
-│   │   ├── WebConfig.java
+│   │   ├── HazelcastConfig.java
+│   ├── controller/
+│   │   ├── HelloController.java
 │── src/main/webapp/WEB-INF/
 │   ├── web.xml
-│   ├── views/
-│   │   ├── home.jsp
+│   ├── applicationContext.xml
 │── pom.xml
 
-2. Add Dependencies in pom.xml
-
-Configure the Maven WAR plugin and dependencies:
+2. pom.xml (Maven Dependencies)
 
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -26,7 +25,7 @@ Configure the Maven WAR plugin and dependencies:
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.example</groupId>
-    <artifactId>spring-war-example</artifactId>
+    <artifactId>spring-war-hazelcast</artifactId>
     <version>1.0</version>
     <packaging>war</packaging>
 
@@ -38,6 +37,13 @@ Configure the Maven WAR plugin and dependencies:
             <version>5.3.30</version>
         </dependency>
 
+        <!-- Hazelcast Client -->
+        <dependency>
+            <groupId>com.hazelcast</groupId>
+            <artifactId>hazelcast-client</artifactId>
+            <version>5.3.6</version>
+        </dependency>
+
         <!-- Servlet API -->
         <dependency>
             <groupId>javax.servlet</groupId>
@@ -46,11 +52,11 @@ Configure the Maven WAR plugin and dependencies:
             <scope>provided</scope>
         </dependency>
 
-        <!-- JSP and JSTL -->
+        <!-- Jackson for JSON -->
         <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>jstl</artifactId>
-            <version>1.2</version>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.15.3</version>
         </dependency>
     </dependencies>
 
@@ -68,92 +74,67 @@ Configure the Maven WAR plugin and dependencies:
     </build>
 </project>
 
-3. Java Configuration for Spring MVC
+3. applicationContext.xml (Bean Configuration)
 
-AppConfig.java (Spring Root Configuration)
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <!-- Register Hazelcast Client as a bean -->
+    <bean id="hazelcastClientConfig" class="com.example.config.HazelcastConfig" factory-method="getHazelcastClientInstance"/>
+
+</beans>
+
+4. HazelcastConfig.java (Hazelcast Client Configuration)
 
 package com.example.config;
 
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
+import com.hazelcast.client.config.ClientConfig;
+import com.hazelcast.client.HazelcastClient;
+import com.hazelcast.core.HazelcastInstance;
 
-@Configuration
-@ComponentScan(basePackages = "com.example")
-public class AppConfig {
-}
+public class HazelcastConfig {
 
-WebConfig.java (Spring Web Configuration)
+    private static HazelcastInstance hazelcastInstance;
 
-package com.example.config;
-
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.ViewResolver;
-import org.springframework.web.servlet.config.annotation.EnableWebMvc;
-import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import org.springframework.web.servlet.view.InternalResourceViewResolver;
-
-@Configuration
-@EnableWebMvc
-public class WebConfig implements WebMvcConfigurer {
-
-    @Bean
-    public ViewResolver viewResolver() {
-        InternalResourceViewResolver resolver = new InternalResourceViewResolver();
-        resolver.setPrefix("/WEB-INF/views/");
-        resolver.setSuffix(".jsp");
-        return resolver;
-    }
-
-    @Override
-    public void addViewControllers(ViewControllerRegistry registry) {
-        registry.addViewController("/").setViewName("home");
+    public static HazelcastInstance getHazelcastClientInstance() {
+        if (hazelcastInstance == null) {
+            ClientConfig clientConfig = new ClientConfig();
+            clientConfig.getNetworkConfig().addAddress("127.0.0.1:5701"); // Adjust IP/port if needed
+            hazelcastInstance = HazelcastClient.newHazelcastClient(clientConfig);
+        }
+        return hazelcastInstance;
     }
 }
 
-4. Controller
-
-HomeController.java
+5. HelloController.java (REST Controller)
 
 package com.example.controller;
 
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.ui.Model;
+import com.hazelcast.core.HazelcastInstance;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
 
-@Controller
-@RequestMapping("/")
-public class HomeController {
+import java.util.concurrent.ConcurrentMap;
 
-    @GetMapping
-    public String home(Model model) {
-        model.addAttribute("message", "Hello, Spring WAR!");
-        return "home";
+@RestController
+@RequestMapping("/api")
+public class HelloController {
+
+    @Autowired
+    private HazelcastInstance hazelcastInstance;
+
+    @GetMapping("/hello")
+    public String sayHello() {
+        ConcurrentMap<String, String> map = hazelcastInstance.getMap("myDistributedMap");
+        map.put("message", "Hello from Hazelcast!");
+        return map.get("message");
     }
 }
 
-5. View (JSP Page)
-
-Create a home.jsp page in src/main/webapp/WEB-INF/views/:
-
-home.jsp
-
-<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Spring WAR Example</title>
-</head>
-<body>
-    <h1>${message}</h1>
-</body>
-</html>
-
-6. Deployment Descriptor (web.xml)
-
-Spring allows deployment without web.xml, but if your server requires it, create src/main/webapp/WEB-INF/web.xml:
+6. web.xml (Deployment Descriptor)
 
 <web-app xmlns="http://java.sun.com/xml/ns/javaee"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -161,78 +142,56 @@ Spring allows deployment without web.xml, but if your server requires it, create
          http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
          version="3.0">
 
-    <display-name>Spring WAR Example</display-name>
+    <display-name>Spring WAR Hazelcast Example</display-name>
 
     <servlet>
         <servlet-name>dispatcher</servlet-name>
         <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
         <init-param>
             <param-name>contextConfigLocation</param-name>
-            <param-value>/WEB-INF/spring-config.xml</param-value>
+            <param-value>/WEB-INF/applicationContext.xml</param-value>
         </init-param>
         <load-on-startup>1</load-on-startup>
     </servlet>
 
     <servlet-mapping>
         <servlet-name>dispatcher</servlet-name>
-        <url-pattern>/</url-pattern>
+        <url-pattern>/api/*</url-pattern>
     </servlet-mapping>
 </web-app>
 
-7. Web Application Initializer (WebAppInitializer.java)
+7. Build and Deploy
 
-Instead of web.xml, you can use a WebApplicationInitializer:
-
-package com.example.config;
-
-import org.springframework.web.WebApplicationInitializer;
-import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
-import org.springframework.web.servlet.DispatcherServlet;
-
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRegistration;
-
-public class WebAppInitializer implements WebApplicationInitializer {
-
-    @Override
-    public void onStartup(ServletContext servletContext) throws ServletException {
-        AnnotationConfigWebApplicationContext context = new AnnotationConfigWebApplicationContext();
-        context.register(AppConfig.class, WebConfig.class);
-        context.setServletContext(servletContext);
-
-        ServletRegistration.Dynamic dispatcher = servletContext.addServlet("dispatcher", new DispatcherServlet(context));
-        dispatcher.setLoadOnStartup(1);
-        dispatcher.addMapping("/");
-    }
-}
-
-8. Build and Deploy WAR
-
-Build the WAR File
+Step 1: Package the WAR
 
 Run the following Maven command:
 
 mvn clean package
 
-This generates a WAR file in target/spring-war-example-1.0.war.
+This generates a WAR file in target/spring-war-hazelcast-1.0.war.
 
-Deploy to Tomcat
-	1.	Copy the generated WAR file to your Tomcat webapps/ folder.
+Step 2: Deploy to Tomcat
+	1.	Copy the generated WAR file to Tomcat’s webapps/ folder.
 	2.	Start Tomcat:
 
 ./catalina.sh run
 
 
-	3.	Open your browser and navigate to:
+	3.	Test the Endpoint:
+Open a browser or use curl to test:
 
-http://localhost:8080/spring-war-example/
+http://localhost:8080/spring-war-hazelcast/api/hello
 
-Conclusion
+Expected Response:
 
-This setup allows you to:
-	•	Deploy a Spring MVC application as a WAR.
-	•	Use annotation-based and XML-based configurations.
-	•	Avoid web.xml using WebApplicationInitializer.
+"Hello from Hazelcast!"
 
-Would you like me to guide you in debugging deployment issues?
+Summary
+
+✅ Spring application packaged as WAR
+✅ Beans initialized using applicationContext.xml
+✅ Hazelcast Client initialized via ClientConfig
+✅ REST endpoint (/api/hello) interacts with Hazelcast
+✅ Deployable in Tomcat
+
+Would you like me to create a GitHub repository for you with this project?
