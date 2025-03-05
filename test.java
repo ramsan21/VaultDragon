@@ -1,126 +1,115 @@
-Issue: Tomcat 10 Requires Jakarta EE Instead of Javax
+The error “No Spring WebApplicationInitializer types detected on classpath” suggests that your project is missing a proper web initializer, which is required when deploying a Spring web application.
 
-Starting from Tomcat 10, the Java EE (javax.) namespace has been replaced with **Jakarta EE (jakarta.)**. If your Spring WAR application is using javax.servlet, it will not work in Tomcat 10 because Tomcat 10 requires Jakarta EE 9 or later.
+Here are possible solutions:
 
-🔧 Solution: Upgrade to Jakarta EE (Spring 5 or Spring 6)
+1. Ensure Spring Web Dependency is Included
 
-1️⃣ Update web.xml (Replace javax.servlet with jakarta.servlet)
-
-In src/main/webapp/WEB-INF/web.xml, change:
-
-❌ Old (Java EE / Tomcat 9 and below)
-
-<web-app xmlns="http://java.sun.com/xml/ns/javaee"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
-         http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
-         version="3.0">
-
-    <servlet>
-        <servlet-name>dispatcher</servlet-name>
-        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
-    </servlet>
-
-    <servlet-mapping>
-        <servlet-name>dispatcher</servlet-name>
-        <url-pattern>/</url-pattern>
-    </servlet-mapping>
-</web-app>
-
-✅ New (Jakarta EE / Tomcat 10+)
-
-<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
-         https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
-         version="5.0">
-
-    <servlet>
-        <servlet-name>dispatcher</servlet-name>
-        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
-    </servlet>
-
-    <servlet-mapping>
-        <servlet-name>dispatcher</servlet-name>
-        <url-pattern>/</url-pattern>
-    </servlet-mapping>
-</web-app>
-
-2️⃣ Update pom.xml Dependencies
-
-❌ Old Dependencies (javax.servlet)
+Check if your pom.xml has the required Spring dependencies:
 
 <dependency>
-    <groupId>javax.servlet</groupId>
-    <artifactId>javax.servlet-api</artifactId>
-    <version>4.0.1</version>
-    <scope>provided</scope>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-web</artifactId>
+    <version>6.1.11</version>
 </dependency>
-
-✅ New Dependencies (jakarta.servlet)
-
-<dependency>
-    <groupId>jakarta.servlet</groupId>
-    <artifactId>jakarta.servlet-api</artifactId>
-    <version>5.0.0</version>
-    <scope>provided</scope>
-</dependency>
-
-For Spring Web MVC:
-
-If you are using Spring 5, upgrade to Spring 6, which supports Jakarta EE:
 
 <dependency>
     <groupId>org.springframework</groupId>
     <artifactId>spring-webmvc</artifactId>
-    <version>6.1.2</version>
+    <version>6.1.11</version>
 </dependency>
 
-3️⃣ Update applicationContext.xml (Spring Configuration)
-	•	If you have references to javax.*, update them to jakarta.*.
-	•	In spring-web.xml, make sure all servlet configurations are compatible with Jakarta EE.
+If they are missing, add them and do a Maven update (mvn clean install).
 
-4️⃣ Update Java Classes (Servlet Imports)
+2. Check web.xml Configuration
 
-If you have servlet-related classes, update the imports.
+Your web.xml file inside WEB-INF should have:
 
-❌ Old (javax.servlet - Tomcat 9)
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+         http://java.sun.com/xml/ns/javaee/web-app_3_1.xsd"
+         version="3.1">
+  
+    <display-name>HazelcastTest</display-name>
 
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRegistration;
+    <servlet>
+        <servlet-name>dispatcher</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
 
-✅ New (jakarta.servlet - Tomcat 10)
+    <servlet-mapping>
+        <servlet-name>dispatcher</servlet-name>
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
 
-import jakarta.servlet.ServletContext;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRegistration;
+    <context-param>
+        <param-name>contextConfigLocation</param-name>
+        <param-value>/WEB-INF/applicationContext.xml</param-value>
+    </context-param>
 
-5️⃣ Rebuild and Deploy the WAR
+    <listener>
+        <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+    </listener>
 
-mvn clean package
+</web-app>
 
-Deploy target/your-app.war in Tomcat 10’s webapps/ folder and restart Tomcat.
+Make sure:
+	•	DispatcherServlet is properly configured.
+	•	ContextLoaderListener is present for loading applicationContext.xml.
 
-💡 Alternative: Run Tomcat in Compatibility Mode
+3. Ensure applicationContext.xml is Correct
 
-If you cannot migrate to Jakarta EE immediately, use Tomcat 9 instead, or run Tomcat 10 in compatibility mode.
-	1.	Download the Tomcat 9 version from here.
-	2.	If using Tomcat 10, use the migration tool:
+Your applicationContext.xml is already defining the Hazelcast client, but also ensure it’s properly picked up by Spring.
 
-java -jar tomcat-migration-tool.jar migrate -src /path/to/your/war -dest /path/to/migrated/war
+Try adding the following inside applicationContext.xml:
 
+<context:component-scan base-package="com.example"/>
+<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+    <property name="prefix" value="/views/"/>
+    <property name="suffix" value=".jsp"/>
+</bean>
 
-	3.	Alternatively, use Tomcat 10 EE Compatibility Mode:
+This ensures all annotated Spring components (@Component, @Service, @Configuration) are detected.
 
-catalina.sh run --add-opens=java.base/java.lang=ALL-UNNAMED
+4. Use Java-Based Configuration Instead of XML (If Needed)
 
-✅ Summary
+If you’re using Spring 6.x, consider removing web.xml and using WebApplicationInitializer:
 
-Issue	Solution
-Tomcat 10 requires jakarta.*	Update web.xml to use jakarta.servlet
-Spring Web MVC not working	Upgrade to Spring 6
-Servlet classes using javax.servlet	Change imports to jakarta.servlet
-Tomcat 10 WAR deployment fails	Use Tomcat 9 OR apply migration tool
+public class AppInitializer implements WebApplicationInitializer {
+    @Override
+    public void onStartup(ServletContext servletContext) {
+        AnnotationConfigWebApplicationContext ctx = new AnnotationConfigWebApplicationContext();
+        ctx.register(AppConfig.class);
+        ctx.setServletContext(servletContext);
 
-Would you like me to guide you in testing your WAR file in Tomcat 10? 🚀
+        ServletRegistration.Dynamic servlet = servletContext.addServlet("dispatcher", new DispatcherServlet(ctx));
+        servlet.setLoadOnStartup(1);
+        servlet.addMapping("/");
+    }
+}
+
+5. Ensure Logging is Properly Configured
+
+If logs from HazelcastConfig are not appearing, check if you have a log4j2.xml or logback.xml file in src/main/resources.
+
+For log4j2.xml:
+
+<Configuration status="WARN">
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n" />
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>
+
+Final Steps
+	•	Clean and rebuild: mvn clean install
+	•	Run the application again and check the logs.
+
+Let me know if the issue persists!
