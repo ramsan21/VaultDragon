@@ -1,140 +1,14 @@
-Here’s a Spring WAR application with:
-	•	A REST endpoint
-	•	Beans initialized using applicationContext.xml
-	•	Hazelcast Client initialized using ClientConfig
-	•	Packaged as a WAR file for deployment in Tomcat
+Issue: Tomcat 10 Requires Jakarta EE Instead of Javax
 
-1. Project Structure
+Starting from Tomcat 10, the Java EE (javax.) namespace has been replaced with **Jakarta EE (jakarta.)**. If your Spring WAR application is using javax.servlet, it will not work in Tomcat 10 because Tomcat 10 requires Jakarta EE 9 or later.
 
-spring-war-hazelcast/
-│── src/main/java/com/example/
-│   ├── config/
-│   │   ├── HazelcastConfig.java
-│   ├── controller/
-│   │   ├── HelloController.java
-│── src/main/webapp/WEB-INF/
-│   ├── web.xml
-│   ├── applicationContext.xml
-│── pom.xml
+🔧 Solution: Upgrade to Jakarta EE (Spring 5 or Spring 6)
 
-2. pom.xml (Maven Dependencies)
+1️⃣ Update web.xml (Replace javax.servlet with jakarta.servlet)
 
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+In src/main/webapp/WEB-INF/web.xml, change:
 
-    <groupId>com.example</groupId>
-    <artifactId>spring-war-hazelcast</artifactId>
-    <version>1.0</version>
-    <packaging>war</packaging>
-
-    <dependencies>
-        <!-- Spring Web MVC -->
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-webmvc</artifactId>
-            <version>5.3.30</version>
-        </dependency>
-
-        <!-- Hazelcast Client -->
-        <dependency>
-            <groupId>com.hazelcast</groupId>
-            <artifactId>hazelcast-client</artifactId>
-            <version>5.3.6</version>
-        </dependency>
-
-        <!-- Servlet API -->
-        <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
-            <version>4.0.1</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- Jackson for JSON -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.15.3</version>
-        </dependency>
-    </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-war-plugin</artifactId>
-                <version>3.3.2</version>
-                <configuration>
-                    <failOnMissingWebXml>false</failOnMissingWebXml>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-</project>
-
-3. applicationContext.xml (Bean Configuration)
-
-<beans xmlns="http://www.springframework.org/schema/beans"
-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xsi:schemaLocation="
-           http://www.springframework.org/schema/beans
-           http://www.springframework.org/schema/beans/spring-beans.xsd">
-
-    <!-- Register Hazelcast Client as a bean -->
-    <bean id="hazelcastClientConfig" class="com.example.config.HazelcastConfig" factory-method="getHazelcastClientInstance"/>
-
-</beans>
-
-4. HazelcastConfig.java (Hazelcast Client Configuration)
-
-package com.example.config;
-
-import com.hazelcast.client.config.ClientConfig;
-import com.hazelcast.client.HazelcastClient;
-import com.hazelcast.core.HazelcastInstance;
-
-public class HazelcastConfig {
-
-    private static HazelcastInstance hazelcastInstance;
-
-    public static HazelcastInstance getHazelcastClientInstance() {
-        if (hazelcastInstance == null) {
-            ClientConfig clientConfig = new ClientConfig();
-            clientConfig.getNetworkConfig().addAddress("127.0.0.1:5701"); // Adjust IP/port if needed
-            hazelcastInstance = HazelcastClient.newHazelcastClient(clientConfig);
-        }
-        return hazelcastInstance;
-    }
-}
-
-5. HelloController.java (REST Controller)
-
-package com.example.controller;
-
-import com.hazelcast.core.HazelcastInstance;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.concurrent.ConcurrentMap;
-
-@RestController
-@RequestMapping("/api")
-public class HelloController {
-
-    @Autowired
-    private HazelcastInstance hazelcastInstance;
-
-    @GetMapping("/hello")
-    public String sayHello() {
-        ConcurrentMap<String, String> map = hazelcastInstance.getMap("myDistributedMap");
-        map.put("message", "Hello from Hazelcast!");
-        return map.get("message");
-    }
-}
-
-6. web.xml (Deployment Descriptor)
+❌ Old (Java EE / Tomcat 9 and below)
 
 <web-app xmlns="http://java.sun.com/xml/ns/javaee"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -142,56 +16,111 @@ public class HelloController {
          http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
          version="3.0">
 
-    <display-name>Spring WAR Hazelcast Example</display-name>
-
     <servlet>
         <servlet-name>dispatcher</servlet-name>
         <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
-        <init-param>
-            <param-name>contextConfigLocation</param-name>
-            <param-value>/WEB-INF/applicationContext.xml</param-value>
-        </init-param>
-        <load-on-startup>1</load-on-startup>
     </servlet>
 
     <servlet-mapping>
         <servlet-name>dispatcher</servlet-name>
-        <url-pattern>/api/*</url-pattern>
+        <url-pattern>/</url-pattern>
     </servlet-mapping>
 </web-app>
 
-7. Build and Deploy
+✅ New (Jakarta EE / Tomcat 10+)
 
-Step 1: Package the WAR
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+         https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
+         version="5.0">
 
-Run the following Maven command:
+    <servlet>
+        <servlet-name>dispatcher</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>dispatcher</servlet-name>
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
+</web-app>
+
+2️⃣ Update pom.xml Dependencies
+
+❌ Old Dependencies (javax.servlet)
+
+<dependency>
+    <groupId>javax.servlet</groupId>
+    <artifactId>javax.servlet-api</artifactId>
+    <version>4.0.1</version>
+    <scope>provided</scope>
+</dependency>
+
+✅ New Dependencies (jakarta.servlet)
+
+<dependency>
+    <groupId>jakarta.servlet</groupId>
+    <artifactId>jakarta.servlet-api</artifactId>
+    <version>5.0.0</version>
+    <scope>provided</scope>
+</dependency>
+
+For Spring Web MVC:
+
+If you are using Spring 5, upgrade to Spring 6, which supports Jakarta EE:
+
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-webmvc</artifactId>
+    <version>6.1.2</version>
+</dependency>
+
+3️⃣ Update applicationContext.xml (Spring Configuration)
+	•	If you have references to javax.*, update them to jakarta.*.
+	•	In spring-web.xml, make sure all servlet configurations are compatible with Jakarta EE.
+
+4️⃣ Update Java Classes (Servlet Imports)
+
+If you have servlet-related classes, update the imports.
+
+❌ Old (javax.servlet - Tomcat 9)
+
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRegistration;
+
+✅ New (jakarta.servlet - Tomcat 10)
+
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRegistration;
+
+5️⃣ Rebuild and Deploy the WAR
 
 mvn clean package
 
-This generates a WAR file in target/spring-war-hazelcast-1.0.war.
+Deploy target/your-app.war in Tomcat 10’s webapps/ folder and restart Tomcat.
 
-Step 2: Deploy to Tomcat
-	1.	Copy the generated WAR file to Tomcat’s webapps/ folder.
-	2.	Start Tomcat:
+💡 Alternative: Run Tomcat in Compatibility Mode
 
-./catalina.sh run
+If you cannot migrate to Jakarta EE immediately, use Tomcat 9 instead, or run Tomcat 10 in compatibility mode.
+	1.	Download the Tomcat 9 version from here.
+	2.	If using Tomcat 10, use the migration tool:
+
+java -jar tomcat-migration-tool.jar migrate -src /path/to/your/war -dest /path/to/migrated/war
 
 
-	3.	Test the Endpoint:
-Open a browser or use curl to test:
+	3.	Alternatively, use Tomcat 10 EE Compatibility Mode:
 
-http://localhost:8080/spring-war-hazelcast/api/hello
+catalina.sh run --add-opens=java.base/java.lang=ALL-UNNAMED
 
-Expected Response:
+✅ Summary
 
-"Hello from Hazelcast!"
+Issue	Solution
+Tomcat 10 requires jakarta.*	Update web.xml to use jakarta.servlet
+Spring Web MVC not working	Upgrade to Spring 6
+Servlet classes using javax.servlet	Change imports to jakarta.servlet
+Tomcat 10 WAR deployment fails	Use Tomcat 9 OR apply migration tool
 
-Summary
-
-✅ Spring application packaged as WAR
-✅ Beans initialized using applicationContext.xml
-✅ Hazelcast Client initialized via ClientConfig
-✅ REST endpoint (/api/hello) interacts with Hazelcast
-✅ Deployable in Tomcat
-
-Would you like me to create a GitHub repository for you with this project?
+Would you like me to guide you in testing your WAR file in Tomcat 10? 🚀
