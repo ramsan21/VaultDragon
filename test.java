@@ -1,109 +1,108 @@
-Yes, you can log all the lifecycle events when a valid restart is received in Tomcat by implementing various listeners in your Spring application. Here's how you can do it:
+Let's troubleshoot the issue with Tomcat 10 shutdown events not being triggered. There are several potential causes and solutions:
 
-1. **Create a comprehensive ApplicationListener**
+## Common Causes for Shutdown Events Not Triggering
 
-   You can create a single listener that captures multiple application context events:
+1. **Improper Servlet Context Path**:
+   - Your ServletContextListener might not be registered properly
 
-   ```java
-   public class ApplicationLifecycleLogger implements ApplicationListener<ApplicationContextEvent> {
-       private static final Logger logger = LoggerFactory.getLogger(ApplicationLifecycleLogger.class);
-       
-       @Override
-       public void onApplicationEvent(ApplicationContextEvent event) {
-           if (event instanceof ContextRefreshedEvent) {
-               logger.info("Context Refreshed Event received: {}", event);
-           } else if (event instanceof ContextStartedEvent) {
-               logger.info("Context Started Event received: {}", event);
-           } else if (event instanceof ContextStoppedEvent) {
-               logger.info("Context Stopped Event received: {}", event);
-           } else if (event instanceof ContextClosedEvent) {
-               logger.info("Context Closed Event received: {}", event);
-           } else {
-               logger.info("Application Context Event received: {}", event);
-           }
-       }
-   }
-   ```
+2. **Jakarta vs Javax Import Confusion**:
+   - Make sure you're using `jakarta.*` packages instead of `javax.*`
 
-2. **Register the listener in applicationContext.xml**
+3. **Incorrect Shutdown Method**:
+   - You might be using a non-graceful shutdown method
 
-   ```xml
-   <bean id="applicationLifecycleLogger" class="com.example.ApplicationLifecycleLogger"/>
-   ```
+4. **Web.xml Configuration Issue**:
+   - Your listener might not be properly registered in web.xml
 
-3. **Log bean lifecycle events**
+5. **Context Configuration Location**:
+   - Spring context might not be loading properly
 
-   Create a BeanPostProcessor to log individual bean lifecycle events:
+## Troubleshooting Steps
 
-   ```java
-   public class BeanLifecycleLogger implements BeanPostProcessor, DisposableBean, InitializingBean {
-       private static final Logger logger = LoggerFactory.getLogger(BeanLifecycleLogger.class);
-       
-       @Override
-       public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
-           logger.info("Bean '{}' before initialization", beanName);
-           return bean;
-       }
-       
-       @Override
-       public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
-           logger.info("Bean '{}' after initialization", beanName);
-           return bean;
-       }
-       
-       @Override
-       public void destroy() {
-           logger.info("DisposableBean's destroy method called");
-       }
-       
-       @Override
-       public void afterPropertiesSet() {
-           logger.info("InitializingBean's afterPropertiesSet method called");
-       }
-   }
-   ```
+### 1. Check Your Shutdown Method
 
-4. **Register in applicationContext.xml**
+Ensure you're shutting down Tomcat properly:
+```bash
+# Use this command for graceful shutdown (recommended)
+$CATALINA_HOME/bin/shutdown.sh
 
-   ```xml
-   <bean id="beanLifecycleLogger" class="com.example.BeanLifecycleLogger"/>
-   ```
+# Don't use these to test shutdown hooks
+# kill -9 <tomcat-pid>  # This will force-kill and skip shutdown hooks
+# Ctrl+C in the terminal  # Might not trigger all shutdown hooks
+```
 
-5. **ServletContextListener for Tomcat lifecycle**
+### 2. Double-Check Your web.xml
 
-   Implement a ServletContextListener to capture Tomcat-specific events:
+Ensure your listener is registered properly and uses the correct package:
 
-   ```java
-   public class TomcatLifecycleLogger implements ServletContextListener {
-       private static final Logger logger = LoggerFactory.getLogger(TomcatLifecycleLogger.class);
-       
-       @Override
-       public void contextInitialized(ServletContextEvent sce) {
-           logger.info("Servlet context initialized: {}", sce.getServletContext().getServerInfo());
-       }
-       
-       @Override
-       public void contextDestroyed(ServletContextEvent sce) {
-           logger.info("Servlet context being destroyed: {}", sce.getServletContext().getServerInfo());
-       }
-   }
-   ```
+```xml
+<listener>
+    <listener-class>com.example.shutdown.CustomShutdownListener</listener-class>
+</listener>
+```
 
-6. **Register in web.xml**
+### 3. Verify Imports in Your Listener Class
 
-   ```xml
-   <listener>
-       <listener-class>com.example.TomcatLifecycleLogger</listener-class>
-   </listener>
-   ```
+Make sure you're using Jakarta EE imports:
 
-7. **Spring Boot Actuator (if applicable)**
+```java
+import jakarta.servlet.ServletContextEvent;
+import jakarta.servlet.ServletContextListener;
+// NOT javax.servlet.*
+```
 
-   If you're using Spring Boot, you can enable the Actuator's shutdown endpoint to get additional logging:
+### 4. Add Debug Logging
 
-   ```properties
-   management.endpoints.web.exposure.include=shutdown
-   management.endpoint.shutdown.enabled=true
-   ```
+Add more explicit debug logging to your shutdown methods:
 
-When Tomcat receives a valid restart command, these listeners will log the various lifecycle events as they occur, providing you with a comprehensive log of the shutdown and startup sequence.
+```java
+@Override
+public void contextDestroyed(ServletContextEvent sce) {
+    System.out.println("APPLICATION SHUTDOWN: Context destroyed event received");
+    logger.info("APPLICATION SHUTDOWN: Context destroyed event received");
+    
+    // Rest of your code...
+}
+```
+
+### 5. Check Tomcat logs
+
+Look for any errors in Tomcat's logs:
+```
+$CATALINA_HOME/logs/catalina.out
+```
+
+### 6. Try Different Shutdown Hooks
+
+If the ServletContextListener isn't working, try implementing a Spring-based shutdown hook:
+
+```java
+@Component
+public class ApplicationShutdownHook implements DisposableBean {
+    private static final Logger logger = LoggerFactory.getLogger(ApplicationShutdownHook.class);
+    
+    @Override
+    public void destroy() throws Exception {
+        System.out.println("APPLICATION SHUTDOWN: Spring DisposableBean hook triggered");
+        logger.info("APPLICATION SHUTDOWN: Spring DisposableBean hook triggered");
+        // Your shutdown logic
+    }
+}
+```
+
+### 7. Runtime Shutdown Hook (Last Resort)
+
+Add a JVM shutdown hook:
+
+```java
+@PostConstruct
+public void registerShutdownHook() {
+    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+        System.out.println("APPLICATION SHUTDOWN: JVM shutdown hook triggered");
+        logger.info("APPLICATION SHUTDOWN: JVM shutdown hook triggered");
+        // Your shutdown logic
+    }));
+}
+```
+
+Would you like me to provide a specific fix for any of these areas based on your setup? Or would you like to share more details about your specific implementation so I can provide more targeted help?
