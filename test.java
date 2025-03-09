@@ -1,118 +1,81 @@
-If System.exit(0) was the only way to stop your Hazelcast instance, it means that something in your system was preventing the JVM from shutting down properly. Let’s debug the possible causes.
+Yes! You can iterate through all active threads obtained from Thread.getAllStackTraces() and attempt to stop or interrupt them. However, Java does not provide a safe way to forcibly kill a thread, because stopping a thread without proper handling can lead to corrupted data or inconsistent states.
 
 ⸻
 
-🔍 Possible Reasons Why Hazelcast Didn’t Shutdown Properly
+🚀 How to Stop/Kill All Running Threads in Java
 
-Even after calling instance.shutdown(), Hazelcast.shutdownAll(), or HazelcastClient.shutdownAll(), if the process was still alive, it suggests:
+1️⃣ List All Running Threads
 
-1. Background Threads Keeping JVM Alive
-
-Hazelcast runs several background non-daemon threads that might be keeping the process alive:
-	•	IO Threads (Networking, Discovery)
-	•	Heartbeat/Monitoring Threads
-	•	Executor Services (Scheduled Tasks, Event Listeners)
-	•	Cluster Rebalancing Tasks
-
-🛠 How to Detect Hazelcast Threads
-
-Before calling System.exit(0), print all running threads:
+First, print all active threads before attempting to stop them:
 
 Thread.getAllStackTraces().keySet()
     .forEach(thread -> log.info("Active Thread: " + thread.getName() + " | State: " + thread.getState()));
 
-Look for any Hazelcast-related threads that are still active.
+
 
 ⸻
 
-2. Hazelcast Client Still Connected
+2️⃣ Interrupt Running Threads (Safe Approach)
 
-If you are using Hazelcast in client mode (HazelcastClient.newHazelcastClient()), it may not be shutting down properly.
+You can interrupt all non-daemon threads that are blocking or waiting.
 
-✅ Fix: Ensure client shutdown explicitly
-
-if (instance instanceof HazelcastInstance) {
-    instance.shutdown();
-} else if (instance instanceof HazelcastClientInstance) {
-    ((HazelcastClientInstance) instance).shutdown();
+public void stopAllThreads() {
+    log.info("Stopping all active threads...");
+    for (Thread thread : Thread.getAllStackTraces().keySet()) {
+        if (!thread.isDaemon() && !thread.getName().contains("main")) { // Avoid killing main thread
+            log.info("Attempting to stop thread: " + thread.getName());
+            thread.interrupt();
+        }
+    }
 }
 
-HazelcastClient.shutdownAll();
-Hazelcast.shutdownAll();
+✅ This is the safest approach because it asks the threads to stop rather than killing them forcibly.
+
+⸻
+
+3️⃣ Forcefully Stop Hazelcast Threads (Unsafe Approach)
+
+Since Thread.stop() is deprecated, you cannot directly stop a thread safely. However, if you’re sure Hazelcast is causing the issue, you can terminate its executors.
+
+for (Thread thread : Thread.getAllStackTraces().keySet()) {
+    if (thread.getName().contains("hz.") || thread.getName().contains("hazelcast")) {
+        log.info("Forcibly stopping Hazelcast thread: " + thread.getName());
+        thread.interrupt(); // Ask the thread to stop
+    }
+}
 
 
 
 ⸻
 
-3. Shutdown Hook Not Triggering
+4️⃣ Shutdown Hazelcast Executors Manually
 
-If your shutdown hook is not getting executed on JVM exit, it can leave Hazelcast running.
-
-✅ Fix: Manually add a shutdown hook
-
-Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-    log.info("JVM Shutdown Hook: Stopping Hazelcast...");
-    Hazelcast.shutdownAll();
-}));
-
-
-
-⸻
-
-4. Stale Network Connections Preventing Shutdown
-
-If Hazelcast has open network sockets (e.g., TCP connections to other nodes), it can prevent the JVM from stopping.
-
-✅ Fix: Enable aggressive shutdown mode
-
-hazelcastInstance.getLifecycleService().terminate();
-
-This forces immediate shutdown without waiting for operations to complete.
-
-⸻
-
-5. Force Shutdown Hazelcast Executors
-
-If Hazelcast is running executor services, they might still be active.
-
-✅ Fix: Shut down executors manually
+If Hazelcast is keeping the JVM alive, you should shut down Hazelcast executors manually:
 
 HazelcastInstance hzInstance = instance;
 if (hzInstance != null) {
-    hzInstance.getExecutorService("default").shutdown();
+    hzInstance.getExecutorService("default").shutdownNow();
 }
 
 
 
 ⸻
 
-🛠 Debugging Next Steps
+5️⃣ Force Kill the JVM (Last Resort)
 
-1️⃣ Print all active threads before shutdown
-
-Thread.getAllStackTraces().keySet()
-    .forEach(thread -> log.info("Thread: " + thread.getName()));
-
-2️⃣ Check if Hazelcast.getAllHazelcastInstances() is empty after shutdown
-
-log.info("Remaining Hazelcast instances: " + Hazelcast.getAllHazelcastInstances());
-
-3️⃣ Ensure client and member shutdown separately
-
-instance.shutdown();
-Hazelcast.shutdownAll();
-HazelcastClient.shutdownAll();
-
-4️⃣ Force terminate if shutdown fails
+If nothing works, you can forcefully terminate the JVM, but this should be your last option:
 
 System.exit(0);
 
-
+⚠️ Warning: This will immediately stop the process without cleanup.
 
 ⸻
 
-Final Thoughts
+🔍 Next Steps
 
-🚀 Since System.exit(0) worked for you, it’s clear that some Hazelcast threads were still running. Try the debugging steps above to pinpoint the issue.
+1️⃣ List all active threads before killing them (Thread.getAllStackTraces()).
+2️⃣ Interrupt Hazelcast-related threads (thread.interrupt()).
+3️⃣ Manually stop Hazelcast executors (shutdownNow()).
+4️⃣ Only use System.exit(0) if no other method works.
 
-Would you like me to help analyze the running threads further?
+Would you like me to help analyze the list of running threads to pinpoint the issue? 🚀
