@@ -1,91 +1,123 @@
-If HazelcastInstance.shutdown() is not closing all instances properly, there could be multiple reasons for this behavior. Here are possible causes and solutions to ensure all Hazelcast instances are correctly shut down.
+Issues with Hazelcast Shutdown in Your Code
 
-⸻
+Your current shutdown method calls:
 
-Possible Causes & Solutions
-
-1. Multiple Hazelcast Instances Running
-	•	If multiple instances are running in your application (e.g., created separately), calling shutdown() on one instance will only close that specific instance, leaving others running.
-
-Solution: Shutdown All Instances
-
+instance.shutdown();
 Hazelcast.shutdownAll();
+HazelcastClient.shutdownAll();
 
-✅ This ensures that all running Hazelcast instances in the JVM are shut down.
+However, the process is still lingering, meaning something is keeping the JVM alive.
+
+Potential Reasons
+	1.	Hazelcast Client Doesn’t Shutdown Completely
+	•	If instance is a Hazelcast client, calling instance.shutdown() only disconnects it but does not stop cluster members.
+	•	Hazelcast.shutdownAll() works for Hazelcast members but not for clients.
+	•	HazelcastClient.shutdownAll() is the correct way to ensure all clients are shutdown.
+	2.	Hazelcast Threads Keeping JVM Alive
+	•	Hazelcast may have lingering threads (e.g., heartbeat, event listener, async tasks) preventing JVM shutdown.
+	3.	Shutdown Hook Not Triggered Properly
+	•	The JVM may still be waiting for background Hazelcast tasks.
+	4.	Lingering Hazelcast Resources (IO, Networking)
+	•	Open sockets, listeners, or Hazelcast executors might still be running.
 
 ⸻
 
-2. Shutdown Hook Conflicts
+✔️ Corrected Shutdown Code
 
-If you’re relying on Runtime.getRuntime().addShutdownHook(), it might not be getting executed properly in certain conditions (e.g., force kill, abrupt shutdown).
+To properly shut down all Hazelcast clients and members, modify your shutdown method as follows:
 
-Solution: Ensure Shutdown Hook is Added
+@Override
+public void shutdown() {
+    log.info("Shutting down Hazelcast...");
+
+    if (instance != null) {
+        try {
+            log.info("Shutting down Hazelcast instance...");
+            instance.shutdown();
+        } catch (Exception e) {
+            log.error("Error shutting down Hazelcast instance", e);
+        }
+    }
+
+    try {
+        log.info("Shutting down all Hazelcast members...");
+        Hazelcast.shutdownAll();
+    } catch (Exception e) {
+        log.error("Error shutting down Hazelcast members", e);
+    }
+
+    try {
+        log.info("Shutting down all Hazelcast clients...");
+        HazelcastClient.shutdownAll();
+    } catch (Exception e) {
+        log.error("Error shutting down Hazelcast clients", e);
+    }
+
+    log.info("Hazelcast shutdown complete.");
+}
+
+
+
+⸻
+
+✔️ Steps to Verify Proper Shutdown
+
+After calling shutdown(), check:
+	1.	Confirm No Active Hazelcast Instances
+
+if (Hazelcast.getAllHazelcastInstances().isEmpty()) {
+    log.info("All Hazelcast instances have been shut down.");
+} else {
+    log.warn("Some Hazelcast instances are still running: " + Hazelcast.getAllHazelcastInstances());
+}
+
+This will print remaining instances if any are still running.
+
+	2.	Ensure JVM Exits
+If your process is still running after shutdown(), manually force JVM termination as a last resort:
+
+System.exit(0);
+
+However, if System.exit(0); is required, it means Hazelcast isn’t fully releasing resources, and further debugging is needed.
+
+	3.	Check for Hazelcast Threads
+Run:
+
+Thread.getAllStackTraces().keySet()
+      .forEach(thread -> log.info("Thread: " + thread.getName()));
+
+If you see Hazelcast-related threads still running, some services might not have shut down.
+
+⸻
+
+✔️ Additional Fixes
+
+1. Add a JVM Shutdown Hook
+
+Ensure Hazelcast shuts down properly on JVM termination:
 
 Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-    log.info("Shutting down Hazelcast...");
-    Hazelcast.shutdownAll();
+    log.info("JVM Shutdown Hook: Stopping Hazelcast...");
+    shutdown();
 }));
 
-✅ This ensures Hazelcast shuts down when the JVM is terminated.
+2. Set Client Shutdown Mode
+
+If using Hazelcast clients, add:
+
+ClientConfig clientConfig = new ClientConfig();
+clientConfig.setProperty("hazelcast.client.shutdownhook.enabled", "true");
+clientConfig.setProperty("hazelcast.client.shutdownhook.policy", "GRACEFUL");
+
+This ensures clients exit properly when the JVM shuts down.
 
 ⸻
 
-3. Hazelcast Client vs. Member Issue
+Final Checklist
 
-If you’re shutting down a Hazelcast client, it does not shut down the cluster members. The client only disconnects from the cluster, but the nodes remain active.
+✅ Use Hazelcast.shutdownAll() and HazelcastClient.shutdownAll()
+✅ Check for active instances after shutdown
+✅ Ensure Hazelcast threads are not blocking JVM exit
+✅ Add a JVM shutdown hook
 
-Solution: Ensure You’re Shutting Down Members
-	•	If running a client:
-
-hazelcastClient.shutdown(); // Only shuts down the client
-
-
-	•	If running a member:
-
-hazelcastMember.shutdown(); // Only shuts down that member
-
-
-	•	Best approach: Ensure shutdown on all nodes:
-
-Hazelcast.shutdownAll();
-
-
-
-⸻
-
-4. Hazelcast Instances Running in Different JVMs
-
-If you have Hazelcast running in different JVMs (e.g., microservices or distributed environment), shutdownAll() only affects the current JVM.
-
-Solution: Use Hazelcast Management Center or REST API
-	•	If Hazelcast is deployed across multiple JVMs, use the Management Center or REST API to stop nodes.
-
-Example: Shut down from REST API
-
-curl -X POST http://<hazelcast-node-ip>:5701/hazelcast/rest/management/cluster/kill
-
-✅ This ensures nodes across different JVMs are stopped.
-
-⸻
-
-5. Delayed Shutdown Due to Cluster Config
-
-Some Hazelcast configurations (like backups or partition rebalancing) might delay the shutdown process.
-
-Solution: Force Immediate Shutdown
-
-hazelcastInstance.getLifecycleService().terminate();
-
-✅ This forces an immediate shutdown, bypassing some of the graceful shutdown steps.
-
-⸻
-
-Final Steps
-
-Try these solutions in order:
-	1.	Call Hazelcast.shutdownAll() – Ensures all local instances shut down.
-	2.	Check if instances are clients or members – Ensure you’re shutting down the right type.
-	3.	Use a shutdown hook – Ensures proper shutdown on JVM exit.
-	4.	Check if instances exist in different JVMs – If so, use REST API or Management Center.
-
-Would you like me to help debug further? Let me know your exact Hazelcast setup (cluster, client, AKS, etc.).
+Try these fixes and let me know if Hazelcast still keeps the JVM alive! 🚀
