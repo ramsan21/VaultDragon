@@ -1,52 +1,62 @@
-Since you don’t want IntelliJ to connect to the internet or its plugin manager, you can disable these automatic connections and plugin updates. Here’s how:
+From the error message on your screen, it looks like your Helm installation failed while upgrading or installing the release s2bsec-id-exp. Here are a few possible reasons and steps to troubleshoot:
 
-1. Disable Plugin Auto-Updates
-	•	Open IntelliJ IDEA.
-	•	Go to Settings (File > Settings on Windows/Linux or IntelliJ IDEA > Preferences on macOS).
-	•	Navigate to Plugins.
-	•	Click on the settings ⚙️ icon (top-right corner).
-	•	Uncheck “Check for plugin updates”.
+1. Check Helm Release Name and Namespace
+	•	Ensure that the release name s2bsec-id-exp is correctly defined and does not already exist in an invalid state.
+	•	The namespace seems to be t****.s2bsec-2b-security. Check if this namespace exists using:
 
-2. Disable IntelliJ from Accessing JetBrains Plugin Repository
-	•	Open Settings.
-	•	Go to Plugins > Marketplace.
-	•	Click on the settings ⚙️ icon and select “Manage Plugin Repositories”.
-	•	Remove or disable any JetBrains repository URLs listed.
+kubectl get ns
 
-3. Disable HTTP Requests to JetBrains
-	•	Open Help > Diagnostic Tools > Debug Log Settings.
-	•	Add:
 
-#disable plugin updates
-idea.plugins.disabled=true
-#disable automatic requests to JetBrains servers
-idea.connection.timeout=0
+	•	If the namespace doesn’t exist, create it:
 
-Then restart IntelliJ.
-
-4. Block Plugin Manager Using idea.properties
-	•	Locate the IntelliJ configuration directory:
-	•	On Windows: C:\Users\<your-username>\.IntelliJIdea<version>\config
-	•	On Linux/macOS: ~/.config/JetBrains/IntelliJIdea<version>/
-	•	Open or create the file idea.properties inside this directory.
-	•	Add the following:
-
-idea.plugins.hosts=
-
-This prevents IntelliJ from connecting to any plugin repository.
-
-5. Modify Hosts File to Block JetBrains Plugin Manager (Optional)
-
-If you want to ensure IntelliJ never connects to the JetBrains plugin server:
-	•	Edit your system’s hosts file:
-	•	Windows: Open Notepad as Administrator and edit C:\Windows\System32\drivers\etc\hosts.
-	•	Linux/macOS: Edit /etc/hosts with sudo.
-	•	Add:
-
-127.0.0.1 plugins.jetbrains.com
+kubectl create namespace <namespace-name>
 
 
 
-6. Restart IntelliJ IDEA
+2. Debug Helm Install Command
+	•	Try running the Helm install command manually with debug mode:
 
-After making these changes, restart IntelliJ. It should no longer try to connect to the JetBrains plugin repository or check for plugin updates.
+helm upgrade --install s2bsec-id-exp $ABSD//s2bsec-id-exp -n <namespace> --debug
+
+
+	•	If there’s an issue with ABSD variable expansion, try replacing it with the actual Helm chart path.
+
+3. Validate the Helm Chart
+	•	Run:
+
+helm lint /path/to/helm/chart
+
+
+	•	If there are errors, fix them before re-running the pipeline.
+
+4. Check Kubernetes API Server Connectivity
+	•	Ensure that your cluster is accessible:
+
+kubectl cluster-info
+kubectl get nodes
+
+
+	•	If you can’t connect, there may be networking issues.
+
+5. Inspect Helm Logs
+	•	Check Helm release status:
+
+helm list -n <namespace>
+
+
+	•	If the release exists in a FAILED state, delete and reinstall:
+
+helm delete s2bsec-id-exp -n <namespace>
+helm upgrade --install s2bsec-id-exp <chart-path> -n <namespace>
+
+
+
+6. Verify Helm Version Compatibility
+	•	Run:
+
+helm version
+
+
+	•	Ensure your Helm version is compatible with the chart.
+
+Try these steps and let me know what errors you get.
