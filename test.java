@@ -1,62 +1,31 @@
-From the error message on your screen, it looks like your Helm installation failed while upgrading or installing the release s2bsec-id-exp. Here are a few possible reasons and steps to troubleshoot:
+#!/bin/bash
 
-1. Check Helm Release Name and Namespace
-	•	Ensure that the release name s2bsec-id-exp is correctly defined and does not already exist in an invalid state.
-	•	The namespace seems to be t****.s2bsec-2b-security. Check if this namespace exists using:
+filename="suspend_user.log"
 
-kubectl get ns
+# Check if the file exists
+if [ -f "$filename" ]; then
+    # Get the file's creation/modification date in YYYY-MM-DD format
+    file_date=$(date -r "$filename" +%F)
+    today=$(date +%F)
 
+    if [ "$file_date" = "$today" ]; then
+        echo "File $filename was created/modified today."
 
-	•	If the namespace doesn’t exist, create it:
+        # 4 grep checks (adjust patterns as needed)
+        echo "Grep 1 (pattern: 'ERROR'):"
+        grep "ERROR" "$filename"
 
-kubectl create namespace <namespace-name>
+        echo "Grep 2 (pattern: 'WARN'):"
+        grep "WARN" "$filename"
 
+        echo "Grep 3 (pattern: 'Suspended'):"
+        grep "Suspended" "$filename"
 
-
-2. Debug Helm Install Command
-	•	Try running the Helm install command manually with debug mode:
-
-helm upgrade --install s2bsec-id-exp $ABSD//s2bsec-id-exp -n <namespace> --debug
-
-
-	•	If there’s an issue with ABSD variable expansion, try replacing it with the actual Helm chart path.
-
-3. Validate the Helm Chart
-	•	Run:
-
-helm lint /path/to/helm/chart
-
-
-	•	If there are errors, fix them before re-running the pipeline.
-
-4. Check Kubernetes API Server Connectivity
-	•	Ensure that your cluster is accessible:
-
-kubectl cluster-info
-kubectl get nodes
-
-
-	•	If you can’t connect, there may be networking issues.
-
-5. Inspect Helm Logs
-	•	Check Helm release status:
-
-helm list -n <namespace>
-
-
-	•	If the release exists in a FAILED state, delete and reinstall:
-
-helm delete s2bsec-id-exp -n <namespace>
-helm upgrade --install s2bsec-id-exp <chart-path> -n <namespace>
-
-
-
-6. Verify Helm Version Compatibility
-	•	Run:
-
-helm version
-
-
-	•	Ensure your Helm version is compatible with the chart.
-
-Try these steps and let me know what errors you get.
+        echo "Grep 4 (pattern: 'User'):"
+        grep "User" "$filename"
+    else
+        echo "File $filename was NOT created/modified today. It was modified on $file_date."
+    fi
+else
+    echo "File $filename does not exist."
+fi
