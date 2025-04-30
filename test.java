@@ -1,15 +1,18 @@
 #!/bin/bash
 
-# Set the directory path
+# Directory to search
 directory="/path/to/your/folder"
 
-# Get today's date in YYYY-MM-DD format
+# Today's date
 today=$(date +%F)
 
-# Find matching files modified today and get the latest 6
-file_count=$(find "$directory" -maxdepth 1 -type f -name '*_SuspendAlertReport*' \
-  -newermt "$today" ! -newermt "$today +1 day" \
-  -printf '%T@ %p\n' | sort -nr | head -6 | wc -l)
+# Combined find for multiple patterns
+file_count=$(find "$directory" -maxdepth 1 -type f \( \
+    -name '*_SuspendAlertReport*' -o \
+    -name '*_SuspendUserReport*' -o \
+    -name '*_SuspendSummary*' \
+    \) -newermt "$today" ! -newermt "$today +1 day" \
+    -printf '%T@ %p\n' | sort -nr | head -6 | wc -l)
 
-# Output the count
+# Output the result
 echo "$file_count"
