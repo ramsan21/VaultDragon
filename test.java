@@ -1,31 +1,56 @@
 #!/bin/bash
 
-filename="suspend_user.log"
+# --- Part 1: Check suspend_user.log ---
+log_file="suspend_user.log"
+today=$(date +%F)
 
-# Check if the file exists
-if [ -f "$filename" ]; then
-    # Get the file's creation/modification date in YYYY-MM-DD format
-    file_date=$(date -r "$filename" +%F)
-    today=$(date +%F)
+if [ -f "$log_file" ]; then
+    log_date=$(date -r "$log_file" +%F)
 
-    if [ "$file_date" = "$today" ]; then
-        echo "File $filename was created/modified today."
+    if [ "$log_date" = "$today" ]; then
+        echo "File $log_file was modified today."
 
-        # 4 grep checks (adjust patterns as needed)
         echo "Grep 1 (pattern: 'ERROR'):"
-        grep "ERROR" "$filename"
+        grep "ERROR" "$log_file"
 
         echo "Grep 2 (pattern: 'WARN'):"
-        grep "WARN" "$filename"
+        grep "WARN" "$log_file"
 
         echo "Grep 3 (pattern: 'Suspended'):"
-        grep "Suspended" "$filename"
+        grep "Suspended" "$log_file"
 
         echo "Grep 4 (pattern: 'User'):"
-        grep "User" "$filename"
+        grep "User" "$log_file"
     else
-        echo "File $filename was NOT created/modified today. It was modified on $file_date."
+        echo "File $log_file was NOT modified today. Last modified: $log_date"
     fi
 else
-    echo "File $filename does not exist."
+    echo "File $log_file does not exist."
+fi
+
+# --- Part 2: Check last 6 SuspendUserReprt*.csv files ---
+echo ""
+echo "Checking last 6 SuspendUserReprt*.csv files..."
+
+csv_files_found=false
+
+# Get last 6 modified files
+csv_files=$(ls -t SuspendUserReprt*.csv 2>/dev/null | head -n 6)
+
+if [ -z "$csv_files" ]; then
+    echo "No SuspendUserReprt*.csv files found."
+else
+    for file in $csv_files; do
+        file_date=$(date -r "$file" +%F)
+        file_size_kb=$(du -k "$file" | cut -f1)
+
+        if [ "$file_date" = "$today" ] && [ "$file_size_kb" -gt 216 ]; then
+            echo "File $file was modified today and is > 216 KB ($file_size_kb KB)."
+            csv_files_found=true
+        fi
+    done
+
+    if [ "$csv_files_found" = false ]; then
+        echo "None of the last 6 files were modified today and > 216 KB."
+    fi
 fi
