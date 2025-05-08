@@ -1,4 +1,4 @@
-@Bean
+n@Bean
 public Step runShellCommandAndModifyFileStep() {
     return stepBuilderFactory.get("runShellCommandAndModifyFileStep")
         .tasklet((contribution, chunkContext) -> {
@@ -39,4 +39,12 @@ public Step runShellCommandAndModifyFileStep() {
             return RepeatStatus.FINISHED;
         })
         .build();
+
+@Bean
+public Job fileProcessingJob() {
+    return jobBuilderFactory.get("fileProcessingJob")
+        .start(runShellCommandAndModifyFileStep())
+        .build();
+}
+
 }
