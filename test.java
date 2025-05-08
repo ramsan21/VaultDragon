@@ -1,18 +1,42 @@
-#!/bin/bash
+@Bean
+public Step runShellCommandAndModifyFileStep() {
+    return stepBuilderFactory.get("runShellCommandAndModifyFileStep")
+        .tasklet((contribution, chunkContext) -> {
 
-# Directory to search
-directory="/path/to/your/folder"
+            // Step 1: Run the shell command and capture the output
+            String[] command = {
+                "bash", "-c",
+                "awk -F '\\001' '$1 == \"D\" {print $1}' ALL_STARSECURITY_AUDIT_LOG_20250508_D_I_0.dat | wc -l"
+            };
 
-# Today's date
-today=$(date +%F)
+            Process process = new ProcessBuilder(command).start();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String output = reader.readLine();
+            int exitCode = process.waitFor();
 
-# Combined find for multiple patterns
-file_count=$(find "$directory" -maxdepth 1 -type f \( \
-    -name '*_SuspendAlertReport*' -o \
-    -name '*_SuspendUserReport*' -o \
-    -name '*_SuspendSummary*' \
-    \) -newermt "$today" ! -newermt "$today +1 day" \
-    -printf '%T@ %p\n' | sort -nr | head -6 | wc -l)
+            if (exitCode != 0) {
+                throw new RuntimeException("Shell command failed");
+            }
 
-# Output the result
-echo "$file_count"
+            // Save output to variable
+            int recordCount = Integer.parseInt(output.trim());
+            System.out.println("Record count: " + recordCount);
+
+            // Step 2: Read and replace last line starting with "T"
+            Path filePath = Paths.get("ALL_STARSECURITY_AUDIT_LOG_20250508_D_I_0.dat");
+            List<String> lines = Files.readAllLines(filePath);
+
+            if (!lines.isEmpty()) {
+                int lastIndex = lines.size() - 1;
+                if (lines.get(lastIndex).startsWith("T")) {
+                    // Example replacement: Replace "T" line with "T|<recordCount>"
+                    lines.set(lastIndex, "T|" + recordCount);
+                    Files.write(filePath, lines);
+                    System.out.println("Replaced last T line with updated content.");
+                }
+            }
+
+            return RepeatStatus.FINISHED;
+        })
+        .build();
+}
