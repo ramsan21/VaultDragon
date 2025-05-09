@@ -1,50 +1,34 @@
-n@Bean
-public Step runShellCommandAndModifyFileStep() {
-    return stepBuilderFactory.get("runShellCommandAndModifyFileStep")
-        .tasklet((contribution, chunkContext) -> {
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
-            // Step 1: Run the shell command and capture the output
-            String[] command = {
-                "bash", "-c",
-                "awk -F '\\001' '$1 == \"D\" {print $1}' ALL_STARSECURITY_AUDIT_LOG_20250508_D_I_0.dat | wc -l"
-            };
+public class TimeZoneConverter {
 
-            Process process = new ProcessBuilder(command).start();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String output = reader.readLine();
-            int exitCode = process.waitFor();
+    // Formatter for consistent output
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z");
 
-            if (exitCode != 0) {
-                throw new RuntimeException("Shell command failed");
-            }
+    public static void main(String[] args) {
+        // Convert UTC to HKT
+        String utcToHkt = convertUtcToHkt("2025-05-09T10:00:00");
+        System.out.println("UTC to HKT: " + utcToHkt);
 
-            // Save output to variable
-            int recordCount = Integer.parseInt(output.trim());
-            System.out.println("Record count: " + recordCount);
+        // Convert HKT to UTC
+        String hktToUtc = convertHktToUtc("2025-05-09T18:00:00");
+        System.out.println("HKT to UTC: " + hktToUtc);
+    }
 
-            // Step 2: Read and replace last line starting with "T"
-            Path filePath = Paths.get("ALL_STARSECURITY_AUDIT_LOG_20250508_D_I_0.dat");
-            List<String> lines = Files.readAllLines(filePath);
+    public static String convertUtcToHkt(String utcDateTimeStr) {
+        LocalDateTime utcDateTime = LocalDateTime.parse(utcDateTimeStr);
+        ZonedDateTime utcZoned = utcDateTime.atZone(ZoneId.of("UTC"));
+        ZonedDateTime hktZoned = utcZoned.withZoneSameInstant(ZoneId.of("Asia/Hong_Kong"));
+        return hktZoned.format(formatter);
+    }
 
-            if (!lines.isEmpty()) {
-                int lastIndex = lines.size() - 1;
-                if (lines.get(lastIndex).startsWith("T")) {
-                    // Example replacement: Replace "T" line with "T|<recordCount>"
-                    lines.set(lastIndex, "T|" + recordCount);
-                    Files.write(filePath, lines);
-                    System.out.println("Replaced last T line with updated content.");
-                }
-            }
-
-            return RepeatStatus.FINISHED;
-        })
-        .build();
-
-@Bean
-public Job fileProcessingJob() {
-    return jobBuilderFactory.get("fileProcessingJob")
-        .start(runShellCommandAndModifyFileStep())
-        .build();
-}
-
+    public static String convertHktToUtc(String hktDateTimeStr) {
+        LocalDateTime hktDateTime = LocalDateTime.parse(hktDateTimeStr);
+        ZonedDateTime hktZoned = hktDateTime.atZone(ZoneId.of("Asia/Hong_Kong"));
+        ZonedDateTime utcZoned = hktZoned.withZoneSameInstant(ZoneId.of("UTC"));
+        return utcZoned.format(formatter);
+    }
 }
