@@ -1,15 +1,12 @@
 @startuml
-box "Internal" #LightGray
-participant S2B
-participant UAAS
-end box
-
 actor User
 participant "External Application" as ExtApp
+participant S2B
+participant UAAS
 
 == Authorization Flow ==
 
-User -> ExtApp : [001] Authorizaation request
+User -> ExtApp : [001] Authorization request
 ExtApp -> User : [002] Login to External Application\nwith valid session
 
 ExtApp -> S2B : [003] /oauth/v2/authorize
