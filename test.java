@@ -1,53 +1,22 @@
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+@startuml
+actor User
+participant "External Application" as ExtApp
+participant S2B
+participant UAAS
 
-import static org.mockito.Mockito.*;
+== Authorization Flow ==
 
-import com.hazelcast.core.EntryEvent;
-import com.hazelcast.map.MapEvent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+User -> ExtApp : [001] Authorization request
+ExtApp -> User : [002] Login to External Application\nwith valid session
 
-public class CacheEntryListenerTest {
+ExtApp -> S2B : [003] /oauth/v2/authorize
+S2B -> UAAS : 
+UAAS --> S2B : [004] authorization code
+S2B -> ExtApp : [005] Authorization code
 
-    private CacheEntryListener listener;
-    private EntryEvent<String, Object> mockEvent;
-    private MapEvent mockMapEvent;
+ExtApp -> S2B : [006] /oauth/v2/token
+S2B -> UAAS : [007] /oauth/v2/token
+UAAS --> S2B : [008] access token response
+S2B -> ExtApp : [009] access token
 
-    @BeforeEach
-    public void setup() {
-        listener = new CacheEntryListener();
-        mockEvent = mock(EntryEvent.class);
-        mockMapEvent = mock(MapEvent.class);
-
-        when(mockEvent.getKey()).thenReturn("sampleKey");
-        when(mockEvent.getValue()).thenReturn("sampleValue");
-        when(mockMapEvent.getName()).thenReturn("sampleMap");
-    }
-
-    @Test
-    public void testEntryAdded() {
-        listener.entryAdded(mockEvent);
-    }
-
-    @Test
-    public void testEntryRemoved() {
-        listener.entryRemoved(mockEvent);
-    }
-
-    @Test
-    public void testEntryEvicted() {
-        listener.entryEvicted(mockEvent);
-    }
-
-    @Test
-    public void testEntryExpired() {
-        listener.entryExpired(mockEvent);
-    }
-
-    @Test
-    public void testMapEvicted() {
-        listener.mapEvicted(mockMapEvent);
-    }
-}
+@enduml
