@@ -1,22 +1,52 @@
-@startuml
-actor User
-participant "External Application" as ExtApp
-participant S2B
-participant UAAS
+Here’s how to tar and untar a folder in Linux:
 
-== Authorization Flow ==
+⸻
 
-User -> ExtApp : [001] Authorization request
-ExtApp -> User : [002] Login to External Application\nwith valid session
+🔹 To tar a folder (i.e., compress it into a .tar archive):
 
-ExtApp -> S2B : [003] /oauth/v2/authorize
-S2B -> UAAS : 
-UAAS --> S2B : [004] authorization code
-S2B -> ExtApp : [005] Authorization code
+tar -cvf archive_name.tar /path/to/folder
 
-ExtApp -> S2B : [006] /oauth/v2/token
-S2B -> UAAS : [007] /oauth/v2/token
-UAAS --> S2B : [008] access token response
-S2B -> ExtApp : [009] access token
+Explanation:
+	•	c = create archive
+	•	v = verbose (shows progress, optional)
+	•	f = filename of archive
+	•	Example:
 
-@enduml
+tar -cvf backup.tar /home/user/myfolder
+
+
+
+⸻
+
+🔹 To untar (extract) a .tar archive:
+
+tar -xvf archive_name.tar
+
+Explanation:
+	•	x = extract
+	•	v = verbose (optional)
+	•	f = filename of archive
+	•	Example:
+
+tar -xvf backup.tar
+
+
+
+By default, it extracts in the current directory.
+
+⸻
+
+🔸 For tar.gz (compressed with gzip):
+
+Create:
+
+tar -czvf archive_name.tar.gz /path/to/folder
+
+Extract:
+
+tar -xzvf archive_name.tar.gz
+
+
+⸻
+
+Let me know if you need to extract to a specific directory or use .bz2, .xz, etc.
