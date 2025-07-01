@@ -1,52 +1,32 @@
-Here’s how to tar and untar a folder in Linux:
+import com.scb.s2b.api.vault.configuration.VaultConfigInitializer;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 
-⸻
+import java.util.Properties;
 
-🔹 To tar a folder (i.e., compress it into a .tar archive):
+public class ConsoleApp {
+    public static void main(String[] args) {
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
 
-tar -cvf archive_name.tar /path/to/folder
+        // Manually register any needed PropertySources
+        Properties vaultProps = new Properties();
+        vaultProps.setProperty("vault.url", "https://your-vault-url");
+        context.getEnvironment().getPropertySources().addFirst(
+            new org.springframework.core.env.PropertiesPropertySource("manualProps", vaultProps)
+        );
 
-Explanation:
-	•	c = create archive
-	•	v = verbose (shows progress, optional)
-	•	f = filename of archive
-	•	Example:
+        // Register VaultConfigInitializer manually
+        context.register(VaultConfigInitializer.class);
 
-tar -cvf backup.tar /home/user/myfolder
+        // Manually add PropertySourcesPlaceholderConfigurer if needed
+        context.register(PropertySourcesPlaceholderConfigurer.class);
 
+        context.refresh();
 
+        // Get your beans
+        Object vaultBean = context.getBean("vaultSpringConfig"); // or actual type
+        System.out.println("Vault config bean: " + vaultBean);
 
-⸻
-
-🔹 To untar (extract) a .tar archive:
-
-tar -xvf archive_name.tar
-
-Explanation:
-	•	x = extract
-	•	v = verbose (optional)
-	•	f = filename of archive
-	•	Example:
-
-tar -xvf backup.tar
-
-
-
-By default, it extracts in the current directory.
-
-⸻
-
-🔸 For tar.gz (compressed with gzip):
-
-Create:
-
-tar -czvf archive_name.tar.gz /path/to/folder
-
-Extract:
-
-tar -xzvf archive_name.tar.gz
-
-
-⸻
-
-Let me know if you need to extract to a specific directory or use .bz2, .xz, etc.
+        context.close();
+    }
+}
