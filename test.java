@@ -1,16 +1,13 @@
-- name: Remove run.sh and rename ctrun.sh to run.sh if ENV is STG or SIT3
-  when: ENV in ['STG', 'SIT3']
-  block:
-    - name: Remove existing run.sh
-      file:
-        path: "{{ temp_dir }}/run.sh"
-        state: absent
+- name: Find old temp directories to delete
+  find:
+    paths: "/prd/starss/tmp/"
+    patterns: "{{ PKG_NAME }}-*"
+    file_type: directory
+  register: found_dirs
 
-    - name: Rename ctrun.sh to run.sh if it exists
-      command: mv ctrun.sh run.sh
-      args:
-        chdir: "{{ temp_dir }}"
-      when: 
-        - lookup('ansible.builtin.file', temp_dir + '/ctrun.sh') is not none
-        - lookup('ansible.builtin.file', temp_dir + '/ctrun.sh') != ''
-        - ansible.builtin.stat(path=temp_dir + '/ctrun.sh').stat.exists
+- name: Delete all old temp folders except current version
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ found_dirs.files }}"
+  when: "'{{ PKG_NAME }}-{{ PKG_VERSION }}' not in item.path"
