@@ -1,8 +1,12 @@
-BEGIN
-  FOR r IN (
-    SELECT table_name FROM all_tables WHERE owner = 'HR'
-  ) LOOP
-    EXECUTE IMMEDIATE 'GRANT INSERT, UPDATE, DELETE ON HR.' || r.table_name || ' TO APP_USER';
-  END LOOP;
-END;
-/
+- name: Remove run.sh and rename catalyst_run.sh to run.sh if ENV is htg
+  when: ENV == 'htg'
+  block:
+    - name: Remove existing run.sh
+      file:
+        path: "{{ temp_dir }}/run.sh"
+        state: absent
+
+    - name: Rename catalyst_run.sh to run.sh
+      command: mv catalyst_run.sh run.sh
+      args:
+        chdir: "{{ temp_dir }}"
