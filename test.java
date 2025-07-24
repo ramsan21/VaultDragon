@@ -1,13 +1,19 @@
-- name: Find old temp directories to delete
-  find:
-    paths: "/prd/starss/tmp/"
-    patterns: "{{ PKG_NAME }}-*"
-    file_type: directory
-  register: found_dirs
+- name: Remove run.sh and rename ctrun.sh to run.sh if ENV is STG or SIT3
+  when: ENV in ['STG', 'SIT3']
+  block:
 
-- name: Delete all old temp folders except current version
-  file:
-    path: "{{ item.path }}"
-    state: absent
-  loop: "{{ found_dirs.files }}"
-  when: "'{{ PKG_NAME }}-{{ PKG_VERSION }}' not in item.path"
+    - name: Remove existing run.sh
+      file:
+        path: "{{ deploy_dir }}/current/run.sh"
+        state: absent
+
+    - name: Check if ctrun.sh exists in temp_dir
+      stat:
+        path: "{{ temp_dir }}/ctrun.sh"
+      register: ctrun_file
+
+    - name: Rename ctrun.sh to run.sh if it exists
+      command: mv ctrun.sh "{{ deploy_dir }}/current/run.sh"
+      args:
+        chdir: "{{ temp_dir }}"
+      when: ctrun_file.stat.exists
