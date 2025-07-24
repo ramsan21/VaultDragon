@@ -1,19 +1,19 @@
-- name: Remove run.sh and rename ctrun.sh to run.sh if ENV is STG or SIT3
-  when: ENV in ['STG', 'SIT3']
-  block:
+dest: >-
+  {{ temp_dir }}/{{ item | regex_replace('^' + STAGING_DIR + '/', '') | regex_replace(ENV if ENV in ['STG', 'SIT3'] else '', '') }}
 
-    - name: Remove existing run.sh
-      file:
-        path: "{{ deploy_dir }}/current/run.sh"
-        state: absent
 
-    - name: Check if ctrun.sh exists in temp_dir
-      stat:
-        path: "{{ temp_dir }}/ctrun.sh"
-      register: ctrun_file
 
-    - name: Rename ctrun.sh to run.sh if it exists
-      command: mv ctrun.sh "{{ deploy_dir }}/current/run.sh"
-      args:
-        chdir: "{{ temp_dir }}"
-      when: ctrun_file.stat.exists
+- name: Copy the files with secrets to server
+  copy:
+    src: "{{ item }}"
+    dest: >-
+      {{ temp_dir }}/{{ item | regex_replace('^' + STAGING_DIR + '/', '') | regex_replace(ENV if ENV in ['STG', 'SIT3'] else '', '') }}
+    owner: starsswb
+    group: starsed
+    mode: 0755
+  with_fileglob:
+    - "{{ STAGING_DIR }}/{{ PKG_NAME }}/{{ PKG_VERSION }}/keys/{{ ENV }}/*.jks"
+    - "{{ STAGING_DIR }}/{{ PKG_NAME }}/{{ PKG_VERSION }}/conf/{{ ENV }}/*.properties"
+    - "{{ STAGING_DIR }}/{{ PKG_NAME }}/{{ PKG_VERSION }}/conf/{{ ENV }}/*.yaml"
+    - "{{ STAGING_DIR }}/{{ PKG_NAME }}/{{ PKG_VERSION }}/*.ksh"
+    - "{{ STAGING_DIR }}/{{ PKG_NAME }}/{{ PKG_VERSION }}/*.sh"
