@@ -1,1 +1,1 @@
-dest: "{{ temp_dir }}/{{ item | regex_replace('^' + STAGING_DIR + '/', '') | regex_replace('/' + ENV + '/', '/') }}"
+kubectl logs <pod-name> -n <namespace> > pod-logs.txt
