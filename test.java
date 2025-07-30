@@ -1,2 +1,6 @@
-kubectl get pod ms-tmx-7948669875-qgfcq -n t-26066-s2bsec-s2b-security \
-  -o jsonpath="{.status.containerStatuses[0].lastState.terminated.reason}"
+<plugin>
+  <groupId>org.apache.maven.plugins</groupId>
+  <artifactId>maven-surefire-plugin</artifactId>
+  <version>3.0.0</version> <!-- or 2.22.2 if compatibility is needed -->
+</plugin>
+
