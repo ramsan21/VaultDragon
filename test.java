@@ -1,80 +1,64 @@
-You’re matching an attribute (id="...") but in your XML the UUID is inside an element:
+You’re seeing two things DOM normally does when you “round-trip” an XML:
+	1.	A new first line (the XML declaration) — because your transformer is set to OMIT_XML_DECLARATION = “no”
+	2.	Re-indentation / spacing changes — because INDENT = “yes” (and your indent-amount property is also malformed; it must be "{http://xml.apache.org/xslt}indent-amount").
 
-<job>
-  <id>5967...74698</id>   <!-- this is an element, not id="..." -->
-  ...
-</job>
+If you want to only change the id/uuid values and keep the original layout, write the DOM back without reformatting and (optionally) omit the declaration. Also remove any leading whitespace text node before the root, which can cause a blank line.
 
-That’s why matcher.find() never hits—there’s no id="..." in the content.
+Drop-in code:
 
-Below are two working versions. Use #2 for your file as shown; use #1 only if you really have id="..." attributes elsewhere.
+private static void replaceNodeInFile(Path file) {
+    try {
+        System.out.println("Processing file: " + file);
 
-⸻
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        dbf.setNamespaceAware(true);
+        // keep whitespace exactly as is
+        dbf.setIgnoringElementContentWhitespace(false);
 
-1) Replace an attribute value: id="..."
+        DocumentBuilder builder = dbf.newDocumentBuilder();
+        Document doc = builder.parse(file.toFile());
 
-import java.util.UUID;
-import java.util.regex.*;
-
-static String replaceAttribute(String content, String attr) {
-    Pattern p = Pattern.compile("\\b" + Pattern.quote(attr) + "\\s*=\\s*\"([^\"]*)\"");
-    Matcher m = p.matcher(content);
-
-    StringBuffer out = new StringBuffer();
-    while (m.find()) {
+        // update attributes wherever they appear
         String newUUID = UUID.randomUUID().toString();
-        // Use quoteReplacement in case the value ever has $ or \
-        m.appendReplacement(out,
-                attr + "=\"" + Matcher.quoteReplacement(newUUID) + "\"");
+        replaceAttr(doc, "id", newUUID);
+        replaceAttr(doc, "uuid", newUUID);
+
+        // if there is an initial whitespace text node, remove it to avoid extra blank line
+        Node first = doc.getFirstChild();
+        if (first != null && first.getNodeType() == Node.TEXT_NODE
+                && first.getTextContent().trim().isEmpty()) {
+            doc.removeChild(first);
+        }
+
+        // write back WITHOUT reformatting and WITHOUT adding XML declaration
+        TransformerFactory tf = TransformerFactory.newInstance();
+        Transformer t = tf.newTransformer();
+        t.setOutputProperty(OutputKeys.METHOD, "xml");
+        t.setOutputProperty(OutputKeys.INDENT, "no");
+        t.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes"); // set "no" if you actually want it
+        // If you ever want pretty print: set INDENT="yes" and
+        // t.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+
+        t.transform(new DOMSource(doc), new StreamResult(file.toFile()));
+    } catch (Exception e) {
+        System.err.println("Error processing file: " + file + " -> " + e.getMessage());
     }
-    m.appendTail(out);
-    return out.toString();
 }
 
-Usage:
-
-content = replaceAttribute(content, "id");
-
-
-⸻
-
-2) Replace an element value: <id>...</id>  ✅ (matches your screenshot)
-
-import java.util.UUID;
-import java.util.regex.*;
-
-static String replaceElementText(String content, String elementName) {
-    Pattern p = Pattern.compile("(<" + Pattern.quote(elementName) + ">)([^<]*)(</"
-                                + Pattern.quote(elementName) + ">)");
-    Matcher m = p.matcher(content);
-
-    StringBuffer out = new StringBuffer();
-    while (m.find()) {
-        String newUUID = UUID.randomUUID().toString();
-        m.appendReplacement(out, "$1" + Matcher.quoteReplacement(newUUID) + "$3");
+private static void replaceAttr(Document doc, String attrName, String newVal) {
+    NodeList nodes = doc.getElementsByTagName("*");
+    for (int i = 0; i < nodes.getLength(); i++) {
+        Element el = (Element) nodes.item(i);
+        if (el.hasAttribute(attrName)) {
+            el.setAttribute(attrName, newVal);
+        }
     }
-    m.appendTail(out);
-    return out.toString();
 }
 
-Usage:
+Key points to fix your issue:
+	•	Use OutputKeys.INDENT = "no" to avoid reformatting (“orientation” changes).
+	•	Use OutputKeys.OMIT_XML_DECLARATION = "yes" if you don’t want the extra first line.
+	•	If you do pretty-print later, the indent amount property must be "{http://xml.apache.org/xslt}indent-amount".
+	•	Remove a leading whitespace text node to prevent a blank line before the root element.
 
-content = replaceElementText(content, "id");
-
-
-⸻
-
-Note (robust option)
-
-Regex is fine for a quick edit, but if you can, parse the XML and set the node value:
-
-Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder()
-    .parse(new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)));
-
-NodeList ids = doc.getElementsByTagName("id");
-for (int i = 0; i < ids.getLength(); i++) {
-    ids.item(i).setTextContent(UUID.randomUUID().toString());
-}
-// transform doc back to string...
-
-If you paste one of the snippets above into your method, matcher.find() will work and each <id>/id="..." will be replaced with a fresh UUID.
+This will update id/uuid and keep the rest of the file the same.
