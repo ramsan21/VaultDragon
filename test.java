@@ -1,64 +1,19 @@
-You’re seeing two things DOM normally does when you “round-trip” an XML:
-	1.	A new first line (the XML declaration) — because your transformer is set to OMIT_XML_DECLARATION = “no”
-	2.	Re-indentation / spacing changes — because INDENT = “yes” (and your indent-amount property is also malformed; it must be "{http://xml.apache.org/xslt}indent-amount").
+Got it 👍 You want a ready-to-use feedback draft that your reporting manager could say (or that you could even pre-draft for them if they’re asking for input).
 
-If you want to only change the id/uuid values and keep the original layout, write the DOM back without reformatting and (optionally) omit the declaration. Also remove any leading whitespace text node before the root, which can cause a blank line.
+Here’s a polished version you can use:
 
-Drop-in code:
+⸻
 
-private static void replaceNodeInFile(Path file) {
-    try {
-        System.out.println("Processing file: " + file);
+Draft Feedback – “When You Are Leading at Your Best”
 
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(true);
-        // keep whitespace exactly as is
-        dbf.setIgnoringElementContentWhitespace(false);
+When you are leading at your best, you create a clear sense of direction for the team. You simplify complex situations and help us focus on what truly matters, which keeps everyone aligned and confident in moving forward.
 
-        DocumentBuilder builder = dbf.newDocumentBuilder();
-        Document doc = builder.parse(file.toFile());
+You lead with trust and empowerment — giving space for others to contribute, while also stepping in with strong guidance when decisions need to be made. This balance makes the team feel both supported and accountable.
 
-        // update attributes wherever they appear
-        String newUUID = UUID.randomUUID().toString();
-        replaceAttr(doc, "id", newUUID);
-        replaceAttr(doc, "uuid", newUUID);
+Another strength is the positive energy you bring, especially in challenging moments. You remain calm under pressure, frame issues constructively, and turn setbacks into opportunities. That attitude sets the tone for the team and helps us stay resilient.
 
-        // if there is an initial whitespace text node, remove it to avoid extra blank line
-        Node first = doc.getFirstChild();
-        if (first != null && first.getNodeType() == Node.TEXT_NODE
-                && first.getTextContent().trim().isEmpty()) {
-            doc.removeChild(first);
-        }
+Finally, you combine results-orientation with care for people. You push for high standards and delivery, but you also take time to listen, coach, and recognize contributions. That blend of focus and empathy makes your leadership impactful and inspiring.
 
-        // write back WITHOUT reformatting and WITHOUT adding XML declaration
-        TransformerFactory tf = TransformerFactory.newInstance();
-        Transformer t = tf.newTransformer();
-        t.setOutputProperty(OutputKeys.METHOD, "xml");
-        t.setOutputProperty(OutputKeys.INDENT, "no");
-        t.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes"); // set "no" if you actually want it
-        // If you ever want pretty print: set INDENT="yes" and
-        // t.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+⸻
 
-        t.transform(new DOMSource(doc), new StreamResult(file.toFile()));
-    } catch (Exception e) {
-        System.err.println("Error processing file: " + file + " -> " + e.getMessage());
-    }
-}
-
-private static void replaceAttr(Document doc, String attrName, String newVal) {
-    NodeList nodes = doc.getElementsByTagName("*");
-    for (int i = 0; i < nodes.getLength(); i++) {
-        Element el = (Element) nodes.item(i);
-        if (el.hasAttribute(attrName)) {
-            el.setAttribute(attrName, newVal);
-        }
-    }
-}
-
-Key points to fix your issue:
-	•	Use OutputKeys.INDENT = "no" to avoid reformatting (“orientation” changes).
-	•	Use OutputKeys.OMIT_XML_DECLARATION = "yes" if you don’t want the extra first line.
-	•	If you do pretty-print later, the indent amount property must be "{http://xml.apache.org/xslt}indent-amount".
-	•	Remove a leading whitespace text node to prevent a blank line before the root element.
-
-This will update id/uuid and keep the rest of the file the same.
+👉 Would you like me to make this shorter and more crisp (2–3 sentences for quick upward feedback), or longer and detailed (like a performance review style)?
