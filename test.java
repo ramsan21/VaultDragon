@@ -1,63 +1,68 @@
-package com.example;
-
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.Mockito;
 
-import javax.ws.rs.Path;
+import org.aspectj.lang.JoinPoint;
+import org.aspectj.lang.Signature;
+import org.aspectj.lang.reflect.MethodSignature;
+import org.slf4j.MDC;
+import org.springframework.util.ClassUtils;
+
 import java.lang.reflect.Method;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
 
-class GetApiNameTests {
+@ExtendWith(MockitoExtension.class)
+class WSMethodInterceptorTest {
 
-    // TODO: replace with the real class that has getAPIName(Method)
-    private final YourClassUnderTest helper = new YourClassUnderTest();
+    // SUT
+    private final WSMethodInterceptor interceptor = new WSMethodInterceptor();
 
-    /** Test doubles to reflect against */
-    static class DummyResource {
-        @Path("/users/{id}")
-        public void getUser() {}
+    @Mock JoinPoint joinPoint;
+    @Mock MethodSignature methodSignature;
+    @Mock UserVO userVO;
 
-        public void noAnnotation() {}
-
-        @Path("") // empty value should be returned as-is
-        public void emptyPath() {}
+    /** A real method with a real @WSMethod annotation for Spring to read */
+    static class AnnotatedTarget {
+        @WSMethod(eventType = Event.DUMMY)
+        public void someBusinessMethod() {}
     }
 
-    @Nested
-    @DisplayName("getAPIName(Method)")
-    class GetApiName {
+    @Test
+    void testBeforeAdvice_usesRealAnnotationAndPopulatesMdc() throws Exception {
+        // Arrange: real annotated method
+        Method method = AnnotatedTarget.class.getMethod("someBusinessMethod");
 
-        @Test
-        @DisplayName("returns @Path value when present on the method")
-        void returnsPathValueWhenPresent() throws Exception {
-            Method m = DummyResource.class.getMethod("getUser");
-            String apiName = helper.getAPIName(m);
-            assertEquals("/users/{id}", apiName);
-        }
+        when(joinPoint.getSignature()).thenReturn(methodSignature);
+        when(methodSignature.getMethod()).thenReturn(method);
 
-        @Test
-        @DisplayName("falls back to method name when @Path is absent")
-        void fallsBackToMethodNameWhenNoAnnotation() throws Exception {
-            Method m = DummyResource.class.getMethod("noAnnotation");
-            String apiName = helper.getAPIName(m);
-            assertEquals("noAnnotation", apiName);
-        }
+        // target object is needed for class name resolution
+        AnnotatedTarget target = new AnnotatedTarget();
+        when(joinPoint.getTarget()).thenReturn(target);
 
-        @Test
-        @DisplayName("returns \"Unknown\" when method is null")
-        void returnsUnknownOnNullInput() {
-            String apiName = helper.getAPIName(null);
-            assertEquals("Unknown", apiName);
-        }
+        // interceptor also inspects args to extract the UserVO
+        when(joinPoint.getArgs()).thenReturn(new Object[] { userVO });
 
-        @Test
-        @DisplayName("returns empty string if @Path value is empty")
-        void returnsEmptyStringWhenPathEmpty() throws Exception {
-            Method m = DummyResource.class.getMethod("emptyPath");
-            String apiName = helper.getAPIName(m);
-            assertEquals("", apiName);
-        }
+        when(userVO.getGroupId()).thenReturn("group1");
+        when(userVO.getUserId()).thenReturn("user1");
+        when(userVO.getLoginId()).thenReturn("login1");
+
+        // Act
+        interceptor.beforeAdvice(joinPoint);
+
+        // Assert: MDC populated from UserVO and method/class
+        assertEquals("group1", MDC.get("group_id"));
+        assertEquals("user1",  MDC.get("user_id"));
+        assertEquals("login1", MDC.get("login_id"));
+        assertEquals("someBusinessMethod", MDC.get("api_name")); // from getAPIName(signature.getMethod())
+
+        // (Optional) if you expose thread object, you can assert its event etc.
+        // WSThreadSharedObj threadObj = WSThreadSharedObj.get();
+        // assertEquals(Event.DUMMY, threadObj.getEvent());
+        // assertEquals(ClassUtils.getShortName(target.getClass()), threadObj.getClassName());
+        // assertEquals("someBusinessMethod", threadObj.getMethodName());
     }
 }
