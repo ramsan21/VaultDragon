@@ -1,19 +1,63 @@
-Got it 👍 You want a ready-to-use feedback draft that your reporting manager could say (or that you could even pre-draft for them if they’re asking for input).
+package com.example;
 
-Here’s a polished version you can use:
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
-⸻
+import javax.ws.rs.Path;
+import java.lang.reflect.Method;
 
-Draft Feedback – “When You Are Leading at Your Best”
+import static org.junit.jupiter.api.Assertions.*;
 
-When you are leading at your best, you create a clear sense of direction for the team. You simplify complex situations and help us focus on what truly matters, which keeps everyone aligned and confident in moving forward.
+class GetApiNameTests {
 
-You lead with trust and empowerment — giving space for others to contribute, while also stepping in with strong guidance when decisions need to be made. This balance makes the team feel both supported and accountable.
+    // TODO: replace with the real class that has getAPIName(Method)
+    private final YourClassUnderTest helper = new YourClassUnderTest();
 
-Another strength is the positive energy you bring, especially in challenging moments. You remain calm under pressure, frame issues constructively, and turn setbacks into opportunities. That attitude sets the tone for the team and helps us stay resilient.
+    /** Test doubles to reflect against */
+    static class DummyResource {
+        @Path("/users/{id}")
+        public void getUser() {}
 
-Finally, you combine results-orientation with care for people. You push for high standards and delivery, but you also take time to listen, coach, and recognize contributions. That blend of focus and empathy makes your leadership impactful and inspiring.
+        public void noAnnotation() {}
 
-⸻
+        @Path("") // empty value should be returned as-is
+        public void emptyPath() {}
+    }
 
-👉 Would you like me to make this shorter and more crisp (2–3 sentences for quick upward feedback), or longer and detailed (like a performance review style)?
+    @Nested
+    @DisplayName("getAPIName(Method)")
+    class GetApiName {
+
+        @Test
+        @DisplayName("returns @Path value when present on the method")
+        void returnsPathValueWhenPresent() throws Exception {
+            Method m = DummyResource.class.getMethod("getUser");
+            String apiName = helper.getAPIName(m);
+            assertEquals("/users/{id}", apiName);
+        }
+
+        @Test
+        @DisplayName("falls back to method name when @Path is absent")
+        void fallsBackToMethodNameWhenNoAnnotation() throws Exception {
+            Method m = DummyResource.class.getMethod("noAnnotation");
+            String apiName = helper.getAPIName(m);
+            assertEquals("noAnnotation", apiName);
+        }
+
+        @Test
+        @DisplayName("returns \"Unknown\" when method is null")
+        void returnsUnknownOnNullInput() {
+            String apiName = helper.getAPIName(null);
+            assertEquals("Unknown", apiName);
+        }
+
+        @Test
+        @DisplayName("returns empty string if @Path value is empty")
+        void returnsEmptyStringWhenPathEmpty() throws Exception {
+            Method m = DummyResource.class.getMethod("emptyPath");
+            String apiName = helper.getAPIName(m);
+            assertEquals("", apiName);
+        }
+    }
+}
