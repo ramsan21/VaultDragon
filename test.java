@@ -6,20 +6,17 @@ metadata:
     kubernetes.io/ingress.class: nginx
 spec:
   rules:
-  - host: tmx.example.com
+  - host: myapps.example.com
     http:
       paths:
-      - path: /
+      - path: /tmx
         pathType: Prefix
         backend:
           service:
             name: tmx-service
             port:
               number: 80
-  - host: csa.example.com
-    http:
-      paths:
-      - path: /
+      - path: /csa
         pathType: Prefix
         backend:
           service:
