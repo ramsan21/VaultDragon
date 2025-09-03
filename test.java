@@ -1,232 +1,113 @@
-Got you—here’s a clean, working pattern for path-based routing on a single host. I’ll show two variants:
-	•	A. Pass-through paths (your app serves /app1, /app2 as-is)
-	•	B. Strip the prefix (your app serves /, we map /app1 → /)
+Thanks for the clearer shot—still the same core error:
 
-Assumes you’re using the NGINX Ingress Controller and everything is in the same namespace.
+maven-surefire-plugin … Test mechanism :: Cannot invoke
+org.apache.maven.surefire.junitcore.TestSet.createThreadAttachedTestMethod(...)
+because "testSet" is null
 
-⸻
+That almost always means the forked test JVM died (or a test class failed to load) before Surefire could build its internal TestSet. Upgrading the plugin alone won’t fix it if the root cause is classloading/JDK/provider mismatch.
 
-A) Pass-through paths (no rewrite)
+Quick, copy-paste fixes (POM)
 
-service.yaml
+Try this minimal, safe config for Java 17+ + JUnit 5. Drop it into your <build><plugins> (or replace your existing Surefire block):
 
-apiVersion: v1
-kind: Service
-metadata:
-  name: app1-svc
-spec:
-  type: ClusterIP
-  selector:
-    app: app1
-  ports:
-    - name: http
-      port: 80
-      targetPort: 8080
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: app2-svc
-spec:
-  type: ClusterIP
-  selector:
-    app: app2
-  ports:
-    - name: http
-      port: 80
-      targetPort: 8080
+<plugin>
+  <groupId>org.apache.maven.plugins</groupId>
+  <artifactId>maven-surefire-plugin</artifactId>
+  <version>3.2.5</version>
+  <configuration>
+    <!-- JDK 9+ module path can break some libs; keep on classpath -->
+    <useModulePath>false</useModulePath>
+    <!-- more diagnostics -->
+    <trimStackTrace>false</trimStackTrace>
+    <printSummary>true</printSummary>
+    <redirectTestOutputToFile>true</redirectTestOutputToFile>
+    <!-- make failures reproducible -->
+    <forkCount>1</forkCount>
+    <reuseForks>false</reuseForks>
+  </configuration>
+</plugin>
 
-Your Deployments should expose containers on containerPort: 8080 and have matching labels app: app1 / app: app2.
+<!-- JUnit 5 (adjust version if your org pins it) -->
+<dependency>
+  <groupId>org.junit.jupiter</groupId>
+  <artifactId>junit-jupiter</artifactId>
+  <version>5.10.2</version>
+  <scope>test</scope>
+</dependency>
 
-ingress.yaml
+<!-- If you still have JUnit 4 tests, add the vintage engine too -->
+<dependency>
+  <groupId>org.junit.vintage</groupId>
+  <artifactId>junit-vintage-engine</artifactId>
+  <version>5.10.2</version>
+  <scope>test</scope>
+</dependency>
 
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: apps-ingress
-  annotations:
-    kubernetes.io/ingress.class: "nginx"   # or use spec.ingressClassName below
-spec:
-  ingressClassName: nginx                  # preferred if your controller is named "nginx"
-  rules:
-    - host: apps.example.com               # change to your DNS name
-      http:
-        paths:
-          - path: /app1
-            pathType: Prefix
-            backend:
-              service:
-                name: app1-svc
-                port:
-                  number: 80
-          - path: /app2
-            pathType: Prefix
-            backend:
-              service:
-                name: app2-svc
-                port:
-                  number: 80
+If your project is JUnit 4 only, remove the two JUnit-5 deps above and keep just:
 
-Use this if the apps are actually mounted under /app1 and /app2 (static assets, links, health, etc. all expect the prefix).
+<dependency>
+  <groupId>junit</groupId>
+  <artifactId>junit</artifactId>
+  <version>4.13.2</version>
+  <scope>test</scope>
+</dependency>
 
-⸻
+Run with strong diagnostics (locally or in your ADO pipeline)
 
-B) Strip prefix (rewrite /app1 → /)
+mvn -e -X -DtrimStackTrace=false -Dsurefire.printSummary=true \
+    -Dsurefire.useFile=true -DforkCount=1 -DreuseForks=false \
+    -DtestFailureIgnore=false test
 
-If your app expects to live at / (root), add a rewrite. With modern NGINX ingress you can use a regex path plus rewrite-target.
+Then open: target/surefire-reports/*.dumpstream, *.dump, and *.txt.
+These usually contain the real root cause (e.g., NoClassDefFoundError, IncompatibleClassChangeError, native crash, etc.).
 
-ingress-rewrite.yaml
+Fast triage checklist
+	1.	Mixed frameworks?
+	•	If you have a mix of JUnit4/5, include vintage (shown above).
+	•	If you use TestNG, remove JUnit engines and add TestNG instead.
+	2.	Java 17 gotchas
+	•	Keep <useModulePath>false</useModulePath> (many libs fail on the module path).
+	•	If you use PowerMock or old Mockito inline on JDK 17, upgrade (older versions crash the fork).
+	3.	Classpath or static init crash
+	•	A failing static initializer (e.g., Spring context, missing env var, logging binding) can kill the fork before tests register → yields this exact “testSet is null”.
+	•	Try mvn -q -Dtest=ExactFailingClass test to isolate, or temporarily add:
 
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: apps-ingress
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
-spec:
-  ingressClassName: nginx
-  rules:
-    - host: apps.example.com
-      http:
-        paths:
-          # /app1, /app1/, /app1/anything -> /, /, /anything for app1
-          - path: /app1(/|$)(.*)
-            pathType: Prefix
-            backend:
-              service:
-                name: app1-svc
-                port:
-                  number: 80
+<includes>
+  <include>**/SomeTinySmokeTest.java</include>
+</includes>
 
-          # /app2, /app2/, /app2/anything -> /, /, /anything for app2
-          - path: /app2(/|$)(.*)
-            pathType: Prefix
-            backend:
-              service:
-                name: app2-svc
-                port:
-                  number: 80
+If a tiny smoke test passes, one of your heavier tests (Spring context, DB, etc.) is crashing the fork.
 
-The /(.*) capture becomes $2; we drop the leading segment so your app sees /… at root.
+	4.	Memory / native issues in CI
+	•	In Azure DevOps, set a bigger heap for forks:
+MAVEN_OPTS: "-Xmx1024m -XX:+ExitOnOutOfMemoryError"
+	•	Also try no forking to confirm: mvn test -Dsurefire.forkCount=0.
+	5.	Surefire/Jupiter alignment
+	•	Keep Surefire ≥ 3.1.x with JUnit 5.
+	•	Remove any old maven-surefire-plugin:2.x overrides in submodules.
 
-⸻
+ADO pipeline snippet (helps you capture dumps)
 
-Common causes of 404 Not Found (and quick fixes)
+- script: |
+    mvn -B -e -X test \
+      -DtrimStackTrace=false -Dsurefire.printSummary=true \
+      -DforkCount=1 -DreuseForks=false
+  displayName: "Run unit tests with diagnostics"
 
-Most 404s come from the ingress controller’s default backend, meaning the request didn’t match a rule or the service had no endpoints.
-	1.	Ingress class mismatch
-	•	Check your controller’s class (often nginx).
-	•	Fix: Ensure either metadata.annotations["kubernetes.io/ingress.class"] = "nginx" or spec.ingressClassName: nginx matches the controller.
-	•	Verify:
+- task: PublishTestResults@2
+  inputs:
+    testResultsFormat: JUnit
+    testResultsFiles: "**/target/surefire-reports/TEST-*.xml"
+    mergeTestResults: true
+    testRunTitle: "JUnit results"
 
-kubectl get ingressclass
-kubectl describe ingress apps-ingress
-
-
-	2.	Host mismatch
-	•	Your browser/curl must send Host: apps.example.com.
-	•	Fix: Use the correct DNS name or test with curl:
-
-curl -I -H "Host: apps.example.com" http://<INGRESS-LB-IP>/app1
-
-
-	3.	DNS not pointing to the Ingress LB
-	•	Fix: Point apps.example.com A/AAAA record to your ingress LoadBalancer IP.
-	•	Verify:
-
-kubectl get svc -n ingress-nginx   # or your controller namespace
-nslookup apps.example.com
-
-
-	4.	No endpoints behind the Service
-	•	If your Pods aren’t Ready or label selectors don’t match, the Service has zero endpoints.
-	•	Fix: Align labels; ensure Pods Ready.
-
-kubectl get pods -o wide
-kubectl get endpoints app1-svc -o yaml
-kubectl describe svc app1-svc
-
-
-	5.	Wrong service port / targetPort
-	•	The Service port: 80 must map to the Pod containerPort: 8080 (or whatever your app listens on).
-	•	Fix: Ensure targetPort matches the container.
-	6.	Path behavior not as expected
-	•	If your app needs root but you used variant A (no rewrite), internal links may break or you’ll get 404s.
-	•	Fix: Use variant B with rewrite-target, or configure your app’s basePath.
-	7.	Controller isn’t running or wrong namespace
-	•	Fix: Ensure the NGINX ingress controller is installed and healthy.
-
-kubectl get pods -n ingress-nginx
-kubectl logs -n ingress-nginx deploy/ingress-nginx-controller
-
-
-	8.	Conflicting Ingress rules
-	•	Another Ingress with same host and overlapping paths can shadow routes.
-	•	Fix: Consolidate rules or adjust path specificity.
-	9.	App-level 404
-	•	Ingress forwarded correctly, but your app returned 404.
-	•	Fix: Port-forward the Service and test directly:
-
-kubectl port-forward svc/app1-svc 8081:80
-curl -I http://localhost:8081/        # for rewrite case
-curl -I http://localhost:8081/app1    # for pass-through case
-
-
-	10.	Regex + rewrite misconfiguration
-	•	If using regex paths, you must set use-regex: "true" and match the right capture groups.
-	•	Fix: Double-check (.*) groups and $2 usage.
-
-⸻
-
-Minimal Deployment example (optional, for completeness)
-
-If you need a quick Pod to test:
-
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: app1
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: app1
-  template:
-    metadata:
-      labels:
-        app: app1
-    spec:
-      containers:
-        - name: app1
-          image: hashicorp/http-echo:0.2.3
-          args: ["-text=Hello from app1", "-listen=:8080"]
-          ports:
-            - containerPort: 8080
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: app2
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: app2
-  template:
-    metadata:
-      labels:
-        app: app2
-    spec:
-      containers:
-        - name: app2
-          image: hashicorp/http-echo:0.2.3
-          args: ["-text=Hello from app2", "-listen=:8080"]
-          ports:
-            - containerPort: 8080
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: "$(System.DefaultWorkingDirectory)"
+    ArtifactName: "surefire-reports"
+    publishLocation: "Container"
 
 
 ⸻
 
-If you tell me which controller you’re on (NGINX, Traefik, HAProxy, AKS AGIC, GKE, etc.) and whether your apps expect a basePath or root, I can tailor the exact Ingress/annotations.
+If you paste your current test dependencies block (JUnit/TestNG/Mockito/PowerMock/etc.), I’ll pinpoint the minimal set of changes. Otherwise, try the POM snippet first; in most Java 17 + JUnit setups this clears the testSet is null crash quickly.
