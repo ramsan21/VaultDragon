@@ -1,71 +1,85 @@
-Thanks for the clearer screenshot. I can now confirm the exact chain of exceptions:
+Got it—your new screenshots pin it down:
+	•	Chrome shows NET::ERR_CERT_AUTHORITY_INVALID for
+s2bsec-cnidexp.26066.app.standardchartered.com → the cert chain isn’t trusted by your machine.
+	•	Your Java stack trace fails with PKIX… Signature does not match → the server’s chain/signature doesn’t validate against what the JVM trusts.
+	•	Your openssl s_client -connect 10.65.4.37:443 fails to connect (internal IP). Also, testing by IP won’t present the right cert (SNI), so even if it connected it could mislead.
 
-Caused by: sun.security.validator.ValidatorException:
-  PKIX path validation failed: java.security.cert.CertPathValidatorException: signature check failed
-
-Caused by: java.security.cert.CertPathValidatorException: signature check failed
-
-Caused by: java.security.SignatureException: Signature does not match.
-
-Key points
-	•	The server certificate signature validation failed.
-	•	This isn’t just a missing CA — it specifically says “Signature does not match”, which means:
-	1.	The certificate is corrupted or incorrectly generated.
-	2.	The server is presenting a certificate that does not correctly chain to the trusted CA.
-	3.	The private key and certificate pair might not match (common after a re-issue if the wrong key is deployed).
-	4.	Or, if you’re behind a proxy/SSL interceptor, it might be replacing the cert with its own, which Java cannot validate.
+What this likely means
+	1.	The site is using an internal/corporate CA (or a TLS-intercepting proxy) that your laptop/JVM doesn’t trust; and/or
+	2.	The server is serving an incomplete or wrong chain (missing intermediates / wrong bundle); and/or
+	3.	You tested by IP without SNI; the right way is by hostname.
 
 ⸻
 
-Steps to diagnose & fix
+Quick, targeted steps
 
-1. Test the server’s SSL certificate
+1) Verify the exact chain (use hostname + SNI)
 
-Run this from your client machine:
+# Use the full host shown in Chrome
+HOST=s2bsec-cnidexp.26066.app.standardchartered.com
+openssl s_client -connect $HOST:443 -servername $HOST -showcerts </dev/null 2>/dev/null | openssl x509 -noout -issuer -subject -dates -fingerprint -sha256
 
-openssl s_client -connect <hostname>:443 -showcerts
+	•	If the Issuer is a corporate CA or a proxy (e.g., BlueCoat/Zscaler/etc.), you must trust that root/intermediate in the JVM (and possibly in the OS/Chrome too).
+	•	If you see only the leaf or an unexpected intermediate, the server/balancer needs the full chain (leaf + intermediates) configured.
 
-	•	Check the chain shown.
-	•	Verify issuer and subject.
-	•	See if intermediates are missing.
+2) If it’s a corporate CA / TLS-inspection proxy
 
-2. Validate certificate chain manually
+Export the corporate root CA (Base-64 .cer/.pem) and add it to the JVM truststore used by your app:
 
-openssl verify -CAfile <ca-bundle.crt> server.crt
+# check where your app’s JVM truststore is
+$JAVA_HOME/bin/keytool -list -keystore "$JAVA_HOME/lib/security/cacerts" -storepass changeit | head
 
-If it fails, the chain is broken.
+# import (choose a unique alias)
+sudo $JAVA_HOME/bin/keytool -importcert -noprompt \
+  -alias corp-root-ca \
+  -file corp-root.cer \
+  -keystore "$JAVA_HOME/lib/security/cacerts" \
+  -storepass changeit
 
-3. Check for mismatch in private key & certificate
+If your app runs in a container/K8s, create a ConfigMap/Secret with an updated cacerts and run the JVM with:
 
-On the server:
+-Djavax.net.ssl.trustStore=/opt/app/certs/cacerts
+-Djavax.net.ssl.trustStorePassword=changeit
 
+(Spring Boot alternative)
+
+server.ssl.trust-store=classpath:certs/cacerts
+server.ssl.trust-store-password=changeit
+
+3) If it’s a server/balancer chain issue
+
+Fix the served bundle (F5/NGINX/Apache):
+	•	Use a fullchain (leaf + all intermediates) matching the private key.
+	•	Validate on the server:
+
+# key ↔ cert match
 openssl x509 -noout -modulus -in server.crt | openssl md5
-openssl rsa -noout -modulus -in server.key | openssl md5
+openssl rsa  -noout -modulus -in server.key | openssl md5
+# must be identical
 
-The hashes must match.
+	•	Re-test:
 
-4. Update / import the CA
+openssl s_client -connect $HOST:443 -servername $HOST -showcerts </dev/null | openssl verify -CAfile <root+intermediates.pem>
 
-If it’s a custom CA:
+4) Make sure you’re actually reaching the right host
 
-keytool -import -trustcacerts -alias myca -file myca.crt -keystore $JAVA_HOME/lib/security/cacerts
+Your IP test failed to connect (firewall/VPN). Test hostname from the same network the app uses. If the corporate proxy is in the path, either:
+	•	add the proxy’s root CA to the JVM, or
+	•	bypass the proxy for this host (NO_PROXY) if policy allows.
 
-(password = changeit)
+5) Turn on SSL debug once and confirm
 
-5. Check Java version
-
-Older JDKs sometimes reject newer signature algorithms (like SHA256 with RSA).
-Since your trace shows java.base/sun.security..., you’re using Java 11+ — still, ensure it’s updated with the latest security patches.
-
-6. Enable SSL debugging
-
-Run your app with:
+Run the Java client with:
 
 -Djavax.net.debug=ssl,handshake,certpath
 
-This will show exactly which certificate signature fails and why.
+You’ll see exactly which certificate in the path fails (e.g., “unable to find valid certification path to requested target” vs “signature check failed on ”).
 
 ⸻
 
-⚡ Next step for you:
-Can you confirm whether the server you’re calling is internal (self-signed/custom CA) or a public HTTPS API? That will decide whether you should fix the truststore on your client, or the certificate chain on the server.
+What I’d do next (minimal)
+	1.	Run the openssl s_client with hostname + -servername and paste the Issuer/Subject lines here.
+	2.	If Issuer is corporate → import that root into the JVM used by your app (and into the pod image if in K8s).
+	3.	If Issuer is a public CA but chain is incomplete → fix the LB/server to serve the full chain.
+
+If you share the openssl s_client output (redact names if needed), I’ll point to the exact cert to import or the exact gap in the chain.
