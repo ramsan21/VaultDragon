@@ -1,85 +1,108 @@
-Got it—your new screenshots pin it down:
-	•	Chrome shows NET::ERR_CERT_AUTHORITY_INVALID for
-s2bsec-cnidexp.26066.app.standardchartered.com → the cert chain isn’t trusted by your machine.
-	•	Your Java stack trace fails with PKIX… Signature does not match → the server’s chain/signature doesn’t validate against what the JVM trusts.
-	•	Your openssl s_client -connect 10.65.4.37:443 fails to connect (internal IP). Also, testing by IP won’t present the right cert (SNI), so even if it connected it could mislead.
+You’re hitting a TLS chain validation failure:
 
-What this likely means
-	1.	The site is using an internal/corporate CA (or a TLS-intercepting proxy) that your laptop/JVM doesn’t trust; and/or
-	2.	The server is serving an incomplete or wrong chain (missing intermediates / wrong bundle); and/or
-	3.	You tested by IP without SNI; the right way is by hostname.
+PKIX path validation failed … CertPathValidatorException: signature check failed
+… SignatureException: Signature does not match.
 
-⸻
+That means Java built a certificate path for the server but the issuer’s public key it found doesn’t match the certificate that signed the leaf. In practice this happens when:
+	•	the intermediate CA (or root) in your truststore is wrong / missing / outdated, or
+	•	the Ingress is serving only the leaf cert instead of the full chain, or
+	•	you imported the wrong cert (e.g., a different org’s root) into your truststore.
 
-Quick, targeted steps
-
-1) Verify the exact chain (use hostname + SNI)
-
-# Use the full host shown in Chrome
-HOST=s2bsec-cnidexp.26066.app.standardchartered.com
-openssl s_client -connect $HOST:443 -servername $HOST -showcerts </dev/null 2>/dev/null | openssl x509 -noout -issuer -subject -dates -fingerprint -sha256
-
-	•	If the Issuer is a corporate CA or a proxy (e.g., BlueCoat/Zscaler/etc.), you must trust that root/intermediate in the JVM (and possibly in the OS/Chrome too).
-	•	If you see only the leaf or an unexpected intermediate, the server/balancer needs the full chain (leaf + intermediates) configured.
-
-2) If it’s a corporate CA / TLS-inspection proxy
-
-Export the corporate root CA (Base-64 .cer/.pem) and add it to the JVM truststore used by your app:
-
-# check where your app’s JVM truststore is
-$JAVA_HOME/bin/keytool -list -keystore "$JAVA_HOME/lib/security/cacerts" -storepass changeit | head
-
-# import (choose a unique alias)
-sudo $JAVA_HOME/bin/keytool -importcert -noprompt \
-  -alias corp-root-ca \
-  -file corp-root.cer \
-  -keystore "$JAVA_HOME/lib/security/cacerts" \
-  -storepass changeit
-
-If your app runs in a container/K8s, create a ConfigMap/Secret with an updated cacerts and run the JVM with:
-
--Djavax.net.ssl.trustStore=/opt/app/certs/cacerts
--Djavax.net.ssl.trustStorePassword=changeit
-
-(Spring Boot alternative)
-
-server.ssl.trust-store=classpath:certs/cacerts
-server.ssl.trust-store-password=changeit
-
-3) If it’s a server/balancer chain issue
-
-Fix the served bundle (F5/NGINX/Apache):
-	•	Use a fullchain (leaf + all intermediates) matching the private key.
-	•	Validate on the server:
-
-# key ↔ cert match
-openssl x509 -noout -modulus -in server.crt | openssl md5
-openssl rsa  -noout -modulus -in server.key | openssl md5
-# must be identical
-
-	•	Re-test:
-
-openssl s_client -connect $HOST:443 -servername $HOST -showcerts </dev/null | openssl verify -CAfile <root+intermediates.pem>
-
-4) Make sure you’re actually reaching the right host
-
-Your IP test failed to connect (firewall/VPN). Test hostname from the same network the app uses. If the corporate proxy is in the path, either:
-	•	add the proxy’s root CA to the JVM, or
-	•	bypass the proxy for this host (NO_PROXY) if policy allows.
-
-5) Turn on SSL debug once and confirm
-
-Run the Java client with:
-
--Djavax.net.debug=ssl,handshake,certpath
-
-You’ll see exactly which certificate in the path fails (e.g., “unable to find valid certification path to requested target” vs “signature check failed on ”).
+Below is a tight checklist to fix it fast.
 
 ⸻
 
-What I’d do next (minimal)
-	1.	Run the openssl s_client with hostname + -servername and paste the Issuer/Subject lines here.
-	2.	If Issuer is corporate → import that root into the JVM used by your app (and into the pod image if in K8s).
-	3.	If Issuer is a public CA but chain is incomplete → fix the LB/server to serve the full chain.
+1) Verify what the server is actually serving
 
-If you share the openssl s_client output (redact names if needed), I’ll point to the exact cert to import or the exact gap in the chain.
+From any shell that can reach the Ingress FQDN:
+
+# show what the Ingress presents (leaf + any intermediates)
+openssl s_client -connect s2bsec-cnidexp.26066.app.standardchartered.com:443 \
+  -servername s2bsec-cnidexp.26066.app.standardchartered.com -showcerts </dev/null
+
+	•	Copy out the leaf and every intermediate you see into separate files (e.g., leaf.pem, intermediate.pem).
+	•	Note each cert’s Subject and Issuer; they should chain: leaf -> intermediate -> root.
+
+2) Inspect your truststore
+
+Check what you imported:
+
+keytool -list -v -keystore src/main/resources/truststore.jks
+
+Look for:
+	•	Correct chain present (usually intermediate(s) + root, not just the leaf).
+	•	Validity dates (not expired).
+	•	Subject/Issuer of each cert matches what openssl showed.
+
+If you see a wrong CA (Issuer doesn’t match), delete it:
+
+keytool -delete -alias wrong-alias -keystore src/main/resources/truststore.jks
+
+Then (re)import the right ones:
+
+# Import the intermediate first, then the root
+keytool -importcert -alias scb-intermediate -file intermediate.pem \
+  -keystore src/main/resources/truststore.jks
+keytool -importcert -alias scb-root -file root.pem \
+  -keystore src/main/resources/truststore.jks
+
+Tip: You do not need to import the leaf into the truststore. Trust the CA(s), not the server cert.
+
+3) (Server-side) ensure NGINX/Ingress serves the full chain
+
+If you control the Ingress TLS secret, the tls.crt must contain leaf + intermediate(s) concatenated (aka “fullchain”):
+
+# tls.crt = leaf.pem + intermediate.pem(s) concatenated in this order
+cat leaf.pem intermediate.pem > fullchain.pem
+kubectl create secret tls mytls --cert=fullchain.pem --key=privkey.pem -n <ns> --dry-run=client -o yaml | kubectl apply -f -
+
+If certs are issued by cert-manager, ensure it’s configured to store the full chain (most issuers already do).
+
+4) Keep your code but wire the truststore correctly
+
+Your code is fine for a custom truststore. Two small safety tweaks:
+
+KeyStore trustStore = KeyStore.getInstance("JKS"); // or "PKCS12" if that’s your file type
+try (InputStream is = new FileInputStream(truststorePath)) {
+  trustStore.load(is, truststorePassword.toCharArray());
+}
+
+TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+tmf.init(trustStore);
+
+SSLContext sslContext = SSLContext.getInstance("TLS");
+sslContext.init(null, tmf.getTrustManagers(), null);
+HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
+
+// Optional: also set system props so libraries that don’t use your factory still work
+System.setProperty("javax.net.ssl.trustStore", truststorePath);
+System.setProperty("javax.net.ssl.trustStorePassword", truststorePassword);
+
+// Keep hostname verification ON (default). Do not disable for production.
+
+Important: If your truststore.jks is actually a PKCS#12 file, use KeyStore.getInstance("PKCS12"). Using the wrong type won’t cause this error during validation, but it’s a common pitfall.
+
+5) Re-test
+	•	After fixing the truststore and/or Ingress full chain, rerun your Java client.
+	•	If you still fail, compare again the Issuer of the leaf from openssl with the Subject of the CA you imported. They must match exactly.
+
+⸻
+
+Why you saw “Signature does not match”
+
+Java verified the leaf’s signature using the CA public key it found in your truststore. Because that CA wasn’t the actual issuer of the leaf (wrong/missing intermediate, wrong root, or stale corporate CA), the signature check failed, yielding exactly the stack you posted.
+
+⸻
+
+Quick-but-temporary sanity check (not for prod)
+
+To prove it’s chain-related (and not Basic Auth or your XML payload), you can momentarily trust the system CAs + your corporate CA bundle:
+
+# import your corporate proxy/Root CA chain too, if your traffic traverses a TLS-inspecting proxy
+keytool -importcert -alias corp-root -file corp_root.pem -keystore truststore.jks
+
+If that makes it work, replace with the correct issuer chain for the Ingress and remove any broad corp roots you don’t need.
+
+⸻
+
+If you want, paste the Subject/Issuer lines from openssl s_client and the keytool -list -v output (trim serials), and I’ll tell you exactly which link in the chain is missing or mismatched.
