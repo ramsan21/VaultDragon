@@ -1,69 +1,71 @@
-I looked closely at your screenshot. The key error message is:
+Thanks for the clearer screenshot. I can now confirm the exact chain of exceptions:
 
 Caused by: sun.security.validator.ValidatorException:
-PKIX path validation failed: java.security.cert.CertPathValidatorException:
-signature check failed
-...
+  PKIX path validation failed: java.security.cert.CertPathValidatorException: signature check failed
+
+Caused by: java.security.cert.CertPathValidatorException: signature check failed
+
 Caused by: java.security.SignatureException: Signature does not match.
 
-What it means
-	•	PKIX path validation failed → Java failed to validate the SSL/TLS certificate chain of the server you are connecting to.
-	•	Signature does not match → The certificate presented by the server does not match the trusted CA chain in your JVM truststore. This can happen if:
-	•	The certificate is self-signed or signed by an unknown CA.
-	•	The certificate was re-issued but the server is still serving an old or mismatched chain.
-	•	The JVM’s default truststore (cacerts) does not contain the intermediate/root CA.
+Key points
+	•	The server certificate signature validation failed.
+	•	This isn’t just a missing CA — it specifically says “Signature does not match”, which means:
+	1.	The certificate is corrupted or incorrectly generated.
+	2.	The server is presenting a certificate that does not correctly chain to the trusted CA.
+	3.	The private key and certificate pair might not match (common after a re-issue if the wrong key is deployed).
+	4.	Or, if you’re behind a proxy/SSL interceptor, it might be replacing the cert with its own, which Java cannot validate.
 
 ⸻
 
-Common causes
-	1.	Server misconfiguration
-	•	Wrong certificate chain is being served (missing intermediate cert).
-	•	Expired certificate.
-	•	Using a different private key/certificate mismatch.
-	2.	Client-side issue
-	•	The JDK truststore doesn’t have the CA used by the server.
-	•	A proxy/firewall is intercepting TLS and replacing the cert.
-	•	Old JDK version missing newer root certificates.
+Steps to diagnose & fix
 
-⸻
+1. Test the server’s SSL certificate
 
-Fixes you can try
-
-1. Verify the server’s certificate
-
-Run:
+Run this from your client machine:
 
 openssl s_client -connect <hostname>:443 -showcerts
 
-Check if the certificate chain is complete and valid.
+	•	Check the chain shown.
+	•	Verify issuer and subject.
+	•	See if intermediates are missing.
 
-2. Import the missing CA into your JVM truststore
+2. Validate certificate chain manually
 
-If your server uses a custom CA:
+openssl verify -CAfile <ca-bundle.crt> server.crt
 
-keytool -import -trustcacerts -alias myserver -file server.crt -keystore $JAVA_HOME/lib/security/cacerts
+If it fails, the chain is broken.
 
-(default password = changeit)
+3. Check for mismatch in private key & certificate
 
-3. Check for expired or mismatched cert
-	•	Ensure the cert and private key pair match.
-	•	Renew/replace if expired.
+On the server:
 
-4. Update JVM CA store
+openssl x509 -noout -modulus -in server.crt | openssl md5
+openssl rsa -noout -modulus -in server.key | openssl md5
 
-If you are using an older JDK, update it or update the cacerts file with the latest trusted CAs.
+The hashes must match.
 
-5. Debug with JVM flags
+4. Update / import the CA
 
-You can enable more SSL debugging:
+If it’s a custom CA:
+
+keytool -import -trustcacerts -alias myca -file myca.crt -keystore $JAVA_HOME/lib/security/cacerts
+
+(password = changeit)
+
+5. Check Java version
+
+Older JDKs sometimes reject newer signature algorithms (like SHA256 with RSA).
+Since your trace shows java.base/sun.security..., you’re using Java 11+ — still, ensure it’s updated with the latest security patches.
+
+6. Enable SSL debugging
+
+Run your app with:
 
 -Djavax.net.debug=ssl,handshake,certpath
 
-This will show exactly which cert in the chain is failing.
+This will show exactly which certificate signature fails and why.
 
 ⸻
 
-👉 Question for you:
-Are you connecting to a public endpoint (like an API) or an internal service with a custom/self-signed certificate?
-
-That will determine if you should import the CA or fix the server certificate chain.
+⚡ Next step for you:
+Can you confirm whether the server you’re calling is internal (self-signed/custom CA) or a public HTTPS API? That will decide whether you should fix the truststore on your client, or the certificate chain on the server.
