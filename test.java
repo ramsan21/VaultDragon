@@ -1,2 +1,3 @@
-jq -r --arg start "2025-09-11T00:00:00+08:00" --arg end "2025-09-11T00:30:00+08:00" \
-'select(."@timestamp" >= $start and ."@timestamp" <= $end) | "\(.["@timestamp"])  \(.message | gsub("\\n"; "\n"))"' /prd/starss/uaas/logs/uaasv2.log.json
+jq -r --arg start "2025-09-11T00:00:00+08:00" --arg end "2025-09-11T00:30:00+08:00" 'select(."@timestamp" >= $start and ."@timestamp" <= $end) | "\(.["@timestamp"])  \(.message | gsub("\\n"; "\n"))"' /prd/starss/uaas/logs/uaasv2.log.json
+
+jq -r --arg start "2025-09-11T00:00:00+08:00" --arg end "2025-09-11T00:30:00+08:00" 'select(."@timestamp" >= $start and ."@timestamp" <= $end) | .["@timestamp"]' /prd/starss/uaas/logs/uaasv2.log.json
