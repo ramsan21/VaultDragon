@@ -1,3 +1,7 @@
-jq -r --arg start "2025-09-11T00:00:00+08:00" --arg end "2025-09-11T00:30:00+08:00" 'select(."@timestamp" >= $start and ."@timestamp" <= $end) | "\(.["@timestamp"])  \(.message | gsub("\\n"; "\n"))"' /prd/starss/uaas/logs/uaasv2.log.json
-
-jq -r --arg start "2025-09-11T00:00:00+08:00" --arg end "2025-09-11T00:30:00+08:00" 'select(."@timestamp" >= $start and ."@timestamp" <= $end) | .["@timestamp"]' /prd/starss/uaas/logs/uaasv2.log.json
+BEGIN
+   FOR t IN (SELECT table_name FROM user_tables) LOOP
+      EXECUTE IMMEDIATE 'SELECT COUNT(*) FROM ' || t.table_name INTO :cnt;
+      DBMS_OUTPUT.PUT_LINE(t.table_name || ' => ' || :cnt);
+   END LOOP;
+END;
+/
