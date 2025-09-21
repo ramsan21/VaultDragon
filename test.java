@@ -1,39 +1,68 @@
-Thanks for sharing the screenshot — now it’s clear.
+Thanks for the clearer picture — I see exactly what you want now.
 
-👉 Your method currently returns a plain String[]. JAXB/JAX-WS marshals this as <item>...</item>. But you want each element to be <ns1:string>...</ns1:string>.
+Right now your method:
 
-That means you need to tell JAXB:
-	•	Don’t use anonymous <item> elements.
-	•	Use a named element with namespace + type.
+@WebMethod(action = "signB64")
+@WebResult(name = "return")
+public @XmlElement(name = "string") String[] signB64(
+    @WebParam(name = "sign_message") String sign_message,
+    @WebParam(name = "alias") String alias
+) { ... }
+
+produces:
+
+<return>
+  <item>100</item>
+  <item>1</item>
+</return>
+
+but you want:
+
+<return>
+  <ns1:string>100</ns1:string>
+  <ns1:string>1</ns1:string>
+</return>
+
 
 ⸻
 
-✅ How to fix
+Why it happens
+	•	Returning a raw String[] makes JAX-WS/JAXB default to <item>....
+	•	To force <ns1:string>..., you must control the JAXB mapping of the array.
 
-1. Wrap the array in a response class
+⸻
 
-Instead of returning String[] directly, create a wrapper with JAXB annotations:
+✅ Solution: Wrap the array in a JAXB type
 
-@XmlRootElement(name = "signB64Response", namespace = "http://server.qapi.starsec.scb.com")
+1. Create a response wrapper
+
+package com.example.ws;
+
+import javax.xml.bind.annotation.*;
+import java.util.ArrayList;
+import java.util.List;
+
 @XmlAccessorType(XmlAccessType.FIELD)
+@XmlType(name = "signB64Response", propOrder = { "strings" })
+@XmlRootElement(name = "signB64Response", namespace = "http://server.qapi.starsec.scb.com")
 public class SignB64Response {
 
     @XmlElement(name = "string", namespace = "http://server.qapi.starsec.scb.com")
-    private List<String> returnValues = new ArrayList<>();
+    private List<String> strings = new ArrayList<>();
 
-    public List<String> getReturnValues() {
-        return returnValues;
+    public List<String> getStrings() {
+        return strings;
     }
 
-    public void setReturnValues(List<String> returnValues) {
-        this.returnValues = returnValues;
+    public void setStrings(List<String> strings) {
+        this.strings = strings;
     }
 }
 
 
 ⸻
 
-2. Change your WebMethod to return this wrapper
+2. Update your WebMethod to return this wrapper
 
 @WebMethod(action = "signB64")
 @WebResult(name = "return")
@@ -41,18 +70,16 @@ public SignB64Response signB64(
         @WebParam(name = "sign_message") String sign_message,
         @WebParam(name = "alias") String alias) {
 
-    SignB64Response response = new SignB64Response();
-    response.getReturnValues().add("100");
-    response.getReturnValues().add("1");
-    return response;
+    SignB64Response resp = new SignB64Response();
+    resp.getStrings().add("100");
+    resp.getStrings().add("1");
+    return resp;
 }
 
 
 ⸻
 
-3. Output result
-
-Now the SOAP response will look like:
+3. Output will now look like this
 
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
   <soap:Body>
@@ -68,11 +95,11 @@ Now the SOAP response will look like:
 
 ⸻
 
-🔑 Why this works
-	•	Directly returning String[] makes JAXB default to <item>...</item>.
-	•	A wrapper class with @XmlElement(name="string", namespace=...) forces elements to be <ns1:string>.
-	•	You can also control the prefix (ns1) using a NamespacePrefixMapper if needed (Spring or JAX-WS runtime).
+🔑 Notes
+	•	The @XmlElement(name="string", namespace="...") is the key to force <ns1:string> instead of <item>.
+	•	The wrapper object is necessary because JAXB cannot apply the annotation directly to a raw String[] return type.
+	•	If you want the prefix to always be ns1, you’ll also need a NamespacePrefixMapper (otherwise the runtime might choose ns2, ns3, etc.).
 
 ⸻
 
-👉 Do you want me to also show you the NamespacePrefixMapper implementation, so the prefix is always ns1 (instead of possibly ns2, ns3, etc.)?
+👉 Do you also want me to show you how to add a NamespacePrefixMapper so the prefix is always ns1 in the SOAP response?
