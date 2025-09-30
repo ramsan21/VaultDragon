@@ -1,105 +1,69 @@
-Thanks for the clearer picture — I see exactly what you want now.
+I see what’s happening in your screenshot. Your Ingress YAML is correctly referencing the TLS secret (secretName: ingress-tls-secret), but the browser still shows the default self-signed certificate from your ingress controller. That means the TLS secret isn’t being picked up correctly by the ingress. Let’s walk through the possible causes and fixes:
 
-Right now your method:
+⸻
 
-@WebMethod(action = "signB64")
-@WebResult(name = "return")
-public @XmlElement(name = "string") String[] signB64(
-    @WebParam(name = "sign_message") String sign_message,
-    @WebParam(name = "alias") String alias
-) { ... }
+✅ Steps to Apply Your Certificate in Ingress
+	1.	Verify the TLS secret exists in the same namespace
+	•	Your Ingress is created in namespace t-26066-s2bsec-inc1 (from screenshot).
+	•	Your TLS secret (ingress-tls-secret) must also be in the same namespace as the Ingress.
 
-produces:
+kubectl get secret ingress-tls-secret -n t-26066-s2bsec-inc1
 
-<return>
-  <item>100</item>
-  <item>1</item>
-</return>
 
-but you want:
+	2.	Check the TLS secret format
+	•	The secret must be of type kubernetes.io/tls.
+	•	It should contain exactly two keys: tls.crt and tls.key.
 
-<return>
-  <ns1:string>100</ns1:string>
-  <ns1:string>1</ns1:string>
-</return>
+kubectl describe secret ingress-tls-secret -n t-26066-s2bsec-inc1
+
+If you see data: tls.crt and tls.key, it’s good. If not, recreate it:
+
+kubectl create secret tls ingress-tls-secret \
+  --cert=your-cert.crt \
+  --key=your-cert.key \
+  -n t-26066-s2bsec-inc1
+
+
+	3.	Confirm your Ingress spec has TLS block
+In your YAML I see the tls: section but double-check it matches:
+
+tls:
+  - hosts:
+      - z2b-sec-cl-pr1-v1-stg.26066.app.standardchartered.com
+    secretName: ingress-tls-secret
+
+	•	Make sure the hostname under hosts: exactly matches the certificate CN/SAN.
+	•	Even a small mismatch (like missing www.) will cause browsers to reject it.
+
+	4.	Check your ingress controller
+	•	If you’re using NGINX ingress, confirm that it is watching the right namespace (some setups require adding an annotation like kubernetes.io/ingress.class: nginx).
+	•	Example:
+
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+
+
+	5.	Force reload
+Sometimes ingress controller caches secrets. You can delete the ingress and recreate it, or restart the ingress controller pod:
+
+kubectl delete ingress your-ingress -n t-26066-s2bsec-inc1
+kubectl apply -f ingress.yaml
+
+Or restart NGINX ingress pods:
+
+kubectl rollout restart deployment ingress-nginx-controller -n ingress-nginx
+
 
 
 ⸻
 
-Why it happens
-	•	Returning a raw String[] makes JAX-WS/JAXB default to <item>....
-	•	To force <ns1:string>..., you must control the JAXB mapping of the array.
+⚠️ Common Mistakes That Cause Default Fake Cert
+	•	Secret not in the same namespace as the Ingress.
+	•	Secret not of type kubernetes.io/tls.
+	•	Host in tls.hosts doesn’t match the domain in the browser.
+	•	Ingress controller not annotated with the right class.
 
 ⸻
 
-✅ Solution: Wrap the array in a JAXB type
-
-1. Create a response wrapper
-
-package com.example.ws;
-
-import javax.xml.bind.annotation.*;
-import java.util.ArrayList;
-import java.util.List;
-
-@XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "signB64Response", propOrder = { "strings" })
-@XmlRootElement(name = "signB64Response", namespace = "http://server.qapi.starsec.scb.com")
-public class SignB64Response {
-
-    @XmlElement(name = "string", namespace = "http://server.qapi.starsec.scb.com")
-    private List<String> strings = new ArrayList<>();
-
-    public List<String> getStrings() {
-        return strings;
-    }
-
-    public void setStrings(List<String> strings) {
-        this.strings = strings;
-    }
-}
-
-
-⸻
-
-2. Update your WebMethod to return this wrapper
-
-@WebMethod(action = "signB64")
-@WebResult(name = "return")
-public SignB64Response signB64(
-        @WebParam(name = "sign_message") String sign_message,
-        @WebParam(name = "alias") String alias) {
-
-    SignB64Response resp = new SignB64Response();
-    resp.getStrings().add("100");
-    resp.getStrings().add("1");
-    return resp;
-}
-
-
-⸻
-
-3. Output will now look like this
-
-<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-  <soap:Body>
-    <ns1:signB64Response xmlns:ns1="http://server.qapi.starsec.scb.com">
-      <return>
-        <ns1:string>100</ns1:string>
-        <ns1:string>1</ns1:string>
-      </return>
-    </ns1:signB64Response>
-  </soap:Body>
-</soap:Envelope>
-
-
-⸻
-
-🔑 Notes
-	•	The @XmlElement(name="string", namespace="...") is the key to force <ns1:string> instead of <item>.
-	•	The wrapper object is necessary because JAXB cannot apply the annotation directly to a raw String[] return type.
-	•	If you want the prefix to always be ns1, you’ll also need a NamespacePrefixMapper (otherwise the runtime might choose ns2, ns3, etc.).
-
-⸻
-
-👉 Do you also want me to show you how to add a NamespacePrefixMapper so the prefix is always ns1 in the SOAP response?
+👉 Do you want me to rewrite your current ingress.yml into a corrected version with the proper tls block and annotations so you can apply directly?
