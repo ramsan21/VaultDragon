@@ -1,58 +1,52 @@
-@Override
-protected void doFilterInternal(HttpServletRequest request,
-                                HttpServletResponse response,
-                                FilterChain chain)
-    throws IOException, ServletException {
+This happens because the request body hasn’t been consumed yet when you print the “Inbound” log.
+ContentCachingRequestWrapper only fills its cache after someone reads the body. If you log before the controller runs, the cache is still empty → you see "".
 
-    ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request);
-    ContentCachingResponseWrapper res = new ContentCachingResponseWrapper(response);
+Fix (one liner idea)
 
-    String corrId = Optional.ofNullable(req.getHeader("CorrelationId"))
-        .orElse(UUID.randomUUID().toString());
-    MDC.put("CorrelationId", corrId);
+Before you log inbound, trigger the wrapper to buffer the body yourself:
 
-    long startMs = System.currentTimeMillis();
-
-    // 1️⃣ Log inbound immediately (before controller executes)
-    logInbound(req, corrId);
-
-    try {
-        chain.doFilter(req, res); // invoke controller, services, etc.
-    } finally {
-        // 2️⃣ Log outbound after completion
-        logOutbound(req, res, corrId, System.currentTimeMillis() - startMs);
-        MDC.clear();
-        res.copyBodyToResponse();
-    }
+private static void primeCache(ContentCachingRequestWrapper req) throws IOException {
+  // for JSON / raw bodies
+  if (req.getContentAsByteArray().length == 0) {
+    // reading once causes the wrapper to cache the bytes
+    StreamUtils.copyToByteArray(req.getInputStream());
+  }
+  // for application/x-www-form-urlencoded (Spring reads parameters, not raw body)
+  req.getParameterMap();
 }
 
-private void logInbound(ContentCachingRequestWrapper req, String corrId) {
-    String inbound = new StringBuilder()
-        .append("\n================ INBOUND MESSAGE ================\n")
-        .append("Address: ").append(req.getRequestURI()).append('\n')
-        .append("Content-Type: ").append(nullToEmpty(req.getContentType())).append('\n')
-        .append("ExchangeId: ").append(corrId).append('\n')
-        .append("Headers: ").append(headersMap(req)).append('\n')
-        .append("Payload: ").append(maskJwt(bodyString(req))).append('\n')
-        .append("=================================================\n")
-        .toString();
-    log.info(inbound);
+Then call this right before you build the inbound message:
+
+ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request);
+ContentCachingResponseWrapper res = new ContentCachingResponseWrapper(response);
+
+primeCache(req);           // <-- add this
+logInbound(req, corrId);   // now bodyString(req) will have content
+
+chain.doFilter(req, res);
+logOutbound(req, res, corrId, tookMs);
+res.copyBodyToResponse();
+
+Body helpers (unchanged)
+
+private static String bodyString(ContentCachingRequestWrapper req) {
+  byte[] buf = req.getContentAsByteArray();
+  if (buf == null || buf.length == 0) return "<no body>";
+  Charset cs = Optional.ofNullable(req.getCharacterEncoding())
+      .map(Charset::forName).orElse(StandardCharsets.UTF_8);
+  return new String(buf, cs);
 }
 
-private void logOutbound(ContentCachingRequestWrapper req,
-                         ContentCachingResponseWrapper res,
-                         String corrId,
-                         long tookMs) {
-    String outbound = new StringBuilder()
-        .append("\n================ OUTBOUND MESSAGE ===============\n")
-        .append("Address: ").append(req.getRequestURI()).append('\n')
-        .append("Content-Type: ").append(nullToEmpty(res.getContentType())).append('\n')
-        .append("ResponseCode: ").append(res.getStatus()).append('\n')
-        .append("ExchangeId: ").append(corrId).append('\n')
-        .append("Time Taken (millis): ").append(tookMs).append('\n')
-        .append("Headers: ").append(headersMap(res)).append('\n')
-        .append("Payload: ").append(maskJwt(bodyString(res))).append('\n')
-        .append("=================================================\n")
-        .toString();
-    log.info(outbound);
-}
+Notes / gotchas
+	•	This is safe: you’re reading from the wrapper’s stream, not the raw request; downstream code can still read the body because the wrapper serves it from the cached bytes.
+	•	For form posts (application/x-www-form-urlencoded), Spring populates parameters and often never touches the raw InputStream. Calling getParameterMap() forces the wrapper to cache them.
+	•	For multipart or large/binary bodies, you may want to skip or truncate. Example:
+
+boolean printable = List.of("application/json","application/xml","text/plain",
+                            "application/x-www-form-urlencoded")
+                        .contains(Optional.ofNullable(req.getContentType()).orElse(""));
+
+
+	•	Ensure your filter runs before others that might consume the stream: @Order(Ordered.HIGHEST_PRECEDENCE).
+
+With this small primeCache(...) step, your inbound payload will be populated and printed correctly.
