@@ -1,126 +1,147 @@
-Yep—there are a few cleaner ways to log request + response (with bodies) in Spring Boot without fighting a null request body in your filter.
+Great—since you’ve chosen Approach C (Filter with ContentCaching*), the fix is mainly about when you read the body.
 
-Option A (easiest): Use Zalando Logbook
+Right now you call logInbound(req, corrId); before chain.doFilter(req, res);. At that moment the body cache is still empty, so req.getContentAsByteArray() returns []. You must log the request body after the chain runs (controller has consumed the stream and the wrapper has cached it). You can still log “inbound headers/line” before the chain if you want them to appear first.
 
-It’s a drop-in HTTP logger that captures method, URI, headers, and bodies (with masking) for both request and response.
-	1.	Add the starter
+Here’s a ready-to-paste version showing the exact changes:
 
-<!-- pom.xml -->
-<dependency>
-  <groupId>org.zalando</groupId>
-  <artifactId>logbook-spring-boot-starter</artifactId>
-  <version>3.9.0</version>
-</dependency>
-
-	2.	Minimal config (application.yml)
-
-logbook:
-  format:
-    style: http # or json
-  obfuscate:
-    headers: [Authorization, X-API-KEY]
-  predicate:
-    exclude:
-      - path: /actuator/health
-      - path: /pgp/health
-logging:
-  level:
-    org.zalando.logbook: INFO
-
-That’s it—Logbook registers a filter internally and logs in/out bodies safely. You can plug in your own formatter/writer later if you want your custom message style.
-
-⸻
-
-Option B: AOP around controllers (no raw InputStream)
-
-If your controllers use @RequestBody and return a body, you can log the already-deserialized objects—no wrapper tricks.
-
-@Aspect
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE + 10) // ensure it wraps early
 @Slf4j
-public class ControllerLoggingAspect {
+public class RequestFilter extends OncePerRequestFilter {
 
-  @Pointcut("within(@org.springframework.web.bind.annotation.RestController *)")
-  public void restControllers() {}
+    private static final Set<String> SKIP_PATHS = Set.of("/pgp/health", "/health");
 
-  @Around("restControllers()")
-  public Object logAround(ProceedingJoinPoint pjp) throws Throwable {
-    String controller = pjp.getSignature().getDeclaringTypeName();
-    String method = pjp.getSignature().getName();
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain chain) throws IOException, ServletException {
 
-    // Inbound
-    Object[] args = pjp.getArgs();
-    log.info("Inbound -> {}.{} args={}", controller, method, safeJson(args));
+        ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request);
+        ContentCachingResponseWrapper res = new ContentCachingResponseWrapper(response);
 
-    long t0 = System.currentTimeMillis();
-    Object result = pjp.proceed();
-    long dt = System.currentTimeMillis() - t0;
+        String corrId = Optional.ofNullable(req.getHeader("CorrelationId"))
+                .orElse(UUID.randomUUID().toString());
+        MDC.put("CorrelationId", corrId);
 
-    // Outbound
-    log.info("Outbound <- {}.{} took={}ms body={}", controller, method, dt, safeJson(result));
-    return result;
-  }
+        long startMs = System.currentTimeMillis();
 
-  private String safeJson(Object o) {
-    try { return new ObjectMapper().writeValueAsString(o); }
-    catch (Exception e) { return String.valueOf(o); }
-  }
+        try {
+            // (A) If you want an "Inbound" line at the top, log only line+headers here (NO BODY)
+            if (!shouldSkip(req)) {
+                logInboundHeadersOnly(req, corrId);
+            }
+
+            // Let controller/filters read the body; wrappers will cache it
+            chain.doFilter(req, res);
+
+            // (B) Now the caches are populated -> log bodies
+            if (!shouldSkip(req)) {
+                logInboundBody(req, corrId); // <-- moved AFTER chain
+                logOutbound(res, corrId, System.currentTimeMillis() - startMs);
+            }
+        } finally {
+            MDC.clear();
+            // IMPORTANT: write cached body back to client
+            res.copyBodyToResponse();
+        }
+    }
+
+    private boolean shouldSkip(HttpServletRequest req) {
+        String path = req.getRequestURI();
+        return SKIP_PATHS.contains(path);
+    }
+
+    /** Header/line only; safe to run before chain */
+    private void logInboundHeadersOnly(ContentCachingRequestWrapper req, String corrId) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Inbound Message\n");
+        write(sb, "Address", req.getRequestURI());
+        write(sb, "HttpMethod", req.getMethod());
+        write(sb, "Content-Type", nullToEmpty(req.getContentType()));
+        write(sb, "ExchangeId", corrId);
+        write(sb, "Headers", formatHeaders(req));
+        log.info(sb.toString());
+    }
+
+    /** Body must be logged AFTER chain.doFilter */
+    private void logInboundBody(ContentCachingRequestWrapper req, String corrId) throws IOException {
+        if (!isLoggableContentType(req.getContentType())) return;
+
+        String body = toBody(req.getContentAsByteArray(),
+                Optional.ofNullable(req.getCharacterEncoding()).orElse(StandardCharsets.UTF_8.name()));
+
+        if (!body.isBlank()) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Inbound Body\n");
+            write(sb, "ExchangeId", corrId);
+            write(sb, "Payload", mask(truncate(body)));
+            log.info(sb.toString());
+        }
+    }
+
+    private void logOutbound(ContentCachingResponseWrapper res, String corrId, long tookMs) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Outbound Message\n");
+        write(sb, "Status", String.valueOf(res.getStatus()));
+        write(sb, "ExchangeId", corrId);
+        write(sb, "TimeTaken(ms)", String.valueOf(tookMs));
+
+        if (isLoggableContentType(res.getContentType())) {
+            String body = toBody(res.getContentAsByteArray(),
+                    Optional.ofNullable(res.getCharacterEncoding()).orElse(StandardCharsets.UTF_8.name()));
+            if (!body.isBlank()) {
+                write(sb, "Payload", mask(truncate(body)));
+            }
+        }
+        log.info(sb.toString());
+    }
+
+    // ---- helpers ----
+
+    private boolean isLoggableContentType(String ct) {
+        if (ct == null) return false;
+        String c = ct.toLowerCase();
+        return c.contains("application/json") || c.contains("text/") || c.contains("xml") || c.contains("form-urlencoded");
+        // skip multipart/*, octet-stream, etc.
+    }
+
+    private String toBody(byte[] bytes, String charset) {
+        try { return new String(bytes, charset); }
+        catch (Exception e) { return new String(bytes, StandardCharsets.UTF_8); }
+    }
+
+    private String mask(String s) {
+        // redact obvious secrets (JWT, passwords). Example:
+        return s.replaceAll("(\"authorization\"\\s*:\\s*\")([^\"]+)(\")", "$1***$3");
+    }
+
+    private String truncate(String s) {
+        int max = 5000; // cap to avoid huge logs
+        return s.length() > max ? s.substring(0, max) + "…" : s;
+    }
+
+    private String formatHeaders(HttpServletRequest req) {
+        Map<String, String> map = Collections.list(req.getHeaderNames()).stream()
+                .collect(Collectors.toMap(h -> h, req::getHeader));
+        // redact sensitive headers
+        map.replaceAll((k, v) -> k.equalsIgnoreCase("authorization") ? "***" : v);
+        return map.toString();
+    }
+
+    private void write(StringBuilder sb, String key, String value) {
+        sb.append(key).append(": ").append(value == null ? "" : value).append('\n');
+    }
+
+    private String nullToEmpty(String s) { return s == null ? "" : s; }
 }
 
-Pros: dead simple, no request-body-null issues.
-Cons: you won’t see raw bytes (useful for multipart/files); you see mapped objects.
+What changed vs your screenshot
+	•	Removed the pre-chain logInbound(req, corrId) that tried to read the body too early.
+	•	Added logInboundHeadersOnly(...) before the chain (so you still get an “Inbound” line at the top).
+	•	Added logInboundBody(...) after the chain (this time the body is available).
+	•	Kept res.copyBodyToResponse() in finally.
+	•	Guarded by isLoggableContentType and length caps; masked sensitive data.
 
-⸻
+If you don’t need the “inbound headers first” line, you can simply remove logInboundHeadersOnly and keep only the two post-chain calls.
 
-Option C: Keep your Filter, but fix the “null body”
-
-If you prefer a filter, the null happens because the request InputStream can be read only once. Use Spring’s caching wrappers and read them after the controller runs.
-
-@Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 10) // run early
-public class HttpLogFilter extends OncePerRequestFilter {
-
-  @Override
-  protected void doFilterInternal(HttpServletRequest request,
-                                  HttpServletResponse response,
-                                  FilterChain chain) throws IOException, ServletException {
-
-    ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request);
-    ContentCachingResponseWrapper res = new ContentCachingResponseWrapper(response);
-
-    // 1) DO NOT read req body here – it's still empty.
-    chain.doFilter(req, res); // controller consumes and caching collects
-
-    // 2) AFTER chain: bodies are available
-    byte[] reqBody = req.getContentAsByteArray();
-    byte[] resBody = res.getContentAsByteArray();
-
-    String reqPayload = new String(reqBody, req.getCharacterEncoding() != null ? req.getCharacterEncoding() : StandardCharsets.UTF_8.name());
-    String resPayload = new String(resBody, res.getCharacterEncoding() != null ? res.getCharacterEncoding() : StandardCharsets.UTF_8.name());
-
-    log.info("Inbound {} {} payload={}", req.getMethod(), req.getRequestURI(), truncate(mask(reqPayload)));
-    log.info("Outbound status={} payload={}", res.getStatus(), truncate(mask(resPayload)));
-
-    // 3) IMPORTANT: write body back to client
-    res.copyBodyToResponse();
-  }
-
-  private String mask(String s) { /* redact JWTs, etc. */ return s; }
-  private String truncate(String s) { return s.length() > 5000 ? s.substring(0,5000)+"…": s; }
-}
-
-Key tips to avoid “null”:
-	•	Wrap with ContentCachingRequestWrapper/ResponseWrapper.
-	•	Log after chain.doFilter(...).
-	•	Always call res.copyBodyToResponse() at the end.
-	•	Make sure no earlier filter already consumed the stream without caching.
-	•	For large/multipart uploads, consider skipping body logging.
-
-⸻
-
-Which should you pick?
-	•	Want a zero-friction solution with proper masking? → Logbook (Option A).
-	•	Want to log business objects, not raw bytes? → AOP (Option B).
-	•	Want full control and minimal deps? → Fixed Filter (Option C).
-
-If you tell me your preference (A/B/C), I’ll drop in a ready-to-paste config tailored to your endpoints (e.g., exclude /health, mask JWT headers, cap size, etc.).
+If you want, I can adapt the masking (e.g., skip /actuator/**, hide query params, drop large multipart uploads) or change the log format to exactly match your previous SecureSlf4jEventSender message style.
