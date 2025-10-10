@@ -1,52 +1,126 @@
-This happens because the request body hasn’t been consumed yet when you print the “Inbound” log.
-ContentCachingRequestWrapper only fills its cache after someone reads the body. If you log before the controller runs, the cache is still empty → you see "".
+Yep—there are a few cleaner ways to log request + response (with bodies) in Spring Boot without fighting a null request body in your filter.
 
-Fix (one liner idea)
+Option A (easiest): Use Zalando Logbook
 
-Before you log inbound, trigger the wrapper to buffer the body yourself:
+It’s a drop-in HTTP logger that captures method, URI, headers, and bodies (with masking) for both request and response.
+	1.	Add the starter
 
-private static void primeCache(ContentCachingRequestWrapper req) throws IOException {
-  // for JSON / raw bodies
-  if (req.getContentAsByteArray().length == 0) {
-    // reading once causes the wrapper to cache the bytes
-    StreamUtils.copyToByteArray(req.getInputStream());
+<!-- pom.xml -->
+<dependency>
+  <groupId>org.zalando</groupId>
+  <artifactId>logbook-spring-boot-starter</artifactId>
+  <version>3.9.0</version>
+</dependency>
+
+	2.	Minimal config (application.yml)
+
+logbook:
+  format:
+    style: http # or json
+  obfuscate:
+    headers: [Authorization, X-API-KEY]
+  predicate:
+    exclude:
+      - path: /actuator/health
+      - path: /pgp/health
+logging:
+  level:
+    org.zalando.logbook: INFO
+
+That’s it—Logbook registers a filter internally and logs in/out bodies safely. You can plug in your own formatter/writer later if you want your custom message style.
+
+⸻
+
+Option B: AOP around controllers (no raw InputStream)
+
+If your controllers use @RequestBody and return a body, you can log the already-deserialized objects—no wrapper tricks.
+
+@Aspect
+@Component
+@Slf4j
+public class ControllerLoggingAspect {
+
+  @Pointcut("within(@org.springframework.web.bind.annotation.RestController *)")
+  public void restControllers() {}
+
+  @Around("restControllers()")
+  public Object logAround(ProceedingJoinPoint pjp) throws Throwable {
+    String controller = pjp.getSignature().getDeclaringTypeName();
+    String method = pjp.getSignature().getName();
+
+    // Inbound
+    Object[] args = pjp.getArgs();
+    log.info("Inbound -> {}.{} args={}", controller, method, safeJson(args));
+
+    long t0 = System.currentTimeMillis();
+    Object result = pjp.proceed();
+    long dt = System.currentTimeMillis() - t0;
+
+    // Outbound
+    log.info("Outbound <- {}.{} took={}ms body={}", controller, method, dt, safeJson(result));
+    return result;
   }
-  // for application/x-www-form-urlencoded (Spring reads parameters, not raw body)
-  req.getParameterMap();
+
+  private String safeJson(Object o) {
+    try { return new ObjectMapper().writeValueAsString(o); }
+    catch (Exception e) { return String.valueOf(o); }
+  }
 }
 
-Then call this right before you build the inbound message:
+Pros: dead simple, no request-body-null issues.
+Cons: you won’t see raw bytes (useful for multipart/files); you see mapped objects.
 
-ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request);
-ContentCachingResponseWrapper res = new ContentCachingResponseWrapper(response);
+⸻
 
-primeCache(req);           // <-- add this
-logInbound(req, corrId);   // now bodyString(req) will have content
+Option C: Keep your Filter, but fix the “null body”
 
-chain.doFilter(req, res);
-logOutbound(req, res, corrId, tookMs);
-res.copyBodyToResponse();
+If you prefer a filter, the null happens because the request InputStream can be read only once. Use Spring’s caching wrappers and read them after the controller runs.
 
-Body helpers (unchanged)
+@Component
+@Order(Ordered.HIGHEST_PRECEDENCE + 10) // run early
+public class HttpLogFilter extends OncePerRequestFilter {
 
-private static String bodyString(ContentCachingRequestWrapper req) {
-  byte[] buf = req.getContentAsByteArray();
-  if (buf == null || buf.length == 0) return "<no body>";
-  Charset cs = Optional.ofNullable(req.getCharacterEncoding())
-      .map(Charset::forName).orElse(StandardCharsets.UTF_8);
-  return new String(buf, cs);
+  @Override
+  protected void doFilterInternal(HttpServletRequest request,
+                                  HttpServletResponse response,
+                                  FilterChain chain) throws IOException, ServletException {
+
+    ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request);
+    ContentCachingResponseWrapper res = new ContentCachingResponseWrapper(response);
+
+    // 1) DO NOT read req body here – it's still empty.
+    chain.doFilter(req, res); // controller consumes and caching collects
+
+    // 2) AFTER chain: bodies are available
+    byte[] reqBody = req.getContentAsByteArray();
+    byte[] resBody = res.getContentAsByteArray();
+
+    String reqPayload = new String(reqBody, req.getCharacterEncoding() != null ? req.getCharacterEncoding() : StandardCharsets.UTF_8.name());
+    String resPayload = new String(resBody, res.getCharacterEncoding() != null ? res.getCharacterEncoding() : StandardCharsets.UTF_8.name());
+
+    log.info("Inbound {} {} payload={}", req.getMethod(), req.getRequestURI(), truncate(mask(reqPayload)));
+    log.info("Outbound status={} payload={}", res.getStatus(), truncate(mask(resPayload)));
+
+    // 3) IMPORTANT: write body back to client
+    res.copyBodyToResponse();
+  }
+
+  private String mask(String s) { /* redact JWTs, etc. */ return s; }
+  private String truncate(String s) { return s.length() > 5000 ? s.substring(0,5000)+"…": s; }
 }
 
-Notes / gotchas
-	•	This is safe: you’re reading from the wrapper’s stream, not the raw request; downstream code can still read the body because the wrapper serves it from the cached bytes.
-	•	For form posts (application/x-www-form-urlencoded), Spring populates parameters and often never touches the raw InputStream. Calling getParameterMap() forces the wrapper to cache them.
-	•	For multipart or large/binary bodies, you may want to skip or truncate. Example:
+Key tips to avoid “null”:
+	•	Wrap with ContentCachingRequestWrapper/ResponseWrapper.
+	•	Log after chain.doFilter(...).
+	•	Always call res.copyBodyToResponse() at the end.
+	•	Make sure no earlier filter already consumed the stream without caching.
+	•	For large/multipart uploads, consider skipping body logging.
 
-boolean printable = List.of("application/json","application/xml","text/plain",
-                            "application/x-www-form-urlencoded")
-                        .contains(Optional.ofNullable(req.getContentType()).orElse(""));
+⸻
 
+Which should you pick?
+	•	Want a zero-friction solution with proper masking? → Logbook (Option A).
+	•	Want to log business objects, not raw bytes? → AOP (Option B).
+	•	Want full control and minimal deps? → Fixed Filter (Option C).
 
-	•	Ensure your filter runs before others that might consume the stream: @Order(Ordered.HIGHEST_PRECEDENCE).
-
-With this small primeCache(...) step, your inbound payload will be populated and printed correctly.
+If you tell me your preference (A/B/C), I’ll drop in a ready-to-paste config tailored to your endpoints (e.g., exclude /health, mask JWT headers, cap size, etc.).
