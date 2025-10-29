@@ -1,37 +1,26 @@
-package com.scb.starsec.uaasv2.softtoken.util;
+@Test
+void happyPath_validNumber_returnsParsedAndRemaining() {
+    ApplicationPolicy policy = policy("app", "SG");
+    SysConfig sysCfg = sysCfgWith("3600");
+    Instance instance = mock(Instance.class);
+    when(instance.getActivatedOn()).thenReturn(990_000L);
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+    long fixedNow = 1_000_000L;
+    Instant fixedInstant = Instant.ofEpochSecond(fixedNow);
 
-import org.apache.commons.lang3.tuple.Pair;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+    try (MockedStatic<ConfigUtils> cfg = mockStatic(ConfigUtils.class, Answers.CALLS_REAL_METHODS);
+         MockedStatic<Instant> clock = mockStatic(Instant.class)) {
 
-import com.scb.starsec.uaasv2.softtoken.db.model.Instance;
-import com.scb.starsec.uaasv2.softtoken.policy.ApplicationPolicy;
+        // your existing stub
+        stubGetSysConfig(cfg, "app", "SG", sysCfg);
 
-public class ConfigUtilsTest {
+        // IMPORTANT: return a real Instant and stub BOTH overloads
+        clock.when(Instant::now).thenReturn(fixedInstant);
+        clock.when(() -> Instant.now(Mockito.any())).thenReturn(fixedInstant);
 
-    @Test
-    @DisplayName("negative remaining: activatedOn + cooling < now => remaining < 0")
-    void negativeRemaining_withoutStaticMock() {
-        // Arrange
-        ApplicationPolicy applicationPolicy = mock(ApplicationPolicy.class);
+        Pair<Long, Long> out = ConfigUtils.calculateCoolingPeriod(policy, instance);
 
-        // Create an instance with old activation time
-        Instance instance = new Instance();
-        instance.setSerialNumber("S1");
-        instance.setActivatedOn(0L); // very old epoch -> ensures negative remaining
-
-        // If calculateCoolingPeriod internally uses applicationPolicy.getValue(), mock it:
-        when(applicationPolicy.getValue()).thenReturn("60"); // cooling period 60 seconds
-
-        // Act
-        Pair<Long, Long> result = ConfigUtils.calculateCoolingPeriod(applicationPolicy, instance);
-
-        // Assert
-        assertNotNull(result, "Result pair must not be null");
-        assertEquals(60L, result.getLeft(), "Cooling period configuration should be 60 seconds");
-        assertTrue(result.getRight() < 0, "Remaining cooling time should be negative");
+        assertEquals(3600L, out.getLeft());
+        assertEquals(fixedNow - 990_000L, out.getRight());
     }
 }
