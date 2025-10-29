@@ -1,167 +1,165 @@
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.time.Instant;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
+import org.mockito.Answers;
 import org.mockito.MockedStatic;
 
-class CalculateCoolingPeriodTest {
+class ConfigUtilsTest {
 
+  // --- helpers to build common mocks ---
+  private ApplicationPolicy policy(String appId, String country) {
+    ApplicationPolicy p = mock(ApplicationPolicy.class);
+    when(p.getAppId()).thenReturn(appId);
+    when(p.getCountryCode()).thenReturn(country);
+    return p;
+  }
+
+  private SysConfig sysCfgWith(String value) {
+    SysConfig c = mock(SysConfig.class);
+    when(c.getValue()).thenReturn(value);
+    return c;
+  }
+
+  private void stubGetSysConfig(MockedStatic<ConfigUtils> cfg,
+                                String appId, String country,
+                                SysConfig toReturn) {
+    cfg.when(() -> ConfigUtils.getSysConfig(
+            eq(appId),
+            eq(ConfigUtils.ALL_SYMBOL),
+            eq(country),
+            eq(SysConfigCode.HK_COOLING_PERIOD.name())))
+       .thenReturn(toReturn);
+  }
+
+  // 1) Blank config -> early return (hits isBlank branch)
   @Test
   void returnsDefaultWhenConfigBlank() {
-    ApplicationPolicy policy = mock(ApplicationPolicy.class);
+    ApplicationPolicy policy = policy("app", "SG");
     Instance instance = mock(Instance.class);
-    SysConfig sysCfg = mock(SysConfig.class);
+    SysConfig sysCfg = sysCfgWith("");   // blank
 
-    when(policy.getAppId()).thenReturn("app");
-    when(policy.getCountryCode()).thenReturn("SG");
-    when(sysCfg.getValue()).thenReturn(""); // or null
+    try (MockedStatic<ConfigUtils> cfg =
+             mockStatic(ConfigUtils.class, Answers.CALLS_REAL_METHODS)) {
 
-    try (MockedStatic<ConfigUtils> cfg = mockStatic(ConfigUtils.class)) {
-      cfg.when(() -> ConfigUtils.getSysConfig(eq("app"), anyString(), eq("SG")))
-         .thenReturn(sysCfg);
+      stubGetSysConfig(cfg, "app", "SG", sysCfg);
 
-      Pair<Long, Long> out = MyClass.calculateCoolingPeriod(policy, instance);
+      Pair<Long, Long> out = ConfigUtils.calculateCoolingPeriod(policy, instance);
+
+      assertNotNull(out);
       assertEquals(0L, out.getLeft());
       assertEquals(0L, out.getRight());
+
+      cfg.verify(() -> ConfigUtils.getSysConfig(
+          "app", ConfigUtils.ALL_SYMBOL, "SG", SysConfigCode.HK_COOLING_PERIOD.name()));
     }
   }
 
+  // 2) Happy path (valid number)
   @Test
   void happyPath_validNumber_returnsParsedAndRemaining() {
-    ApplicationPolicy policy = mock(ApplicationPolicy.class);
+    ApplicationPolicy policy = policy("app", "SG");
     Instance instance = mock(Instance.class);
-    SysConfig sysCfg = mock(SysConfig.class);
-
-    when(policy.getAppId()).thenReturn("app");
-    when(policy.getCountryCode()).thenReturn("SG");
-    when(sysCfg.getValue()).thenReturn("3600");
+    SysConfig sysCfg = sysCfgWith("3600");
 
     long fixedNow = 1_000_000L;
-    long activated = 990_000L; // remaining = 10_000
+    long activated =   990_000L;   // remaining = 10_000
 
     when(instance.getActivatedOnEpochSecond()).thenReturn(activated);
 
-    try (MockedStatic<ConfigUtils> cfg = mockStatic(ConfigUtils.class);
+    try (MockedStatic<ConfigUtils> cfg =
+             mockStatic(ConfigUtils.class, Answers.CALLS_REAL_METHODS);
          MockedStatic<Instant> clock = mockStatic(Instant.class)) {
 
-      cfg.when(() -> ConfigUtils.getSysConfig(eq("app"), anyString(), eq("SG")))
-         .thenReturn(sysCfg);
+      stubGetSysConfig(cfg, "app", "SG", sysCfg);
 
-      Instant nowInstant = mock(Instant.class);
-      when(nowInstant.getEpochSecond()).thenReturn(fixedNow);
-      clock.when(Instant::now).thenReturn(nowInstant);
+      Instant now = mock(Instant.class);
+      when(now.getEpochSecond()).thenReturn(fixedNow);
+      clock.when(Instant::now).thenReturn(now);
 
-      Pair<Long, Long> out = MyClass.calculateCoolingPeriod(policy, instance);
+      Pair<Long, Long> out = ConfigUtils.calculateCoolingPeriod(policy, instance);
+
       assertEquals(3600L, out.getLeft());
       assertEquals(fixedNow - activated, out.getRight()); // 10_000
     }
   }
 
+  // 3) Bad number -> NumberFormatException catch
   @Test
   void invalidNumber_triggersNumberFormatCatch_returnsDefault() {
-    ApplicationPolicy policy = mock(ApplicationPolicy.class);
+    ApplicationPolicy policy = policy("app", "SG");
     Instance instance = mock(Instance.class);
-    SysConfig sysCfg = mock(SysConfig.class);
+    SysConfig sysCfg = sysCfgWith("not-a-long");
 
-    when(policy.getAppId()).thenReturn("app");
-    when(policy.getCountryCode()).thenReturn("SG");
-    when(sysCfg.getValue()).thenReturn("not-a-long");
+    try (MockedStatic<ConfigUtils> cfg =
+             mockStatic(ConfigUtils.class, Answers.CALLS_REAL_METHODS)) {
 
-    // These won’t be used because parseLong will throw first.
-    when(instance.getActivatedOnEpochSecond()).thenReturn(0L);
+      stubGetSysConfig(cfg, "app", "SG", sysCfg);
 
-    try (MockedStatic<ConfigUtils> cfg = mockStatic(ConfigUtils.class);
-         MockedStatic<Instant> clock = mockStatic(Instant.class)) {
+      Pair<Long, Long> out = ConfigUtils.calculateCoolingPeriod(policy, instance);
 
-      cfg.when(() -> ConfigUtils.getSysConfig(eq("app"), anyString(), eq("SG")))
-         .thenReturn(sysCfg);
-
-      Pair<Long, Long> out = MyClass.calculateCoolingPeriod(policy, instance);
       assertEquals(0L, out.getLeft());
       assertEquals(0L, out.getRight());
     }
   }
 
+  // 4) Unexpected exception inside try -> generic catch
   @Test
   void unexpectedException_triggersGenericCatch_returnsDefault() {
-    ApplicationPolicy policy = mock(ApplicationPolicy.class);
+    ApplicationPolicy policy = policy("app", "SG");
     Instance instance = mock(Instance.class);
-    SysConfig sysCfg = mock(SysConfig.class);
+    SysConfig sysCfg = sysCfgWith("600"); // parsed successfully
 
-    when(policy.getAppId()).thenReturn("app");
-    when(policy.getCountryCode()).thenReturn("SG");
-    when(sysCfg.getValue()).thenReturn("600"); // valid parse
+    when(instance.getActivatedOnEpochSecond())
+        .thenThrow(new RuntimeException("boom"));
 
-    // Make an exception occur inside the try block AFTER parsing succeeds
-    when(instance.getActivatedOnEpochSecond()).thenThrow(new RuntimeException("boom"));
-
-    try (MockedStatic<ConfigUtils> cfg = mockStatic(ConfigUtils.class);
+    try (MockedStatic<ConfigUtils> cfg =
+             mockStatic(ConfigUtils.class, Answers.CALLS_REAL_METHODS);
          MockedStatic<Instant> clock = mockStatic(Instant.class)) {
 
-      cfg.when(() -> ConfigUtils.getSysConfig(eq("app"), anyString(), eq("SG")))
-         .thenReturn(sysCfg);
+      stubGetSysConfig(cfg, "app", "SG", sysCfg);
 
-      Instant nowInstant = mock(Instant.class);
-      when(nowInstant.getEpochSecond()).thenReturn(1_000L);
-      clock.when(Instant::now).thenReturn(nowInstant);
+      Instant now = mock(Instant.class);
+      when(now.getEpochSecond()).thenReturn(42L);
+      clock.when(Instant::now).thenReturn(now);
 
-      Pair<Long, Long> out = MyClass.calculateCoolingPeriod(policy, instance);
+      Pair<Long, Long> out = ConfigUtils.calculateCoolingPeriod(policy, instance);
+
       assertEquals(0L, out.getLeft());
       assertEquals(0L, out.getRight());
     }
   }
 
+  // 5) Edge: future activation → negative remaining (still happy path lines)
   @Test
-  void happyPath_futureActivation_negativeRemainingIsReturned() {
-    ApplicationPolicy policy = mock(ApplicationPolicy.class);
+  void futureActivation_returnsNegativeRemaining() {
+    ApplicationPolicy policy = policy("app", "SG");
     Instance instance = mock(Instance.class);
-    SysConfig sysCfg = mock(SysConfig.class);
+    SysConfig sysCfg = sysCfgWith("120");
 
-    when(policy.getAppId()).thenReturn("app");
-    when(policy.getCountryCode()).thenReturn("SG");
-    when(sysCfg.getValue()).thenReturn("120");
-
-    long fixedNow = 2000L;
-    long activated = 3000L; // remaining = -1000
+    long fixedNow = 2_000L;
+    long activated = 3_000L; // remaining = -1000
 
     when(instance.getActivatedOnEpochSecond()).thenReturn(activated);
 
-    try (MockedStatic<ConfigUtils> cfg = mockStatic(ConfigUtils.class);
+    try (MockedStatic<ConfigUtils> cfg =
+             mockStatic(ConfigUtils.class, Answers.CALLS_REAL_METHODS);
          MockedStatic<Instant> clock = mockStatic(Instant.class)) {
 
-      cfg.when(() -> ConfigUtils.getSysConfig(eq("app"), anyString(), eq("SG")))
-         .thenReturn(sysCfg);
+      stubGetSysConfig(cfg, "app", "SG", sysCfg);
 
-      Instant nowInstant = mock(Instant.class);
-      when(nowInstant.getEpochSecond()).thenReturn(fixedNow);
-      clock.when(Instant::now).thenReturn(nowInstant);
+      Instant now = mock(Instant.class);
+      when(now.getEpochSecond()).thenReturn(fixedNow);
+      clock.when(Instant::now).thenReturn(now);
 
-      Pair<Long, Long> out = MyClass.calculateCoolingPeriod(policy, instance);
+      Pair<Long, Long> out = ConfigUtils.calculateCoolingPeriod(policy, instance);
+
       assertEquals(120L, out.getLeft());
       assertEquals(-1000L, out.getRight());
     }
   }
-}
-@Test
-void returnsDefaultWhenConfigBlank() {
-    ApplicationPolicy policy = mock(ApplicationPolicy.class);
-    Instance instance = mock(Instance.class);
-    SysConfig sysCfg = mock(SysConfig.class); // mock is NOT null!
-
-    when(policy.getAppId()).thenReturn("app");
-    when(policy.getCountryCode()).thenReturn("SG");
-    when(sysCfg.getValue()).thenReturn(""); // return blank, triggers early return
-
-    try (MockedStatic<ConfigUtils> cfg = mockStatic(ConfigUtils.class)) {
-        cfg.when(() -> ConfigUtils.getSysConfig(eq("app"), anyString(), eq("SG")))
-           .thenReturn(sysCfg); // <- return mock SysConfig, NOT null
-
-        Pair<Long, Long> out = ConfigUtils.calculateCoolingPeriod(policy, instance);
-        assertNotNull(out); // sanity check
-        assertEquals(0L, out.getLeft());
-        assertEquals(0L, out.getRight());
-    }
 }
