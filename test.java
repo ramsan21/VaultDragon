@@ -145,3 +145,23 @@ class CalculateCoolingPeriodTest {
     }
   }
 }
+@Test
+void returnsDefaultWhenConfigBlank() {
+    ApplicationPolicy policy = mock(ApplicationPolicy.class);
+    Instance instance = mock(Instance.class);
+    SysConfig sysCfg = mock(SysConfig.class); // mock is NOT null!
+
+    when(policy.getAppId()).thenReturn("app");
+    when(policy.getCountryCode()).thenReturn("SG");
+    when(sysCfg.getValue()).thenReturn(""); // return blank, triggers early return
+
+    try (MockedStatic<ConfigUtils> cfg = mockStatic(ConfigUtils.class)) {
+        cfg.when(() -> ConfigUtils.getSysConfig(eq("app"), anyString(), eq("SG")))
+           .thenReturn(sysCfg); // <- return mock SysConfig, NOT null
+
+        Pair<Long, Long> out = ConfigUtils.calculateCoolingPeriod(policy, instance);
+        assertNotNull(out); // sanity check
+        assertEquals(0L, out.getLeft());
+        assertEquals(0L, out.getRight());
+    }
+}
