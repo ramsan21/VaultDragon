@@ -1,110 +1,120 @@
-Good — your screenshot shows logs from your NGINX Ingress Controller pod (t-26066-s2bsecks-inc1-ingress-nginx-controller-7f96ff576-zpq5s), and I can explain what’s happening:
+Nice—this is much clearer now. From your two screenshots:
 
-⸻
+* `endpoints/ms-csa-reports-service` **exists** and has an address `10.233.100.103:8080`.
+* The Ingress `ms-csa-reports-ingress` points to **service: ms-csa-reports-service / port 8080** and NGINX shows the same backend `(10.233.100.103:8080)`.
 
-🔍 Key Log Lines and Meaning
+So the earlier “no active Endpoint” error is resolved. If you’re still not getting traffic through the Ingress, it’s almost always one of these:
 
-Service "t-26066-s2bsecks-s2b-security/ms-csa-reports-service" does not have any active Endpoint.
+---
 
-➡️ Meaning:
-The Kubernetes Service exists, but it has no active backend pods (i.e., no pods are matching the selector labels defined in the Service).
-NGINX can’t route traffic because there’s nowhere to send it.
+## 1) Service selects the wrong pod
 
-⸻
+Make sure the endpoint IP actually belongs to the **ms-csa-reports** pod and not some other pod.
 
+```bash
+# Show which pod has that IP
+kubectl get pod -n t-26066c-s2bsecks-s2b-security -o wide | grep 10.233.100.103
 
-ignoring ingress ms-csa-reports-ingress in t-26066-s2bsecks-s2b-security: no object matching key "t-26066-s2bsecks-s2b-security/ms-csa-reports-service" in local store
+# Compare pod labels vs Service selector
+kubectl get svc ms-csa-reports-service -n t-26066c-s2bsecks-s2b-security -o yaml | yq '.spec.selector'
+kubectl get pod <the-pod-name> -n t-26066c-s2bsecks-s2b-security --show-labels
+```
 
-➡️ Meaning:
-Your Ingress resource refers to a Service that doesn’t currently exist or isn’t visible to the Ingress controller.
-Either:
-	•	The service name is misspelled in the ingress YAML.
-	•	The ingress and service are in different namespaces.
-	•	Or the service hasn’t been created yet / got deleted.
+> If labels don’t match the Service selector exactly, fix the Service selector or the pod labels so the **intended** app backs the service.
 
-⸻
+---
 
+## 2) App protocol mismatch (HTTPS vs HTTP)
 
-successfully validated configuration, accepting ingress ...
-Backend successfully reloaded
+Your Ingress has **Kong** annotations (`konghq.com/*`) but you’re using **NGINX**. NGINX ignores those. If your app speaks **HTTPS** on its container port (Spring Boot with `server.ssl.enabled=true`, common on 8443/8080), NGINX needs to be told:
 
-➡️ This means the Ingress controller has successfully reloaded its configuration, but it will still skip any routes pointing to invalid or inactive services.
-
-⸻
-
-🚨 Root Cause Summary
-
-Your ingress is defined, but the backend service has no endpoints.
-In short:
-	•	The pods backing ms-csa-reports-service are not running, crashed, or not matching the selector in the service manifest.
-
-⸻
-
-✅ How to Fix It
-	1.	Check service details:
-
-kubectl get svc -n t-26066-s2bsecks-s2b-security
-
-Confirm that ms-csa-reports-service exists.
-
-	2.	Check pod labels:
-
-kubectl get pods -n t-26066-s2bsecks-s2b-security --show-labels
-
-Make sure the pod labels match the selector in the Service definition. Example:
-
-selector:
-  app: ms-csa-reports
-
-
-	3.	Check endpoints:
-
-kubectl get endpoints -n t-26066-s2bsecks-s2b-security ms-csa-reports-service -o yaml
-
-If subsets: [], it means no pods match → no endpoints.
-
-	4.	Check ingress:
-
-kubectl describe ingress -n t-26066-s2bsecks-s2b-security ms-csa-reports-ingress
-
-Ensure service.name and service.port.number align with your service.
-
-⸻
-
-🧩 Example YAML Alignment Check
-
-# Deployment
+```yaml
 metadata:
-  name: ms-csa-reports
-  labels:
-    app: ms-csa-reports
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+```
 
-# Service
-metadata:
-  name: ms-csa-reports-service
-spec:
-  selector:
-    app: ms-csa-reports
-  ports:
-    - port: 8080
-      targetPort: 8080
+> Remove the `konghq.com/*` annotations; replace with the NGINX equivalents above.
 
-# Ingress
-spec:
-  rules:
-    - host: reports.example.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: ms-csa-reports-service
-                port:
-                  number: 8080
+If your app is **HTTP** only, keep `backend-protocol: "HTTP"` (or omit it).
 
-If any of these app or service.name values differ, your ingress will not have endpoints.
+---
 
-⸻
+## 3) App not actually listening on the port the Service targets
 
-Would you like me to help you write a kubectl diagnostic command set (a ready-to-copy script that verifies namespace, service, pods, and ingress automatically)?
+Double-check the container is listening on 8080 (or whatever `targetPort` is):
+
+```bash
+kubectl exec -n t-26066c-s2bsecks-s2b-security <the-pod> -- sh -c "netstat -tlnp || ss -tln"
+# or curl locally
+kubectl exec -n t-26066c-s2bsecks-s2b-security <the-pod> -- curl -vk http://127.0.0.1:8080/actuator/health
+```
+
+If it’s listening on a different port (e.g., 8443), fix the Service `targetPort` and the Ingress backend accordingly.
+
+---
+
+## 4) Readiness not passing → flapping endpoints
+
+If you have a readinessProbe that isn’t succeeding, the endpoints may vanish/reappear. Use a simple readiness (health/ready endpoint) that reflects app readiness.
+
+```yaml
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 3
+```
+
+---
+
+## 5) Quick end-to-end test (bypassing Ingress)
+
+If the two checks above pass, validate the Service itself:
+
+```bash
+# Port-forward the Service and hit it from your laptop
+kubectl -n t-26066c-s2bsecks-s2b-security port-forward svc/ms-csa-reports-service 8080:8080
+curl -vk http://127.0.0.1:8080/
+```
+
+* Works here but **fails via Ingress** → issue is Ingress config (host, TLS, annotations).
+* Fails here → issue is Service/Pod port or app itself.
+
+---
+
+## 6) Ingress host/TLS sanity
+
+Confirm you’re curling the exact host defined in the Ingress and that your TLS secret (if any) matches:
+
+```bash
+kubectl describe ingress -n t-26066c-s2bsecks-s2b-security ms-csa-reports-ingress
+# Then test (replace with your host):
+curl -vk https://s2bsec-csa-reports-sit3-stg.26066.app.standardchartered.com/ -H 'Host: s2bsec-csa-reports-sit3-stg.26066.app.standardchartered.com'
+```
+
+---
+
+### Minimal working matrix
+
+* **HTTP app on 8080**
+
+  * Service `port: 8080`, `targetPort: 8080`
+  * Ingress backend → service:8080
+  * (No `backend-protocol` or set `"HTTP"`)
+
+* **HTTPS app on 8443 (or 8080 TLS)**
+
+  * Service `port: 8443`, `targetPort: 8443` (or 8080 if that’s where TLS lives)
+  * Ingress backend → service:8443
+  * Add `nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"`
+
+---
+
+If you paste your **Service YAML** (spec.selector + ports), the **pod labels**, and whether your app is HTTP or HTTPS, I’ll give you the exact patch to apply.
