@@ -1,120 +1,77 @@
-Nice—this is much clearer now. From your two screenshots:
+New Error Analysis
+The error has changed from the previous one. Now it’s:
 
-* `endpoints/ms-csa-reports-service` **exists** and has an address `10.233.100.103:8080`.
-* The Ingress `ms-csa-reports-ingress` points to **service: ms-csa-reports-service / port 8080** and NGINX shows the same backend `(10.233.100.103:8080)`.
+Error: UPGRADE FAILED: template: s2bsec-id-exp/templates/job.yaml:44:16: 
+executing "s2bsec-id-exp/templates/job.yaml" at <include "microservice.jobVolumeMounts">: 
+error calling include: template: no template "microservice.jobVolumeMounts" 
+associated with template "gotpl"
 
-So the earlier “no active Endpoint” error is resolved. If you’re still not getting traffic through the Ingress, it’s almost always one of these:
 
----
+Root Cause
+The template is trying to call {{ include "microservice.jobVolumeMounts" . }} and {{ include "microservice.jobVolumes" . }} but these named templates don’t exist in your chart’s _helpers.tpl or any other template file.
 
-## 1) Service selects the wrong pod
+Fix Options
+Option 1: Add the missing templates to _helpers.tpl
+Open your chart’s templates/_helpers.tpl and add:
 
-Make sure the endpoint IP actually belongs to the **ms-csa-reports** pod and not some other pod.
+{{- define "microservice.jobVolumeMounts" -}}
+{{- if .Values.job.volumeMounts -}}
+{{- toYaml .Values.job.volumeMounts }}
+{{- end -}}
+{{- end -}}
 
-```bash
-# Show which pod has that IP
-kubectl get pod -n t-26066c-s2bsecks-s2b-security -o wide | grep 10.233.100.103
+{{- define "microservice.jobVolumes" -}}
+{{- if .Values.job.volumes -}}
+{{- toYaml .Values.job.volumes }}
+{{- end -}}
+{{- end -}}
 
-# Compare pod labels vs Service selector
-kubectl get svc ms-csa-reports-service -n t-26066c-s2bsecks-s2b-security -o yaml | yq '.spec.selector'
-kubectl get pod <the-pod-name> -n t-26066c-s2bsecks-s2b-security --show-labels
-```
 
-> If labels don’t match the Service selector exactly, fix the Service selector or the pod labels so the **intended** app backs the service.
+Option 2: Replace include with direct values in job.yaml
+In your job.yaml, replace lines 43–45:
 
----
+# BEFORE (broken)
+volumeMounts:
+  {{- include "microservice.jobVolumeMounts" . | nindent 12 }}
+volumes:
+  {{- include "microservice.jobVolumes" . | nindent 8 }}
 
-## 2) App protocol mismatch (HTTPS vs HTTP)
+# AFTER (direct values)
+{{- if and .Values.job .Values.job.volumeMounts }}
+volumeMounts:
+  {{- toYaml .Values.job.volumeMounts | nindent 12 }}
+{{- end }}
+{{- if and .Values.job .Values.job.volumes }}
+volumes:
+  {{- toYaml .Values.job.volumes | nindent 8 }}
+{{- end }}
 
-Your Ingress has **Kong** annotations (`konghq.com/*`) but you’re using **NGINX**. NGINX ignores those. If your app speaks **HTTPS** on its container port (Spring Boot with `server.ssl.enabled=true`, common on 8443/8080), NGINX needs to be told:
 
-```yaml
-metadata:
-  annotations:
-    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-```
+Option 3: Add empty defaults in values.yaml
 
-> Remove the `konghq.com/*` annotations; replace with the NGINX equivalents above.
+job:
+  command: []
+  resources: {}
+  volumeMounts: []
+  volumes: []
 
-If your app is **HTTP** only, keep `backend-protocol: "HTTP"` (or omit it).
 
----
+Recommended Complete Fix
+Do all three together:
+1. _helpers.tpl — add the missing templates (Option 1)
+2. job.yaml — your file already has the nil checks from the previous fix ✅
+3. values.yaml — add safe defaults (Option 3)
 
-## 3) App not actually listening on the port the Service targets
+Verify Locally Before Pushing
 
-Double-check the container is listening on 8080 (or whatever `targetPort` is):
+# Check if helpers are defined
+grep -r "jobVolumeMounts\|jobVolumes" ./templates/
 
-```bash
-kubectl exec -n t-26066c-s2bsecks-s2b-security <the-pod> -- sh -c "netstat -tlnp || ss -tln"
-# or curl locally
-kubectl exec -n t-26066c-s2bsecks-s2b-security <the-pod> -- curl -vk http://127.0.0.1:8080/actuator/health
-```
+# Test template rendering
+helm template s2bsec-id-exp ./your-chart -f values.yaml
 
-If it’s listening on a different port (e.g., 8443), fix the Service `targetPort` and the Ingress backend accordingly.
+# If no errors, dry run
+helm upgrade --install s2bsec-id-exp ./your-chart -f values.yaml --dry-run
 
----
 
-## 4) Readiness not passing → flapping endpoints
-
-If you have a readinessProbe that isn’t succeeding, the endpoints may vanish/reappear. Use a simple readiness (health/ready endpoint) that reflects app readiness.
-
-```yaml
-readinessProbe:
-  httpGet:
-    path: /actuator/health/readiness
-    port: 8080
-  initialDelaySeconds: 10
-  periodSeconds: 5
-  timeoutSeconds: 2
-  failureThreshold: 3
-```
-
----
-
-## 5) Quick end-to-end test (bypassing Ingress)
-
-If the two checks above pass, validate the Service itself:
-
-```bash
-# Port-forward the Service and hit it from your laptop
-kubectl -n t-26066c-s2bsecks-s2b-security port-forward svc/ms-csa-reports-service 8080:8080
-curl -vk http://127.0.0.1:8080/
-```
-
-* Works here but **fails via Ingress** → issue is Ingress config (host, TLS, annotations).
-* Fails here → issue is Service/Pod port or app itself.
-
----
-
-## 6) Ingress host/TLS sanity
-
-Confirm you’re curling the exact host defined in the Ingress and that your TLS secret (if any) matches:
-
-```bash
-kubectl describe ingress -n t-26066c-s2bsecks-s2b-security ms-csa-reports-ingress
-# Then test (replace with your host):
-curl -vk https://s2bsec-csa-reports-sit3-stg.26066.app.standardchartered.com/ -H 'Host: s2bsec-csa-reports-sit3-stg.26066.app.standardchartered.com'
-```
-
----
-
-### Minimal working matrix
-
-* **HTTP app on 8080**
-
-  * Service `port: 8080`, `targetPort: 8080`
-  * Ingress backend → service:8080
-  * (No `backend-protocol` or set `"HTTP"`)
-
-* **HTTPS app on 8443 (or 8080 TLS)**
-
-  * Service `port: 8443`, `targetPort: 8443` (or 8080 if that’s where TLS lives)
-  * Ingress backend → service:8443
-  * Add `nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"`
-
----
-
-If you paste your **Service YAML** (spec.selector + ports), the **pod labels**, and whether your app is HTTP or HTTPS, I’ll give you the exact patch to apply.
+The root issue is that your job.yaml references helper templates (microservice.jobVolumeMounts, microservice.jobVolumes) that were never defined in _helpers.tpl.​​​​​​​​​​​​​​​​
