@@ -1,77 +1,49 @@
-New Error Analysis
-The error has changed from the previous one. Now it’s:
+Issues Found
+You’re hitting two related errors when starting Kong via kong_ctl.sh:
+Error 1: Permission Denied on error.log
 
-Error: UPGRADE FAILED: template: s2bsec-id-exp/templates/job.yaml:44:16: 
-executing "s2bsec-id-exp/templates/job.yaml" at <include "microservice.jobVolumeMounts">: 
-error calling include: template: no template "microservice.jobVolumeMounts" 
-associated with template "gotpl"
+nginx: [emerg] open() "/apps/kong/instances/SIT2_KONG_STARSECADMIN_01/error.log" failed (13: Permission denied)
+
+
+Error 2: Invalid nginx Configuration
+
+nginx: configuration file .../local/nginx.conf test failed
 
 
 Root Cause
-The template is trying to call {{ include "microservice.jobVolumeMounts" . }} and {{ include "microservice.jobVolumes" . }} but these named templates don’t exist in your chart’s _helpers.tpl or any other template file.
+The script is running as starsswb user but nginx needs to write to log files owned by root or requires elevated privileges. Also, the .env file has /home/starsswb set as a directory path (line 11 issue).
 
-Fix Options
-Option 1: Add the missing templates to _helpers.tpl
-Open your chart’s templates/_helpers.tpl and add:
+Fix Steps
+1. Fix log directory permissions:
 
-{{- define "microservice.jobVolumeMounts" -}}
-{{- if .Values.job.volumeMounts -}}
-{{- toYaml .Values.job.volumeMounts }}
-{{- end -}}
-{{- end -}}
-
-{{- define "microservice.jobVolumes" -}}
-{{- if .Values.job.volumes -}}
-{{- toYaml .Values.job.volumes }}
-{{- end -}}
-{{- end -}}
+sudo chown -R starsswb:starsec /apps/kong/instances/SIT2_KONG_STARSECADMIN_01/logs/
+sudo chmod -R 755 /apps/kong/instances/SIT2_KONG_STARSECADMIN_01/logs/
 
 
-Option 2: Replace include with direct values in job.yaml
-In your job.yaml, replace lines 43–45:
+2. Create the log file if missing:
 
-# BEFORE (broken)
-volumeMounts:
-  {{- include "microservice.jobVolumeMounts" . | nindent 12 }}
-volumes:
-  {{- include "microservice.jobVolumes" . | nindent 8 }}
-
-# AFTER (direct values)
-{{- if and .Values.job .Values.job.volumeMounts }}
-volumeMounts:
-  {{- toYaml .Values.job.volumeMounts | nindent 12 }}
-{{- end }}
-{{- if and .Values.job .Values.job.volumes }}
-volumes:
-  {{- toYaml .Values.job.volumes | nindent 8 }}
-{{- end }}
+sudo touch /apps/kong/instances/SIT2_KONG_STARSECADMIN_01/error.log
+sudo chown starsswb /apps/kong/instances/SIT2_KONG_STARSECADMIN_01/error.log
 
 
-Option 3: Add empty defaults in values.yaml
+3. Fix the .env file — check line 11:
 
-job:
-  command: []
-  resources: {}
-  volumeMounts: []
-  volumes: []
+vi /apps/kong/instances/SIT2_KONG_STARSECADMIN_01/app/.env
 
 
-Recommended Complete Fix
-Do all three together:
-1. _helpers.tpl — add the missing templates (Option 1)
-2. job.yaml — your file already has the nil checks from the previous fix ✅
-3. values.yaml — add safe defaults (Option 3)
+Make sure the prefix path points to the local directory, not /home/starsswb:
 
-Verify Locally Before Pushing
-
-# Check if helpers are defined
-grep -r "jobVolumeMounts\|jobVolumes" ./templates/
-
-# Test template rendering
-helm template s2bsec-id-exp ./your-chart -f values.yaml
-
-# If no errors, dry run
-helm upgrade --install s2bsec-id-exp ./your-chart -f values.yaml --dry-run
+prefix=/apps/kong/instances/SIT2_KONG_STARSECADMIN_01/local
 
 
-The root issue is that your job.yaml references helper templates (microservice.jobVolumeMounts, microservice.jobVolumes) that were never defined in _helpers.tpl.​​​​​​​​​​​​​​​​
+4. Create the local directory if missing:
+
+mkdir -p /apps/kong/instances/SIT2_KONG_STARSECADMIN_01/local
+
+
+5. Retry:
+
+./kong_ctl.sh start
+
+
+The warning about "user" directive being ignored is non-fatal (since nginx isn’t running as root), but the permission denial on the log file is blocking startup.​​​​​​​​​​​​​​​​
