@@ -1,49 +1,43 @@
-Issues Found
-You’re hitting two related errors when starting Kong via kong_ctl.sh:
-Error 1: Permission Denied on error.log
+Still the Same Core Issue
+The chmod -R 755 /apps/logs/kong/SIT2_KONG_STARSEC_01/ you ran fixed the wrong path. The error points to a different location:
 
-nginx: [emerg] open() "/apps/kong/instances/SIT2_KONG_STARSECADMIN_01/error.log" failed (13: Permission denied)
-
-
-Error 2: Invalid nginx Configuration
-
-nginx: configuration file .../local/nginx.conf test failed
+/apps/kong/logs/SIT2_KONG_STARSEC_01/error.log   ← nginx is trying to write here
+/apps/logs/kong/SIT2_KONG_STARSEC_01/            ← you fixed this (wrong path)
 
 
-Root Cause
-The script is running as starsswb user but nginx needs to write to log files owned by root or requires elevated privileges. Also, the .env file has /home/starsswb set as a directory path (line 11 issue).
+Fix Steps (as root)
+Switch to root first:
 
-Fix Steps
-1. Fix log directory permissions:
-
-sudo chown -R starsswb:starsec /apps/kong/instances/SIT2_KONG_STARSECADMIN_01/logs/
-sudo chmod -R 755 /apps/kong/instances/SIT2_KONG_STARSECADMIN_01/logs/
+su - root
+# or
+sudo -i
 
 
-2. Create the log file if missing:
+1. Create the missing log directory and file:
 
-sudo touch /apps/kong/instances/SIT2_KONG_STARSECADMIN_01/error.log
-sudo chown starsswb /apps/kong/instances/SIT2_KONG_STARSECADMIN_01/error.log
-
-
-3. Fix the .env file — check line 11:
-
-vi /apps/kong/instances/SIT2_KONG_STARSECADMIN_01/app/.env
+mkdir -p /apps/kong/logs/SIT2_KONG_STARSEC_01/
+touch /apps/kong/logs/SIT2_KONG_STARSEC_01/error.log
 
 
-Make sure the prefix path points to the local directory, not /home/starsswb:
+2. Fix ownership:
 
-prefix=/apps/kong/instances/SIT2_KONG_STARSECADMIN_01/local
-
-
-4. Create the local directory if missing:
-
-mkdir -p /apps/kong/instances/SIT2_KONG_STARSECADMIN_01/local
+chown -R starsswb:starsswb /apps/kong/logs/SIT2_KONG_STARSEC_01/
+chmod -R 755 /apps/kong/logs/SIT2_KONG_STARSEC_01/
 
 
-5. Retry:
+3. Do the same for STARSECADMIN:
 
+mkdir -p /apps/kong/logs/SIT2_KONG_STARSECADMIN_01/
+touch /apps/kong/logs/SIT2_KONG_STARSECADMIN_01/error.log
+chown -R starsswb:starsswb /apps/kong/logs/SIT2_KONG_STARSECADMIN_01/
+chmod -R 755 /apps/kong/logs/SIT2_KONG_STARSECADMIN_01/
+
+
+4. Switch back and retry:
+
+su - starsswb
+cd /apps/kong/instances/SIT2_KONG_STARSEC_01/bin/
 ./kong_ctl.sh start
 
 
-The warning about "user" directive being ignored is non-fatal (since nginx isn’t running as root), but the permission denial on the log file is blocking startup.​​​​​​​​​​​​​​​​
+The key insight: ls: cannot access '/apps/logs/kong/...' vs the nginx error showing /apps/kong/logs/... — the directory order is swapped. That’s why the chmod didn’t help.​​​​​​​​​​​​​​​​
