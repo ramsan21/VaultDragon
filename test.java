@@ -1,37 +1,7 @@
+Here’s a refined version built around that point:
 
-Yes, correct! If yum is not available, it will throw a “command not found” error. Here’s how to handle it:
+You lead at your best when handling production-critical issues. In those high-pressure moments, you stay composed and focused on resolving the problem quickly while making sure the client experiences little to no impact. You prioritise well, coordinate the team calmly, and keep communication clear so everyone knows their role during the incident.
 
-Step 1: Identify What Package Manager Is Available
-Add this to your Dockerfile temporarily to check:
+Rather than reacting under stress, you approach critical issues methodically — protecting the client’s experience and business continuity first, then driving the team toward a stable resolution. This ability to shield the client from disruption while keeping the team steady is where your leadership really stands out.
 
-RUN which yum || which microdnf || which apt-get || which apk || echo "No package manager found"
-
-
-Based on the result, use the right command:
-If microdnf is available (common in micro/UBI images like yours):
-
-RUN microdnf update libnghttp2 curl freetype && \
-    microdnf clean all
-
-
-If apt-get is available (Debian/Ubuntu based):
-
-RUN apt-get update && \
-    apt-get install -y --only-upgrade libnghttp2 curl freetype2 && \
-    rm -rf /var/lib/apt/lists/*
-
-
-If apk is available (Alpine based):
-
-RUN apk update && \
-    apk upgrade libnghttp2 curl freetype
-
-
-Since your base image is a micro image
-Your image tag is jre:17.0.18.0.8-micro-11023046 — the word micro strongly suggests it uses microdnf, not yum. So most likely this will work:
-
-RUN microdnf update libnghttp2 curl freetype && \
-    microdnf clean all
-
-
-Try this first!​​​​​​​​​​​​​​​​
+Want me to keep it this length, or tighten it into a shorter 2–3 sentence version?
