@@ -3,8 +3,8 @@
  "version": "1.3",
  "stage": {
   "background": "#FFFFFF",
-  "width": 1010,
-  "height": 540,
+  "width": 1020,
+  "height": 600,
   "nodeIndex": 53,
   "autoFit": true,
   "exportBorder": false,
@@ -26,8 +26,8 @@
     "y": -40
    },
    "max": {
-    "x": 1000,
-    "y": 500
+    "x": 1010,
+    "y": 595
    }
   },
   "objects": [
@@ -50,7 +50,7 @@
       "overflow": "none",
       "vposition": "none",
       "hposition": "none",
-      "html": "<p style=\"text-align:left;\"><span style=\"font-family:Arial;font-size:14px;color:#000000;font-weight:bold;\">S2B Login - SAML SSO : Logical Architecture</span></p>",
+      "html": "<p style=\"text-align:left;\"><span style=\"font-family:Arial;font-size:14px;color:#000000;font-weight:bold;\">S2B Login - SAML SSO : Data Flow Diagram</span></p>",
       "paddingLeft": 2,
       "paddingRight": 2,
       "paddingBottom": 2,
@@ -66,13 +66,13 @@
     "linkMap": []
    },
    {
-    "x": 20,
-    "y": 10,
+    "x": 30,
+    "y": 170,
     "rotation": 0,
     "id": 2,
     "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
-    "width": 970,
-    "height": 55,
+    "width": 130,
+    "height": 60,
     "lockAspectRatio": false,
     "lockShape": false,
     "order": 2,
@@ -81,8 +81,8 @@
      "Shape": {
       "tid": "com.gliffy.stencil.rectangle.basic_v1",
       "strokeWidth": 2,
-      "strokeColor": "#666666",
-      "fillColor": "none",
+      "strokeColor": "#000000",
+      "fillColor": "#FFFFFF",
       "gradient": false,
       "dropShadow": false,
       "state": 0,
@@ -90,24 +90,573 @@
       "shadowX": 0,
       "shadowY": 0,
       "opacity": 1,
-      "dashStyle": "4.0,4.0"
+      "dashStyle": null
      }
     },
     "layerId": "layer0",
     "linkMap": [],
-    "children": []
+    "children": [
+     {
+      "x": 2,
+      "y": 0,
+      "rotation": 0,
+      "id": 3,
+      "uid": null,
+      "width": 126,
+      "height": 60,
+      "lockAspectRatio": false,
+      "lockShape": false,
+      "order": "auto",
+      "graphic": {
+       "type": "Text",
+       "Text": {
+        "tid": null,
+        "valign": "middle",
+        "overflow": "none",
+        "vposition": "none",
+        "hposition": "none",
+        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:11px;color:#000000;font-weight:bold;\">User<br>(Browser)</span></p>",
+        "paddingLeft": 2,
+        "paddingRight": 2,
+        "paddingBottom": 2,
+        "paddingTop": 2,
+        "outerPaddingLeft": 6,
+        "outerPaddingRight": 6,
+        "outerPaddingBottom": 2,
+        "outerPaddingTop": 6
+       }
+      },
+      "children": null
+     }
+    ]
+   },
+   {
+    "x": 840,
+    "y": 60,
+    "rotation": 0,
+    "id": 4,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
+    "width": 150,
+    "height": 60,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 3,
+    "graphic": {
+     "type": "Shape",
+     "Shape": {
+      "tid": "com.gliffy.stencil.rectangle.basic_v1",
+      "strokeWidth": 2,
+      "strokeColor": "#6AA84F",
+      "fillColor": "#D9EAD3",
+      "gradient": false,
+      "dropShadow": false,
+      "state": 0,
+      "shadow": false,
+      "shadowX": 0,
+      "shadowY": 0,
+      "opacity": 1,
+      "dashStyle": null
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": [
+     {
+      "x": 2,
+      "y": 0,
+      "rotation": 0,
+      "id": 5,
+      "uid": null,
+      "width": 146,
+      "height": 60,
+      "lockAspectRatio": false,
+      "lockShape": false,
+      "order": "auto",
+      "graphic": {
+       "type": "Text",
+       "Text": {
+        "tid": null,
+        "valign": "middle",
+        "overflow": "none",
+        "vposition": "none",
+        "hposition": "none",
+        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:11px;color:#000000;font-weight:bold;\">User ID Provider<br>(IdP)</span></p>",
+        "paddingLeft": 2,
+        "paddingRight": 2,
+        "paddingBottom": 2,
+        "paddingTop": 2,
+        "outerPaddingLeft": 6,
+        "outerPaddingRight": 6,
+        "outerPaddingBottom": 2,
+        "outerPaddingTop": 6
+       }
+      },
+      "children": null
+     }
+    ]
+   },
+   {
+    "x": 260,
+    "y": 60,
+    "rotation": 0,
+    "id": 6,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.ellipse",
+    "width": 150,
+    "height": 90,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 4,
+    "graphic": {
+     "type": "Shape",
+     "Shape": {
+      "tid": "com.gliffy.stencil.ellipse.basic_v1",
+      "strokeWidth": 2,
+      "strokeColor": "#B45F06",
+      "fillColor": "#FCE5CD",
+      "gradient": false,
+      "dropShadow": false,
+      "state": 0,
+      "shadow": false,
+      "shadowX": 0,
+      "shadowY": 0,
+      "opacity": 1
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": [
+     {
+      "x": 6,
+      "y": 0,
+      "rotation": 0,
+      "id": 7,
+      "uid": null,
+      "width": 138,
+      "height": 90,
+      "lockAspectRatio": false,
+      "lockShape": false,
+      "order": "auto",
+      "graphic": {
+       "type": "Text",
+       "Text": {
+        "tid": null,
+        "valign": "middle",
+        "overflow": "none",
+        "vposition": "none",
+        "hposition": "none",
+        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:10px;color:#000000;font-weight:bold;\">P1<br>Login & SSO Check<br>(UAAS)</span></p>",
+        "paddingLeft": 2,
+        "paddingRight": 2,
+        "paddingBottom": 2,
+        "paddingTop": 2,
+        "outerPaddingLeft": 6,
+        "outerPaddingRight": 6,
+        "outerPaddingBottom": 2,
+        "outerPaddingTop": 6
+       }
+      },
+      "children": null
+     }
+    ]
+   },
+   {
+    "x": 520,
+    "y": 190,
+    "rotation": 0,
+    "id": 8,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.ellipse",
+    "width": 150,
+    "height": 90,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 5,
+    "graphic": {
+     "type": "Shape",
+     "Shape": {
+      "tid": "com.gliffy.stencil.ellipse.basic_v1",
+      "strokeWidth": 2,
+      "strokeColor": "#674EA7",
+      "fillColor": "#D9D2E9",
+      "gradient": false,
+      "dropShadow": false,
+      "state": 0,
+      "shadow": false,
+      "shadowX": 0,
+      "shadowY": 0,
+      "opacity": 1
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": [
+     {
+      "x": 6,
+      "y": 0,
+      "rotation": 0,
+      "id": 9,
+      "uid": null,
+      "width": 138,
+      "height": 90,
+      "lockAspectRatio": false,
+      "lockShape": false,
+      "order": "auto",
+      "graphic": {
+       "type": "Text",
+       "Text": {
+        "tid": null,
+        "valign": "middle",
+        "overflow": "none",
+        "vposition": "none",
+        "hposition": "none",
+        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:10px;color:#000000;font-weight:bold;\">P2<br>Redirect / ACS<br>(Kong)</span></p>",
+        "paddingLeft": 2,
+        "paddingRight": 2,
+        "paddingBottom": 2,
+        "paddingTop": 2,
+        "outerPaddingLeft": 6,
+        "outerPaddingRight": 6,
+        "outerPaddingBottom": 2,
+        "outerPaddingTop": 6
+       }
+      },
+      "children": null
+     }
+    ]
+   },
+   {
+    "x": 260,
+    "y": 380,
+    "rotation": 0,
+    "id": 10,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.ellipse",
+    "width": 150,
+    "height": 90,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 6,
+    "graphic": {
+     "type": "Shape",
+     "Shape": {
+      "tid": "com.gliffy.stencil.ellipse.basic_v1",
+      "strokeWidth": 2,
+      "strokeColor": "#B45F06",
+      "fillColor": "#FCE5CD",
+      "gradient": false,
+      "dropShadow": false,
+      "state": 0,
+      "shadow": false,
+      "shadowX": 0,
+      "shadowY": 0,
+      "opacity": 1
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": [
+     {
+      "x": 6,
+      "y": 0,
+      "rotation": 0,
+      "id": 11,
+      "uid": null,
+      "width": 138,
+      "height": 90,
+      "lockAspectRatio": false,
+      "lockShape": false,
+      "order": "auto",
+      "graphic": {
+       "type": "Text",
+       "Text": {
+        "tid": null,
+        "valign": "middle",
+        "overflow": "none",
+        "vposition": "none",
+        "hposition": "none",
+        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:10px;color:#000000;font-weight:bold;\">P3<br>Validate SAML<br>Response (UAAS)</span></p>",
+        "paddingLeft": 2,
+        "paddingRight": 2,
+        "paddingBottom": 2,
+        "paddingTop": 2,
+        "outerPaddingLeft": 6,
+        "outerPaddingRight": 6,
+        "outerPaddingBottom": 2,
+        "outerPaddingTop": 6
+       }
+      },
+      "children": null
+     }
+    ]
+   },
+   {
+    "x": 700,
+    "y": 240,
+    "rotation": 0,
+    "id": 12,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.ellipse",
+    "width": 140,
+    "height": 80,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 7,
+    "graphic": {
+     "type": "Shape",
+     "Shape": {
+      "tid": "com.gliffy.stencil.ellipse.basic_v1",
+      "strokeWidth": 2,
+      "strokeColor": "#B45F06",
+      "fillColor": "#FCE5CD",
+      "gradient": false,
+      "dropShadow": false,
+      "state": 0,
+      "shadow": false,
+      "shadowX": 0,
+      "shadowY": 0,
+      "opacity": 1
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": [
+     {
+      "x": 6,
+      "y": 0,
+      "rotation": 0,
+      "id": 13,
+      "uid": null,
+      "width": 128,
+      "height": 80,
+      "lockAspectRatio": false,
+      "lockShape": false,
+      "order": "auto",
+      "graphic": {
+       "type": "Text",
+       "Text": {
+        "tid": null,
+        "valign": "middle",
+        "overflow": "none",
+        "vposition": "none",
+        "hposition": "none",
+        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:10px;color:#000000;font-weight:bold;\">P4<br>Audit Consumer</span></p>",
+        "paddingLeft": 2,
+        "paddingRight": 2,
+        "paddingBottom": 2,
+        "paddingTop": 2,
+        "outerPaddingLeft": 6,
+        "outerPaddingRight": 6,
+        "outerPaddingBottom": 2,
+        "outerPaddingTop": 6
+       }
+      },
+      "children": null
+     }
+    ]
+   },
+   {
+    "x": 270,
+    "y": 245,
+    "rotation": 0,
+    "id": 14,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
+    "width": 130,
+    "height": 40,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 8,
+    "graphic": {
+     "type": "Shape",
+     "Shape": {
+      "tid": "com.gliffy.stencil.rectangle.basic_v1",
+      "strokeWidth": 2,
+      "strokeColor": "#666666",
+      "fillColor": "#EFEFEF",
+      "gradient": false,
+      "dropShadow": false,
+      "state": 0,
+      "shadow": false,
+      "shadowX": 0,
+      "shadowY": 0,
+      "opacity": 1,
+      "dashStyle": null
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": [
+     {
+      "x": 2,
+      "y": 0,
+      "rotation": 0,
+      "id": 15,
+      "uid": null,
+      "width": 126,
+      "height": 40,
+      "lockAspectRatio": false,
+      "lockShape": false,
+      "order": "auto",
+      "graphic": {
+       "type": "Text",
+       "Text": {
+        "tid": null,
+        "valign": "middle",
+        "overflow": "none",
+        "vposition": "none",
+        "hposition": "none",
+        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:11px;color:#000000;font-weight:bold;\">D1  UAAS DB</span></p>",
+        "paddingLeft": 2,
+        "paddingRight": 2,
+        "paddingBottom": 2,
+        "paddingTop": 2,
+        "outerPaddingLeft": 6,
+        "outerPaddingRight": 6,
+        "outerPaddingBottom": 2,
+        "outerPaddingTop": 6
+       }
+      },
+      "children": null
+     }
+    ]
+   },
+   {
+    "x": 700,
+    "y": 430,
+    "rotation": 0,
+    "id": 16,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
+    "width": 140,
+    "height": 40,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 9,
+    "graphic": {
+     "type": "Shape",
+     "Shape": {
+      "tid": "com.gliffy.stencil.rectangle.basic_v1",
+      "strokeWidth": 2,
+      "strokeColor": "#666666",
+      "fillColor": "#EFEFEF",
+      "gradient": false,
+      "dropShadow": false,
+      "state": 0,
+      "shadow": false,
+      "shadowX": 0,
+      "shadowY": 0,
+      "opacity": 1,
+      "dashStyle": null
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": [
+     {
+      "x": 2,
+      "y": 0,
+      "rotation": 0,
+      "id": 17,
+      "uid": null,
+      "width": 136,
+      "height": 40,
+      "lockAspectRatio": false,
+      "lockShape": false,
+      "order": "auto",
+      "graphic": {
+       "type": "Text",
+       "Text": {
+        "tid": null,
+        "valign": "middle",
+        "overflow": "none",
+        "vposition": "none",
+        "hposition": "none",
+        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:11px;color:#000000;font-weight:bold;\">D2  Solace Queue</span></p>",
+        "paddingLeft": 2,
+        "paddingRight": 2,
+        "paddingBottom": 2,
+        "paddingTop": 2,
+        "outerPaddingLeft": 6,
+        "outerPaddingRight": 6,
+        "outerPaddingBottom": 2,
+        "outerPaddingTop": 6
+       }
+      },
+      "children": null
+     }
+    ]
+   },
+   {
+    "x": 870,
+    "y": 262,
+    "rotation": 0,
+    "id": 18,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
+    "width": 130,
+    "height": 36,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 10,
+    "graphic": {
+     "type": "Shape",
+     "Shape": {
+      "tid": "com.gliffy.stencil.rectangle.basic_v1",
+      "strokeWidth": 2,
+      "strokeColor": "#666666",
+      "fillColor": "#EFEFEF",
+      "gradient": false,
+      "dropShadow": false,
+      "state": 0,
+      "shadow": false,
+      "shadowX": 0,
+      "shadowY": 0,
+      "opacity": 1,
+      "dashStyle": null
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": [
+     {
+      "x": 2,
+      "y": 0,
+      "rotation": 0,
+      "id": 19,
+      "uid": null,
+      "width": 126,
+      "height": 36,
+      "lockAspectRatio": false,
+      "lockShape": false,
+      "order": "auto",
+      "graphic": {
+       "type": "Text",
+       "Text": {
+        "tid": null,
+        "valign": "middle",
+        "overflow": "none",
+        "vposition": "none",
+        "hposition": "none",
+        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:11px;color:#000000;font-weight:bold;\">D3  Audit Log</span></p>",
+        "paddingLeft": 2,
+        "paddingRight": 2,
+        "paddingBottom": 2,
+        "paddingTop": 2,
+        "outerPaddingLeft": 6,
+        "outerPaddingRight": 6,
+        "outerPaddingBottom": 2,
+        "outerPaddingTop": 6
+       }
+      },
+      "children": null
+     }
+    ]
    },
    {
     "x": 0,
     "y": 0,
     "rotation": 0,
-    "id": 3,
+    "id": 20,
     "uid": "com.gliffy.shape.basic.basic_v1.default.line",
     "width": 100,
     "height": 100,
     "lockAspectRatio": false,
     "lockShape": false,
-    "order": 3,
+    "order": 11,
     "graphic": {
      "type": "Line",
      "Line": {
@@ -123,12 +672,20 @@
       "cornerRadius": null,
       "controlPath": [
        [
-        35,
-        38
+        160,
+        180
        ],
        [
-        70,
-        38
+        210,
+        180
+       ],
+       [
+        210,
+        105
+       ],
+       [
+        260,
+        105
        ]
       ],
       "lockSegments": {},
@@ -140,296 +697,12 @@
     "children": []
    },
    {
-    "x": 73,
-    "y": 28,
+    "x": 100,
+    "y": 135,
     "rotation": 0,
-    "id": 4,
+    "id": 21,
     "uid": "com.gliffy.shape.basic.basic_v1.default.text",
-    "width": 120,
-    "height": 20,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 4,
-    "graphic": {
-     "type": "Text",
-     "Text": {
-      "tid": null,
-      "valign": "middle",
-      "overflow": "none",
-      "vposition": "none",
-      "hposition": "none",
-      "html": "<p style=\"text-align:left;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;\">Existing Interface</span></p>",
-      "paddingLeft": 2,
-      "paddingRight": 2,
-      "paddingBottom": 2,
-      "paddingTop": 2,
-      "outerPaddingLeft": 6,
-      "outerPaddingRight": 6,
-      "outerPaddingBottom": 2,
-      "outerPaddingTop": 6
-     }
-    },
-    "children": [],
-    "layerId": "layer0",
-    "linkMap": []
-   },
-   {
-    "x": 0,
-    "y": 0,
-    "rotation": 0,
-    "id": 5,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.line",
-    "width": 100,
-    "height": 100,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 5,
-    "graphic": {
-     "type": "Line",
-     "Line": {
-      "strokeWidth": 2,
-      "strokeColor": "#6AA84F",
-      "fillColor": "none",
-      "dashStyle": null,
-      "startArrow": 0,
-      "endArrow": 1,
-      "startArrowRotation": "auto",
-      "endArrowRotation": "auto",
-      "interpolationType": "linear",
-      "cornerRadius": null,
-      "controlPath": [
-       [
-        195,
-        38
-       ],
-       [
-        230,
-        38
-       ]
-      ],
-      "lockSegments": {},
-      "ortho": false
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": []
-   },
-   {
-    "x": 233,
-    "y": 28,
-    "rotation": 0,
-    "id": 6,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
-    "width": 120,
-    "height": 20,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 6,
-    "graphic": {
-     "type": "Text",
-     "Text": {
-      "tid": null,
-      "valign": "middle",
-      "overflow": "none",
-      "vposition": "none",
-      "hposition": "none",
-      "html": "<p style=\"text-align:left;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;\">New Interface</span></p>",
-      "paddingLeft": 2,
-      "paddingRight": 2,
-      "paddingBottom": 2,
-      "paddingTop": 2,
-      "outerPaddingLeft": 6,
-      "outerPaddingRight": 6,
-      "outerPaddingBottom": 2,
-      "outerPaddingTop": 6
-     }
-    },
-    "children": [],
-    "layerId": "layer0",
-    "linkMap": []
-   },
-   {
-    "x": 0,
-    "y": 0,
-    "rotation": 0,
-    "id": 7,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.line",
-    "width": 100,
-    "height": 100,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 7,
-    "graphic": {
-     "type": "Line",
-     "Line": {
-      "strokeWidth": 2,
-      "strokeColor": "#E69138",
-      "fillColor": "none",
-      "dashStyle": null,
-      "startArrow": 0,
-      "endArrow": 1,
-      "startArrowRotation": "auto",
-      "endArrowRotation": "auto",
-      "interpolationType": "linear",
-      "cornerRadius": null,
-      "controlPath": [
-       [
-        355,
-        38
-       ],
-       [
-        390,
-        38
-       ]
-      ],
-      "lockSegments": {},
-      "ortho": false
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": []
-   },
-   {
-    "x": 393,
-    "y": 28,
-    "rotation": 0,
-    "id": 8,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
-    "width": 120,
-    "height": 20,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 8,
-    "graphic": {
-     "type": "Text",
-     "Text": {
-      "tid": null,
-      "valign": "middle",
-      "overflow": "none",
-      "vposition": "none",
-      "hposition": "none",
-      "html": "<p style=\"text-align:left;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;\">Enhanced Interface</span></p>",
-      "paddingLeft": 2,
-      "paddingRight": 2,
-      "paddingBottom": 2,
-      "paddingTop": 2,
-      "outerPaddingLeft": 6,
-      "outerPaddingRight": 6,
-      "outerPaddingBottom": 2,
-      "outerPaddingTop": 6
-     }
-    },
-    "children": [],
-    "layerId": "layer0",
-    "linkMap": []
-   },
-   {
-    "x": 515,
-    "y": 25,
-    "rotation": 0,
-    "id": 9,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
-    "width": 30,
-    "height": 25,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 9,
-    "graphic": {
-     "type": "Shape",
-     "Shape": {
-      "tid": "com.gliffy.stencil.rectangle.basic_v1",
-      "strokeWidth": 2,
-      "strokeColor": "#333333",
-      "fillColor": "#FFFFFF",
-      "gradient": false,
-      "dropShadow": false,
-      "state": 0,
-      "shadow": false,
-      "shadowX": 0,
-      "shadowY": 0,
-      "opacity": 1,
-      "dashStyle": null
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": []
-   },
-   {
-    "x": 550,
-    "y": 28,
-    "rotation": 0,
-    "id": 10,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
-    "width": 125,
-    "height": 20,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 10,
-    "graphic": {
-     "type": "Text",
-     "Text": {
-      "tid": null,
-      "valign": "middle",
-      "overflow": "none",
-      "vposition": "none",
-      "hposition": "none",
-      "html": "<p style=\"text-align:left;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;\">Existing Component</span></p>",
-      "paddingLeft": 2,
-      "paddingRight": 2,
-      "paddingBottom": 2,
-      "paddingTop": 2,
-      "outerPaddingLeft": 6,
-      "outerPaddingRight": 6,
-      "outerPaddingBottom": 2,
-      "outerPaddingTop": 6
-     }
-    },
-    "children": [],
-    "layerId": "layer0",
-    "linkMap": []
-   },
-   {
-    "x": 675,
-    "y": 25,
-    "rotation": 0,
-    "id": 11,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
-    "width": 30,
-    "height": 25,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 11,
-    "graphic": {
-     "type": "Shape",
-     "Shape": {
-      "tid": "com.gliffy.stencil.rectangle.basic_v1",
-      "strokeWidth": 2,
-      "strokeColor": "#6AA84F",
-      "fillColor": "#D9EAD3",
-      "gradient": false,
-      "dropShadow": false,
-      "state": 0,
-      "shadow": false,
-      "shadowX": 0,
-      "shadowY": 0,
-      "opacity": 1,
-      "dashStyle": null
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": []
-   },
-   {
-    "x": 710,
-    "y": 28,
-    "rotation": 0,
-    "id": 12,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
-    "width": 125,
+    "width": 105,
     "height": 20,
     "lockAspectRatio": false,
     "lockShape": false,
@@ -442,7 +715,7 @@
       "overflow": "none",
       "vposition": "none",
       "hposition": "none",
-      "html": "<p style=\"text-align:left;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;\">New Component</span></p>",
+      "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">Login details</span></p>",
       "paddingLeft": 2,
       "paddingRight": 2,
       "paddingBottom": 2,
@@ -458,31 +731,49 @@
     "linkMap": []
    },
    {
-    "x": 835,
-    "y": 25,
+    "x": 0,
+    "y": 0,
     "rotation": 0,
-    "id": 13,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
-    "width": 30,
-    "height": 25,
+    "id": 22,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.line",
+    "width": 100,
+    "height": 100,
     "lockAspectRatio": false,
     "lockShape": false,
     "order": 13,
     "graphic": {
-     "type": "Shape",
-     "Shape": {
-      "tid": "com.gliffy.stencil.rectangle.basic_v1",
+     "type": "Line",
+     "Line": {
       "strokeWidth": 2,
-      "strokeColor": "#B45F06",
-      "fillColor": "#FCE5CD",
-      "gradient": false,
-      "dropShadow": false,
-      "state": 0,
-      "shadow": false,
-      "shadowX": 0,
-      "shadowY": 0,
-      "opacity": 1,
-      "dashStyle": null
+      "strokeColor": "#000000",
+      "fillColor": "none",
+      "dashStyle": null,
+      "startArrow": 1,
+      "endArrow": 1,
+      "startArrowRotation": "auto",
+      "endArrowRotation": "auto",
+      "interpolationType": "linear",
+      "cornerRadius": null,
+      "controlPath": [
+       [
+        95,
+        170
+       ],
+       [
+        95,
+        30
+       ],
+       [
+        915,
+        30
+       ],
+       [
+        915,
+        60
+       ]
+      ],
+      "lockSegments": {},
+      "ortho": false
      }
     },
     "layerId": "layer0",
@@ -490,12 +781,12 @@
     "children": []
    },
    {
-    "x": 870,
-    "y": 28,
+    "x": 350,
+    "y": 10,
     "rotation": 0,
-    "id": 14,
+    "id": 23,
     "uid": "com.gliffy.shape.basic.basic_v1.default.text",
-    "width": 125,
+    "width": 320,
     "height": 20,
     "lockAspectRatio": false,
     "lockShape": false,
@@ -508,7 +799,7 @@
       "overflow": "none",
       "vposition": "none",
       "hposition": "none",
-      "html": "<p style=\"text-align:left;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;\">Enhanced Component</span></p>",
+      "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">SAML Request / Signed SAML Response</span></p>",
       "paddingLeft": 2,
       "paddingRight": 2,
       "paddingBottom": 2,
@@ -524,660 +815,398 @@
     "linkMap": []
    },
    {
-    "x": 20,
-    "y": 90,
+    "x": 0,
+    "y": 0,
     "rotation": 0,
-    "id": 15,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
-    "width": 180,
-    "height": 310,
+    "id": 24,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.line",
+    "width": 100,
+    "height": 100,
     "lockAspectRatio": false,
     "lockShape": false,
     "order": 15,
     "graphic": {
-     "type": "Shape",
-     "Shape": {
-      "tid": "com.gliffy.stencil.rectangle.basic_v1",
+     "type": "Line",
+     "Line": {
       "strokeWidth": 2,
-      "strokeColor": "#666666",
+      "strokeColor": "#000000",
       "fillColor": "none",
-      "gradient": false,
-      "dropShadow": false,
-      "state": 0,
-      "shadow": false,
-      "shadowX": 0,
-      "shadowY": 0,
-      "opacity": 1,
-      "dashStyle": "4.0,4.0"
+      "dashStyle": null,
+      "startArrow": 1,
+      "endArrow": 1,
+      "startArrowRotation": "auto",
+      "endArrowRotation": "auto",
+      "interpolationType": "linear",
+      "cornerRadius": null,
+      "controlPath": [
+       [
+        160,
+        215
+       ],
+       [
+        520,
+        215
+       ]
+      ],
+      "lockSegments": {},
+      "ortho": false
      }
     },
     "layerId": "layer0",
     "linkMap": [],
-    "children": [
-     {
-      "x": 2,
-      "y": 0,
-      "rotation": 0,
-      "id": 16,
-      "uid": null,
-      "width": 176,
-      "height": 24,
-      "lockAspectRatio": false,
-      "lockShape": false,
-      "order": "auto",
-      "graphic": {
-       "type": "Text",
-       "Text": {
-        "tid": null,
-        "valign": "top",
-        "overflow": "none",
-        "vposition": "none",
-        "hposition": "none",
-        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:10px;color:#000000;font-weight:bold;\">Upstream</span></p>",
-        "paddingLeft": 2,
-        "paddingRight": 2,
-        "paddingBottom": 2,
-        "paddingTop": 2,
-        "outerPaddingLeft": 6,
-        "outerPaddingRight": 6,
-        "outerPaddingBottom": 2,
-        "outerPaddingTop": 6
-       }
-      },
-      "children": null
-     }
-    ]
+    "children": []
    },
    {
-    "x": 530,
-    "y": 90,
+    "x": 412,
+    "y": 160,
     "rotation": 0,
-    "id": 17,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
-    "width": 460,
-    "height": 400,
+    "id": 25,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
+    "width": 108,
+    "height": 50,
     "lockAspectRatio": false,
     "lockShape": false,
     "order": 16,
     "graphic": {
-     "type": "Shape",
-     "Shape": {
-      "tid": "com.gliffy.stencil.rectangle.basic_v1",
-      "strokeWidth": 2,
-      "strokeColor": "#666666",
-      "fillColor": "none",
-      "gradient": false,
-      "dropShadow": false,
-      "state": 0,
-      "shadow": false,
-      "shadowX": 0,
-      "shadowY": 0,
-      "opacity": 1,
-      "dashStyle": "4.0,4.0"
+     "type": "Text",
+     "Text": {
+      "tid": null,
+      "valign": "middle",
+      "overflow": "none",
+      "vposition": "none",
+      "hposition": "none",
+      "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">302 AuthnRequest /<br>SAML Response /<br>Login success</span></p>",
+      "paddingLeft": 2,
+      "paddingRight": 2,
+      "paddingBottom": 2,
+      "paddingTop": 2,
+      "outerPaddingLeft": 6,
+      "outerPaddingRight": 6,
+      "outerPaddingBottom": 2,
+      "outerPaddingTop": 6
      }
     },
+    "children": [],
     "layerId": "layer0",
-    "linkMap": [],
-    "children": [
-     {
-      "x": 2,
-      "y": 0,
-      "rotation": 0,
-      "id": 18,
-      "uid": null,
-      "width": 456,
-      "height": 24,
-      "lockAspectRatio": false,
-      "lockShape": false,
-      "order": "auto",
-      "graphic": {
-       "type": "Text",
-       "Text": {
-        "tid": null,
-        "valign": "top",
-        "overflow": "none",
-        "vposition": "none",
-        "hposition": "none",
-        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:11px;color:#000000;font-weight:bold;\">S2B Security</span></p>",
-        "paddingLeft": 2,
-        "paddingRight": 2,
-        "paddingBottom": 2,
-        "paddingTop": 2,
-        "outerPaddingLeft": 6,
-        "outerPaddingRight": 6,
-        "outerPaddingBottom": 2,
-        "outerPaddingTop": 6
-       }
-      },
-      "children": null
-     }
-    ]
-   },
-   {
-    "x": 40,
-    "y": 125,
-    "rotation": 0,
-    "id": 19,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
-    "width": 140,
-    "height": 55,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 17,
-    "graphic": {
-     "type": "Shape",
-     "Shape": {
-      "tid": "com.gliffy.stencil.rectangle.basic_v1",
-      "strokeWidth": 2,
-      "strokeColor": "#333333",
-      "fillColor": "#FFFFFF",
-      "gradient": false,
-      "dropShadow": false,
-      "state": 0,
-      "shadow": false,
-      "shadowX": 0,
-      "shadowY": 0,
-      "opacity": 1,
-      "dashStyle": null
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": [
-     {
-      "x": 2,
-      "y": 0,
-      "rotation": 0,
-      "id": 20,
-      "uid": null,
-      "width": 136,
-      "height": 55,
-      "lockAspectRatio": false,
-      "lockShape": false,
-      "order": "auto",
-      "graphic": {
-       "type": "Text",
-       "Text": {
-        "tid": null,
-        "valign": "middle",
-        "overflow": "none",
-        "vposition": "none",
-        "hposition": "none",
-        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:11px;color:#000000;font-weight:bold;\">User Browser</span></p>",
-        "paddingLeft": 2,
-        "paddingRight": 2,
-        "paddingBottom": 2,
-        "paddingTop": 2,
-        "outerPaddingLeft": 6,
-        "outerPaddingRight": 6,
-        "outerPaddingBottom": 2,
-        "outerPaddingTop": 6
-       }
-      },
-      "children": null
-     }
-    ]
-   },
-   {
-    "x": 40,
-    "y": 305,
-    "rotation": 0,
-    "id": 21,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
-    "width": 140,
-    "height": 55,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 18,
-    "graphic": {
-     "type": "Shape",
-     "Shape": {
-      "tid": "com.gliffy.stencil.rectangle.basic_v1",
-      "strokeWidth": 2,
-      "strokeColor": "#B45F06",
-      "fillColor": "#FCE5CD",
-      "gradient": false,
-      "dropShadow": false,
-      "state": 0,
-      "shadow": false,
-      "shadowX": 0,
-      "shadowY": 0,
-      "opacity": 1,
-      "dashStyle": null
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": [
-     {
-      "x": 2,
-      "y": 0,
-      "rotation": 0,
-      "id": 22,
-      "uid": null,
-      "width": 136,
-      "height": 55,
-      "lockAspectRatio": false,
-      "lockShape": false,
-      "order": "auto",
-      "graphic": {
-       "type": "Text",
-       "Text": {
-        "tid": null,
-        "valign": "middle",
-        "overflow": "none",
-        "vposition": "none",
-        "hposition": "none",
-        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:11px;color:#000000;font-weight:bold;\">S2B Platform</span></p>",
-        "paddingLeft": 2,
-        "paddingRight": 2,
-        "paddingBottom": 2,
-        "paddingTop": 2,
-        "outerPaddingLeft": 6,
-        "outerPaddingRight": 6,
-        "outerPaddingBottom": 2,
-        "outerPaddingTop": 6
-       }
-      },
-      "children": null
-     }
-    ]
-   },
-   {
-    "x": 320,
-    "y": 95,
-    "rotation": 0,
-    "id": 23,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
-    "width": 150,
-    "height": 60,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 19,
-    "graphic": {
-     "type": "Shape",
-     "Shape": {
-      "tid": "com.gliffy.stencil.rectangle.basic_v1",
-      "strokeWidth": 2,
-      "strokeColor": "#6AA84F",
-      "fillColor": "#D9EAD3",
-      "gradient": false,
-      "dropShadow": false,
-      "state": 0,
-      "shadow": false,
-      "shadowX": 0,
-      "shadowY": 0,
-      "opacity": 1,
-      "dashStyle": null
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": [
-     {
-      "x": 2,
-      "y": 0,
-      "rotation": 0,
-      "id": 24,
-      "uid": null,
-      "width": 146,
-      "height": 60,
-      "lockAspectRatio": false,
-      "lockShape": false,
-      "order": "auto",
-      "graphic": {
-       "type": "Text",
-       "Text": {
-        "tid": null,
-        "valign": "middle",
-        "overflow": "none",
-        "vposition": "none",
-        "hposition": "none",
-        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:11px;color:#000000;font-weight:bold;\">User ID Provider<br>(IdP) - External</span></p>",
-        "paddingLeft": 2,
-        "paddingRight": 2,
-        "paddingBottom": 2,
-        "paddingTop": 2,
-        "outerPaddingLeft": 6,
-        "outerPaddingRight": 6,
-        "outerPaddingBottom": 2,
-        "outerPaddingTop": 6
-       }
-      },
-      "children": null
-     }
-    ]
-   },
-   {
-    "x": 320,
-    "y": 230,
-    "rotation": 0,
-    "id": 25,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
-    "width": 150,
-    "height": 70,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 20,
-    "graphic": {
-     "type": "Shape",
-     "Shape": {
-      "tid": "com.gliffy.stencil.rectangle.basic_v1",
-      "strokeWidth": 2,
-      "strokeColor": "#B45F06",
-      "fillColor": "#FCE5CD",
-      "gradient": false,
-      "dropShadow": false,
-      "state": 0,
-      "shadow": false,
-      "shadowX": 0,
-      "shadowY": 0,
-      "opacity": 1,
-      "dashStyle": null
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": [
-     {
-      "x": 2,
-      "y": 0,
-      "rotation": 0,
-      "id": 26,
-      "uid": null,
-      "width": 146,
-      "height": 70,
-      "lockAspectRatio": false,
-      "lockShape": false,
-      "order": "auto",
-      "graphic": {
-       "type": "Text",
-       "Text": {
-        "tid": null,
-        "valign": "middle",
-        "overflow": "none",
-        "vposition": "none",
-        "hposition": "none",
-        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:11px;color:#000000;font-weight:bold;\">Kong<br>API Gateway</span></p>",
-        "paddingLeft": 2,
-        "paddingRight": 2,
-        "paddingBottom": 2,
-        "paddingTop": 2,
-        "outerPaddingLeft": 6,
-        "outerPaddingRight": 6,
-        "outerPaddingBottom": 2,
-        "outerPaddingTop": 6
-       }
-      },
-      "children": null
-     }
-    ]
-   },
-   {
-    "x": 570,
-    "y": 190,
-    "rotation": 0,
-    "id": 27,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
-    "width": 160,
-    "height": 90,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 21,
-    "graphic": {
-     "type": "Shape",
-     "Shape": {
-      "tid": "com.gliffy.stencil.rectangle.basic_v1",
-      "strokeWidth": 2,
-      "strokeColor": "#B45F06",
-      "fillColor": "#FCE5CD",
-      "gradient": false,
-      "dropShadow": false,
-      "state": 0,
-      "shadow": false,
-      "shadowX": 0,
-      "shadowY": 0,
-      "opacity": 1,
-      "dashStyle": null
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": [
-     {
-      "x": 2,
-      "y": 0,
-      "rotation": 0,
-      "id": 28,
-      "uid": null,
-      "width": 156,
-      "height": 90,
-      "lockAspectRatio": false,
-      "lockShape": false,
-      "order": "auto",
-      "graphic": {
-       "type": "Text",
-       "Text": {
-        "tid": null,
-        "valign": "middle",
-        "overflow": "none",
-        "vposition": "none",
-        "hposition": "none",
-        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:12px;color:#000000;font-weight:bold;\">UAAS<br>(SAML SP)</span></p>",
-        "paddingLeft": 2,
-        "paddingRight": 2,
-        "paddingBottom": 2,
-        "paddingTop": 2,
-        "outerPaddingLeft": 6,
-        "outerPaddingRight": 6,
-        "outerPaddingBottom": 2,
-        "outerPaddingTop": 6
-       }
-      },
-      "children": null
-     }
-    ]
-   },
-   {
-    "x": 830,
-    "y": 190,
-    "rotation": 0,
-    "id": 29,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
-    "width": 130,
-    "height": 90,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 22,
-    "graphic": {
-     "type": "Shape",
-     "Shape": {
-      "tid": "com.gliffy.stencil.rectangle.basic_v1",
-      "strokeWidth": 2,
-      "strokeColor": "#B45F06",
-      "fillColor": "#FCE5CD",
-      "gradient": false,
-      "dropShadow": false,
-      "state": 0,
-      "shadow": false,
-      "shadowX": 0,
-      "shadowY": 0,
-      "opacity": 1,
-      "dashStyle": null
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": [
-     {
-      "x": 2,
-      "y": 0,
-      "rotation": 0,
-      "id": 30,
-      "uid": null,
-      "width": 126,
-      "height": 90,
-      "lockAspectRatio": false,
-      "lockShape": false,
-      "order": "auto",
-      "graphic": {
-       "type": "Text",
-       "Text": {
-        "tid": null,
-        "valign": "middle",
-        "overflow": "none",
-        "vposition": "none",
-        "hposition": "none",
-        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:12px;color:#000000;font-weight:bold;\">UAAS DB</span></p>",
-        "paddingLeft": 2,
-        "paddingRight": 2,
-        "paddingBottom": 2,
-        "paddingTop": 2,
-        "outerPaddingLeft": 6,
-        "outerPaddingRight": 6,
-        "outerPaddingBottom": 2,
-        "outerPaddingTop": 6
-       }
-      },
-      "children": null
-     }
-    ]
-   },
-   {
-    "x": 570,
-    "y": 400,
-    "rotation": 0,
-    "id": 31,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
-    "width": 140,
-    "height": 50,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 23,
-    "graphic": {
-     "type": "Shape",
-     "Shape": {
-      "tid": "com.gliffy.stencil.rectangle.basic_v1",
-      "strokeWidth": 2,
-      "strokeColor": "#333333",
-      "fillColor": "#FFFFFF",
-      "gradient": false,
-      "dropShadow": false,
-      "state": 0,
-      "shadow": false,
-      "shadowX": 0,
-      "shadowY": 0,
-      "opacity": 1,
-      "dashStyle": null
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": [
-     {
-      "x": 2,
-      "y": 0,
-      "rotation": 0,
-      "id": 32,
-      "uid": null,
-      "width": 136,
-      "height": 50,
-      "lockAspectRatio": false,
-      "lockShape": false,
-      "order": "auto",
-      "graphic": {
-       "type": "Text",
-       "Text": {
-        "tid": null,
-        "valign": "middle",
-        "overflow": "none",
-        "vposition": "none",
-        "hposition": "none",
-        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:11px;color:#000000;font-weight:bold;\">Solace Queue</span></p>",
-        "paddingLeft": 2,
-        "paddingRight": 2,
-        "paddingBottom": 2,
-        "paddingTop": 2,
-        "outerPaddingLeft": 6,
-        "outerPaddingRight": 6,
-        "outerPaddingBottom": 2,
-        "outerPaddingTop": 6
-       }
-      },
-      "children": null
-     }
-    ]
-   },
-   {
-    "x": 830,
-    "y": 400,
-    "rotation": 0,
-    "id": 33,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
-    "width": 130,
-    "height": 50,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 24,
-    "graphic": {
-     "type": "Shape",
-     "Shape": {
-      "tid": "com.gliffy.stencil.rectangle.basic_v1",
-      "strokeWidth": 2,
-      "strokeColor": "#333333",
-      "fillColor": "#FFFFFF",
-      "gradient": false,
-      "dropShadow": false,
-      "state": 0,
-      "shadow": false,
-      "shadowX": 0,
-      "shadowY": 0,
-      "opacity": 1,
-      "dashStyle": null
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": [
-     {
-      "x": 2,
-      "y": 0,
-      "rotation": 0,
-      "id": 34,
-      "uid": null,
-      "width": 126,
-      "height": 50,
-      "lockAspectRatio": false,
-      "lockShape": false,
-      "order": "auto",
-      "graphic": {
-       "type": "Text",
-       "Text": {
-        "tid": null,
-        "valign": "middle",
-        "overflow": "none",
-        "vposition": "none",
-        "hposition": "none",
-        "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:11px;color:#000000;font-weight:bold;\">Audit Consumer</span></p>",
-        "paddingLeft": 2,
-        "paddingRight": 2,
-        "paddingBottom": 2,
-        "paddingTop": 2,
-        "outerPaddingLeft": 6,
-        "outerPaddingRight": 6,
-        "outerPaddingBottom": 2,
-        "outerPaddingTop": 6
-       }
-      },
-      "children": null
-     }
-    ]
+    "linkMap": []
    },
    {
     "x": 0,
     "y": 0,
     "rotation": 0,
-    "id": 35,
+    "id": 26,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.line",
+    "width": 100,
+    "height": 100,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 17,
+    "graphic": {
+     "type": "Line",
+     "Line": {
+      "strokeWidth": 2,
+      "strokeColor": "#000000",
+      "fillColor": "none",
+      "dashStyle": null,
+      "startArrow": 0,
+      "endArrow": 1,
+      "startArrowRotation": "auto",
+      "endArrowRotation": "auto",
+      "interpolationType": "linear",
+      "cornerRadius": null,
+      "controlPath": [
+       [
+        410,
+        105
+       ],
+       [
+        595,
+        105
+       ],
+       [
+        595,
+        190
+       ]
+      ],
+      "lockSegments": {},
+      "ortho": false
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": []
+   },
+   {
+    "x": 425,
+    "y": 82,
+    "rotation": 0,
+    "id": 27,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
+    "width": 160,
+    "height": 20,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 18,
+    "graphic": {
+     "type": "Text",
+     "Text": {
+      "tid": null,
+      "valign": "middle",
+      "overflow": "none",
+      "vposition": "none",
+      "hposition": "none",
+      "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">Signed AuthnRequest</span></p>",
+      "paddingLeft": 2,
+      "paddingRight": 2,
+      "paddingBottom": 2,
+      "paddingTop": 2,
+      "outerPaddingLeft": 6,
+      "outerPaddingRight": 6,
+      "outerPaddingBottom": 2,
+      "outerPaddingTop": 6
+     }
+    },
+    "children": [],
+    "layerId": "layer0",
+    "linkMap": []
+   },
+   {
+    "x": 0,
+    "y": 0,
+    "rotation": 0,
+    "id": 28,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.line",
+    "width": 100,
+    "height": 100,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 19,
+    "graphic": {
+     "type": "Line",
+     "Line": {
+      "strokeWidth": 2,
+      "strokeColor": "#000000",
+      "fillColor": "none",
+      "dashStyle": null,
+      "startArrow": 0,
+      "endArrow": 1,
+      "startArrowRotation": "auto",
+      "endArrowRotation": "auto",
+      "interpolationType": "linear",
+      "cornerRadius": null,
+      "controlPath": [
+       [
+        335,
+        245
+       ],
+       [
+        335,
+        150
+       ]
+      ],
+      "lockSegments": {},
+      "ortho": false
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": []
+   },
+   {
+    "x": 340,
+    "y": 155,
+    "rotation": 0,
+    "id": 29,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
+    "width": 70,
+    "height": 30,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 20,
+    "graphic": {
+     "type": "Text",
+     "Text": {
+      "tid": null,
+      "valign": "middle",
+      "overflow": "none",
+      "vposition": "none",
+      "hposition": "none",
+      "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">SSO config,<br>SP key</span></p>",
+      "paddingLeft": 2,
+      "paddingRight": 2,
+      "paddingBottom": 2,
+      "paddingTop": 2,
+      "outerPaddingLeft": 6,
+      "outerPaddingRight": 6,
+      "outerPaddingBottom": 2,
+      "outerPaddingTop": 6
+     }
+    },
+    "children": [],
+    "layerId": "layer0",
+    "linkMap": []
+   },
+   {
+    "x": 0,
+    "y": 0,
+    "rotation": 0,
+    "id": 30,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.line",
+    "width": 100,
+    "height": 100,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 21,
+    "graphic": {
+     "type": "Line",
+     "Line": {
+      "strokeWidth": 2,
+      "strokeColor": "#000000",
+      "fillColor": "none",
+      "dashStyle": null,
+      "startArrow": 0,
+      "endArrow": 1,
+      "startArrowRotation": "auto",
+      "endArrowRotation": "auto",
+      "interpolationType": "linear",
+      "cornerRadius": null,
+      "controlPath": [
+       [
+        335,
+        285
+       ],
+       [
+        335,
+        380
+       ]
+      ],
+      "lockSegments": {},
+      "ortho": false
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": []
+   },
+   {
+    "x": 340,
+    "y": 318,
+    "rotation": 0,
+    "id": 31,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
+    "width": 85,
+    "height": 30,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 22,
+    "graphic": {
+     "type": "Text",
+     "Text": {
+      "tid": null,
+      "valign": "middle",
+      "overflow": "none",
+      "vposition": "none",
+      "hposition": "none",
+      "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">IdP cert,<br>user details</span></p>",
+      "paddingLeft": 2,
+      "paddingRight": 2,
+      "paddingBottom": 2,
+      "paddingTop": 2,
+      "outerPaddingLeft": 6,
+      "outerPaddingRight": 6,
+      "outerPaddingBottom": 2,
+      "outerPaddingTop": 6
+     }
+    },
+    "children": [],
+    "layerId": "layer0",
+    "linkMap": []
+   },
+   {
+    "x": 0,
+    "y": 0,
+    "rotation": 0,
+    "id": 32,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.line",
+    "width": 100,
+    "height": 100,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 23,
+    "graphic": {
+     "type": "Line",
+     "Line": {
+      "strokeWidth": 2,
+      "strokeColor": "#000000",
+      "fillColor": "none",
+      "dashStyle": null,
+      "startArrow": 1,
+      "endArrow": 1,
+      "startArrowRotation": "auto",
+      "endArrowRotation": "auto",
+      "interpolationType": "linear",
+      "cornerRadius": null,
+      "controlPath": [
+       [
+        595,
+        280
+       ],
+       [
+        595,
+        425
+       ],
+       [
+        410,
+        425
+       ]
+      ],
+      "lockSegments": {},
+      "ortho": false
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": []
+   },
+   {
+    "x": 600,
+    "y": 340,
+    "rotation": 0,
+    "id": 33,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
+    "width": 100,
+    "height": 30,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 24,
+    "graphic": {
+     "type": "Text",
+     "Text": {
+      "tid": null,
+      "valign": "middle",
+      "overflow": "none",
+      "vposition": "none",
+      "hposition": "none",
+      "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">SAML Response /<br>Login success</span></p>",
+      "paddingLeft": 2,
+      "paddingRight": 2,
+      "paddingBottom": 2,
+      "paddingTop": 2,
+      "outerPaddingLeft": 6,
+      "outerPaddingRight": 6,
+      "outerPaddingBottom": 2,
+      "outerPaddingTop": 6
+     }
+    },
+    "children": [],
+    "layerId": "layer0",
+    "linkMap": []
+   },
+   {
+    "x": 0,
+    "y": 0,
+    "rotation": 0,
+    "id": 34,
     "uid": "com.gliffy.shape.basic.basic_v1.default.line",
     "width": 100,
     "height": 100,
@@ -1199,12 +1228,20 @@
       "cornerRadius": null,
       "controlPath": [
        [
-        110,
-        180
+        335,
+        470
        ],
        [
-        110,
-        305
+        335,
+        510
+       ],
+       [
+        770,
+        510
+       ],
+       [
+        770,
+        470
        ]
       ],
       "lockSegments": {},
@@ -1216,12 +1253,12 @@
     "children": []
    },
    {
-    "x": 115,
-    "y": 230,
+    "x": 440,
+    "y": 512,
     "rotation": 0,
-    "id": 36,
+    "id": 35,
     "uid": "com.gliffy.shape.basic.basic_v1.default.text",
-    "width": 70,
+    "width": 220,
     "height": 20,
     "lockAspectRatio": false,
     "lockShape": false,
@@ -1234,7 +1271,7 @@
       "overflow": "none",
       "vposition": "none",
       "hposition": "none",
-      "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">Login</span></p>",
+      "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">Audit event [async]</span></p>",
       "paddingLeft": 2,
       "paddingRight": 2,
       "paddingBottom": 2,
@@ -1253,7 +1290,7 @@
     "x": 0,
     "y": 0,
     "rotation": 0,
-    "id": 37,
+    "id": 36,
     "uid": "com.gliffy.shape.basic.basic_v1.default.line",
     "width": 100,
     "height": 100,
@@ -1275,16 +1312,12 @@
       "cornerRadius": null,
       "controlPath": [
        [
-        180,
-        335
+        770,
+        430
        ],
        [
-        610,
-        335
-       ],
-       [
-        610,
-        280
+        770,
+        320
        ]
       ],
       "lockSegments": {},
@@ -1296,480 +1329,16 @@
     "children": []
    },
    {
-    "x": 260,
-    "y": 338,
+    "x": 775,
+    "y": 360,
     "rotation": 0,
-    "id": 38,
+    "id": 37,
     "uid": "com.gliffy.shape.basic.basic_v1.default.text",
-    "width": 200,
+    "width": 60,
     "height": 20,
     "lockAspectRatio": false,
     "lockShape": false,
     "order": 28,
-    "graphic": {
-     "type": "Text",
-     "Text": {
-      "tid": null,
-      "valign": "middle",
-      "overflow": "none",
-      "vposition": "none",
-      "hposition": "none",
-      "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">Login API</span></p>",
-      "paddingLeft": 2,
-      "paddingRight": 2,
-      "paddingBottom": 2,
-      "paddingTop": 2,
-      "outerPaddingLeft": 6,
-      "outerPaddingRight": 6,
-      "outerPaddingBottom": 2,
-      "outerPaddingTop": 6
-     }
-    },
-    "children": [],
-    "layerId": "layer0",
-    "linkMap": []
-   },
-   {
-    "x": 0,
-    "y": 0,
-    "rotation": 0,
-    "id": 39,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.line",
-    "width": 100,
-    "height": 100,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 29,
-    "graphic": {
-     "type": "Line",
-     "Line": {
-      "strokeWidth": 2,
-      "strokeColor": "#6AA84F",
-      "fillColor": "none",
-      "dashStyle": null,
-      "startArrow": 1,
-      "endArrow": 1,
-      "startArrowRotation": "auto",
-      "endArrowRotation": "auto",
-      "interpolationType": "linear",
-      "cornerRadius": null,
-      "controlPath": [
-       [
-        180,
-        130
-       ],
-       [
-        320,
-        130
-       ]
-      ],
-      "lockSegments": {},
-      "ortho": false
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": []
-   },
-   {
-    "x": 185,
-    "y": 100,
-    "rotation": 0,
-    "id": 40,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
-    "width": 135,
-    "height": 28,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 30,
-    "graphic": {
-     "type": "Text",
-     "Text": {
-      "tid": null,
-      "valign": "middle",
-      "overflow": "none",
-      "vposition": "none",
-      "hposition": "none",
-      "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">SAML Request /<br>Signed Response</span></p>",
-      "paddingLeft": 2,
-      "paddingRight": 2,
-      "paddingBottom": 2,
-      "paddingTop": 2,
-      "outerPaddingLeft": 6,
-      "outerPaddingRight": 6,
-      "outerPaddingBottom": 2,
-      "outerPaddingTop": 6
-     }
-    },
-    "children": [],
-    "layerId": "layer0",
-    "linkMap": []
-   },
-   {
-    "x": 0,
-    "y": 0,
-    "rotation": 0,
-    "id": 41,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.line",
-    "width": 100,
-    "height": 100,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 31,
-    "graphic": {
-     "type": "Line",
-     "Line": {
-      "strokeWidth": 2,
-      "strokeColor": "#6AA84F",
-      "fillColor": "none",
-      "dashStyle": null,
-      "startArrow": 1,
-      "endArrow": 1,
-      "startArrowRotation": "auto",
-      "endArrowRotation": "auto",
-      "interpolationType": "linear",
-      "cornerRadius": null,
-      "controlPath": [
-       [
-        180,
-        165
-       ],
-       [
-        250,
-        165
-       ],
-       [
-        250,
-        265
-       ],
-       [
-        320,
-        265
-       ]
-      ],
-      "lockSegments": {},
-      "ortho": false
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": []
-   },
-   {
-    "x": 255,
-    "y": 185,
-    "rotation": 0,
-    "id": 42,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
-    "width": 65,
-    "height": 40,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 32,
-    "graphic": {
-     "type": "Text",
-     "Text": {
-      "tid": null,
-      "valign": "middle",
-      "overflow": "none",
-      "vposition": "none",
-      "hposition": "none",
-      "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">Redirect /<br>SAML<br>Response</span></p>",
-      "paddingLeft": 2,
-      "paddingRight": 2,
-      "paddingBottom": 2,
-      "paddingTop": 2,
-      "outerPaddingLeft": 6,
-      "outerPaddingRight": 6,
-      "outerPaddingBottom": 2,
-      "outerPaddingTop": 6
-     }
-    },
-    "children": [],
-    "layerId": "layer0",
-    "linkMap": []
-   },
-   {
-    "x": 0,
-    "y": 0,
-    "rotation": 0,
-    "id": 43,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.line",
-    "width": 100,
-    "height": 100,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 33,
-    "graphic": {
-     "type": "Line",
-     "Line": {
-      "strokeWidth": 2,
-      "strokeColor": "#6AA84F",
-      "fillColor": "none",
-      "dashStyle": null,
-      "startArrow": 1,
-      "endArrow": 1,
-      "startArrowRotation": "auto",
-      "endArrowRotation": "auto",
-      "interpolationType": "linear",
-      "cornerRadius": null,
-      "controlPath": [
-       [
-        470,
-        265
-       ],
-       [
-        570,
-        265
-       ]
-      ],
-      "lockSegments": {},
-      "ortho": false
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": []
-   },
-   {
-    "x": 472,
-    "y": 225,
-    "rotation": 0,
-    "id": 44,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
-    "width": 98,
-    "height": 35,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 34,
-    "graphic": {
-     "type": "Text",
-     "Text": {
-      "tid": null,
-      "valign": "middle",
-      "overflow": "none",
-      "vposition": "none",
-      "hposition": "none",
-      "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">AuthnRequest /<br>Verify Response</span></p>",
-      "paddingLeft": 2,
-      "paddingRight": 2,
-      "paddingBottom": 2,
-      "paddingTop": 2,
-      "outerPaddingLeft": 6,
-      "outerPaddingRight": 6,
-      "outerPaddingBottom": 2,
-      "outerPaddingTop": 6
-     }
-    },
-    "children": [],
-    "layerId": "layer0",
-    "linkMap": []
-   },
-   {
-    "x": 0,
-    "y": 0,
-    "rotation": 0,
-    "id": 45,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.line",
-    "width": 100,
-    "height": 100,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 35,
-    "graphic": {
-     "type": "Line",
-     "Line": {
-      "strokeWidth": 2,
-      "strokeColor": "#E69138",
-      "fillColor": "none",
-      "dashStyle": null,
-      "startArrow": 1,
-      "endArrow": 1,
-      "startArrowRotation": "auto",
-      "endArrowRotation": "auto",
-      "interpolationType": "linear",
-      "cornerRadius": null,
-      "controlPath": [
-       [
-        730,
-        235
-       ],
-       [
-        830,
-        235
-       ]
-      ],
-      "lockSegments": {},
-      "ortho": false
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": []
-   },
-   {
-    "x": 733,
-    "y": 195,
-    "rotation": 0,
-    "id": 46,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
-    "width": 95,
-    "height": 38,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 36,
-    "graphic": {
-     "type": "Text",
-     "Text": {
-      "tid": null,
-      "valign": "middle",
-      "overflow": "none",
-      "vposition": "none",
-      "hposition": "none",
-      "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">SSO config,<br>keys, IdP cert</span></p>",
-      "paddingLeft": 2,
-      "paddingRight": 2,
-      "paddingBottom": 2,
-      "paddingTop": 2,
-      "outerPaddingLeft": 6,
-      "outerPaddingRight": 6,
-      "outerPaddingBottom": 2,
-      "outerPaddingTop": 6
-     }
-    },
-    "children": [],
-    "layerId": "layer0",
-    "linkMap": []
-   },
-   {
-    "x": 0,
-    "y": 0,
-    "rotation": 0,
-    "id": 47,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.line",
-    "width": 100,
-    "height": 100,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 37,
-    "graphic": {
-     "type": "Line",
-     "Line": {
-      "strokeWidth": 2,
-      "strokeColor": "#E69138",
-      "fillColor": "none",
-      "dashStyle": null,
-      "startArrow": 0,
-      "endArrow": 1,
-      "startArrowRotation": "auto",
-      "endArrowRotation": "auto",
-      "interpolationType": "linear",
-      "cornerRadius": null,
-      "controlPath": [
-       [
-        680,
-        280
-       ],
-       [
-        680,
-        400
-       ]
-      ],
-      "lockSegments": {},
-      "ortho": false
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": []
-   },
-   {
-    "x": 685,
-    "y": 320,
-    "rotation": 0,
-    "id": 48,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
-    "width": 110,
-    "height": 30,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 38,
-    "graphic": {
-     "type": "Text",
-     "Text": {
-      "tid": null,
-      "valign": "middle",
-      "overflow": "none",
-      "vposition": "none",
-      "hposition": "none",
-      "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">Audit event<br>[async]</span></p>",
-      "paddingLeft": 2,
-      "paddingRight": 2,
-      "paddingBottom": 2,
-      "paddingTop": 2,
-      "outerPaddingLeft": 6,
-      "outerPaddingRight": 6,
-      "outerPaddingBottom": 2,
-      "outerPaddingTop": 6
-     }
-    },
-    "children": [],
-    "layerId": "layer0",
-    "linkMap": []
-   },
-   {
-    "x": 0,
-    "y": 0,
-    "rotation": 0,
-    "id": 49,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.line",
-    "width": 100,
-    "height": 100,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 39,
-    "graphic": {
-     "type": "Line",
-     "Line": {
-      "strokeWidth": 2,
-      "strokeColor": "#000000",
-      "fillColor": "none",
-      "dashStyle": null,
-      "startArrow": 0,
-      "endArrow": 1,
-      "startArrowRotation": "auto",
-      "endArrowRotation": "auto",
-      "interpolationType": "linear",
-      "cornerRadius": null,
-      "controlPath": [
-       [
-        710,
-        425
-       ],
-       [
-        830,
-        425
-       ]
-      ],
-      "lockSegments": {},
-      "ortho": false
-     }
-    },
-    "layerId": "layer0",
-    "linkMap": [],
-    "children": []
-   },
-   {
-    "x": 730,
-    "y": 428,
-    "rotation": 0,
-    "id": 50,
-    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
-    "width": 90,
-    "height": 20,
-    "lockAspectRatio": false,
-    "lockShape": false,
-    "order": 40,
     "graphic": {
      "type": "Text",
      "Text": {
@@ -1797,13 +1366,13 @@
     "x": 0,
     "y": 0,
     "rotation": 0,
-    "id": 51,
+    "id": 38,
     "uid": "com.gliffy.shape.basic.basic_v1.default.line",
     "width": 100,
     "height": 100,
     "lockAspectRatio": false,
     "lockShape": false,
-    "order": 41,
+    "order": 29,
     "graphic": {
      "type": "Line",
      "Line": {
@@ -1819,11 +1388,11 @@
       "cornerRadius": null,
       "controlPath": [
        [
-        895,
-        400
+        840,
+        280
        ],
        [
-        895,
+        870,
         280
        ]
       ],
@@ -1836,16 +1405,16 @@
     "children": []
    },
    {
-    "x": 900,
-    "y": 330,
+    "x": 822,
+    "y": 240,
     "rotation": 0,
-    "id": 52,
+    "id": 39,
     "uid": "com.gliffy.shape.basic.basic_v1.default.text",
-    "width": 80,
-    "height": 20,
+    "width": 70,
+    "height": 18,
     "lockAspectRatio": false,
     "lockShape": false,
-    "order": 42,
+    "order": 30,
     "graphic": {
      "type": "Text",
      "Text": {
@@ -1855,6 +1424,442 @@
       "vposition": "none",
       "hposition": "none",
       "html": "<p style=\"text-align:center;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;font-weight:bold;\">Persist</span></p>",
+      "paddingLeft": 2,
+      "paddingRight": 2,
+      "paddingBottom": 2,
+      "paddingTop": 2,
+      "outerPaddingLeft": 6,
+      "outerPaddingRight": 6,
+      "outerPaddingBottom": 2,
+      "outerPaddingTop": 6
+     }
+    },
+    "children": [],
+    "layerId": "layer0",
+    "linkMap": []
+   },
+   {
+    "x": 20,
+    "y": 545,
+    "rotation": 0,
+    "id": 40,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
+    "width": 980,
+    "height": 45,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 31,
+    "graphic": {
+     "type": "Shape",
+     "Shape": {
+      "tid": "com.gliffy.stencil.rectangle.basic_v1",
+      "strokeWidth": 2,
+      "strokeColor": "#666666",
+      "fillColor": "none",
+      "gradient": false,
+      "dropShadow": false,
+      "state": 0,
+      "shadow": false,
+      "shadowX": 0,
+      "shadowY": 0,
+      "opacity": 1,
+      "dashStyle": "4.0,4.0"
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": []
+   },
+   {
+    "x": 35,
+    "y": 557,
+    "rotation": 0,
+    "id": 41,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
+    "width": 35,
+    "height": 22,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 32,
+    "graphic": {
+     "type": "Shape",
+     "Shape": {
+      "tid": "com.gliffy.stencil.rectangle.basic_v1",
+      "strokeWidth": 2,
+      "strokeColor": "#000000",
+      "fillColor": "#FFFFFF",
+      "gradient": false,
+      "dropShadow": false,
+      "state": 0,
+      "shadow": false,
+      "shadowX": 0,
+      "shadowY": 0,
+      "opacity": 1,
+      "dashStyle": null
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": []
+   },
+   {
+    "x": 75,
+    "y": 558,
+    "rotation": 0,
+    "id": 42,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
+    "width": 110,
+    "height": 20,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 33,
+    "graphic": {
+     "type": "Text",
+     "Text": {
+      "tid": null,
+      "valign": "middle",
+      "overflow": "none",
+      "vposition": "none",
+      "hposition": "none",
+      "html": "<p style=\"text-align:left;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;\">External Entity</span></p>",
+      "paddingLeft": 2,
+      "paddingRight": 2,
+      "paddingBottom": 2,
+      "paddingTop": 2,
+      "outerPaddingLeft": 6,
+      "outerPaddingRight": 6,
+      "outerPaddingBottom": 2,
+      "outerPaddingTop": 6
+     }
+    },
+    "children": [],
+    "layerId": "layer0",
+    "linkMap": []
+   },
+   {
+    "x": 200,
+    "y": 555,
+    "rotation": 0,
+    "id": 43,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.ellipse",
+    "width": 40,
+    "height": 26,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 34,
+    "graphic": {
+     "type": "Shape",
+     "Shape": {
+      "tid": "com.gliffy.stencil.ellipse.basic_v1",
+      "strokeWidth": 2,
+      "strokeColor": "#B45F06",
+      "fillColor": "#FCE5CD",
+      "gradient": false,
+      "dropShadow": false,
+      "state": 0,
+      "shadow": false,
+      "shadowX": 0,
+      "shadowY": 0,
+      "opacity": 1
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": []
+   },
+   {
+    "x": 245,
+    "y": 558,
+    "rotation": 0,
+    "id": 44,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
+    "width": 120,
+    "height": 20,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 35,
+    "graphic": {
+     "type": "Text",
+     "Text": {
+      "tid": null,
+      "valign": "middle",
+      "overflow": "none",
+      "vposition": "none",
+      "hposition": "none",
+      "html": "<p style=\"text-align:left;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;\">Process (UAAS)</span></p>",
+      "paddingLeft": 2,
+      "paddingRight": 2,
+      "paddingBottom": 2,
+      "paddingTop": 2,
+      "outerPaddingLeft": 6,
+      "outerPaddingRight": 6,
+      "outerPaddingBottom": 2,
+      "outerPaddingTop": 6
+     }
+    },
+    "children": [],
+    "layerId": "layer0",
+    "linkMap": []
+   },
+   {
+    "x": 380,
+    "y": 555,
+    "rotation": 0,
+    "id": 45,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.ellipse",
+    "width": 40,
+    "height": 26,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 36,
+    "graphic": {
+     "type": "Shape",
+     "Shape": {
+      "tid": "com.gliffy.stencil.ellipse.basic_v1",
+      "strokeWidth": 2,
+      "strokeColor": "#674EA7",
+      "fillColor": "#D9D2E9",
+      "gradient": false,
+      "dropShadow": false,
+      "state": 0,
+      "shadow": false,
+      "shadowX": 0,
+      "shadowY": 0,
+      "opacity": 1
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": []
+   },
+   {
+    "x": 425,
+    "y": 558,
+    "rotation": 0,
+    "id": 46,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
+    "width": 120,
+    "height": 20,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 37,
+    "graphic": {
+     "type": "Text",
+     "Text": {
+      "tid": null,
+      "valign": "middle",
+      "overflow": "none",
+      "vposition": "none",
+      "hposition": "none",
+      "html": "<p style=\"text-align:left;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;\">Process (Kong)</span></p>",
+      "paddingLeft": 2,
+      "paddingRight": 2,
+      "paddingBottom": 2,
+      "paddingTop": 2,
+      "outerPaddingLeft": 6,
+      "outerPaddingRight": 6,
+      "outerPaddingBottom": 2,
+      "outerPaddingTop": 6
+     }
+    },
+    "children": [],
+    "layerId": "layer0",
+    "linkMap": []
+   },
+   {
+    "x": 560,
+    "y": 557,
+    "rotation": 0,
+    "id": 47,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
+    "width": 35,
+    "height": 22,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 38,
+    "graphic": {
+     "type": "Shape",
+     "Shape": {
+      "tid": "com.gliffy.stencil.rectangle.basic_v1",
+      "strokeWidth": 2,
+      "strokeColor": "#666666",
+      "fillColor": "#EFEFEF",
+      "gradient": false,
+      "dropShadow": false,
+      "state": 0,
+      "shadow": false,
+      "shadowX": 0,
+      "shadowY": 0,
+      "opacity": 1,
+      "dashStyle": null
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": []
+   },
+   {
+    "x": 600,
+    "y": 558,
+    "rotation": 0,
+    "id": 48,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
+    "width": 90,
+    "height": 20,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 39,
+    "graphic": {
+     "type": "Text",
+     "Text": {
+      "tid": null,
+      "valign": "middle",
+      "overflow": "none",
+      "vposition": "none",
+      "hposition": "none",
+      "html": "<p style=\"text-align:left;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;\">Data Store</span></p>",
+      "paddingLeft": 2,
+      "paddingRight": 2,
+      "paddingBottom": 2,
+      "paddingTop": 2,
+      "outerPaddingLeft": 6,
+      "outerPaddingRight": 6,
+      "outerPaddingBottom": 2,
+      "outerPaddingTop": 6
+     }
+    },
+    "children": [],
+    "layerId": "layer0",
+    "linkMap": []
+   },
+   {
+    "x": 0,
+    "y": 0,
+    "rotation": 0,
+    "id": 49,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.line",
+    "width": 100,
+    "height": 100,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 40,
+    "graphic": {
+     "type": "Line",
+     "Line": {
+      "strokeWidth": 2,
+      "strokeColor": "#000000",
+      "fillColor": "none",
+      "dashStyle": null,
+      "startArrow": 0,
+      "endArrow": 1,
+      "startArrowRotation": "auto",
+      "endArrowRotation": "auto",
+      "interpolationType": "linear",
+      "cornerRadius": null,
+      "controlPath": [
+       [
+        720,
+        568
+       ],
+       [
+        760,
+        568
+       ]
+      ],
+      "lockSegments": {},
+      "ortho": false
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": []
+   },
+   {
+    "x": 765,
+    "y": 558,
+    "rotation": 0,
+    "id": 50,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
+    "width": 90,
+    "height": 20,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 41,
+    "graphic": {
+     "type": "Text",
+     "Text": {
+      "tid": null,
+      "valign": "middle",
+      "overflow": "none",
+      "vposition": "none",
+      "hposition": "none",
+      "html": "<p style=\"text-align:left;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;\">Data Flow</span></p>",
+      "paddingLeft": 2,
+      "paddingRight": 2,
+      "paddingBottom": 2,
+      "paddingTop": 2,
+      "outerPaddingLeft": 6,
+      "outerPaddingRight": 6,
+      "outerPaddingBottom": 2,
+      "outerPaddingTop": 6
+     }
+    },
+    "children": [],
+    "layerId": "layer0",
+    "linkMap": []
+   },
+   {
+    "x": 860,
+    "y": 557,
+    "rotation": 0,
+    "id": 51,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.rectangle",
+    "width": 35,
+    "height": 22,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 42,
+    "graphic": {
+     "type": "Shape",
+     "Shape": {
+      "tid": "com.gliffy.stencil.rectangle.basic_v1",
+      "strokeWidth": 2,
+      "strokeColor": "#6AA84F",
+      "fillColor": "#D9EAD3",
+      "gradient": false,
+      "dropShadow": false,
+      "state": 0,
+      "shadow": false,
+      "shadowX": 0,
+      "shadowY": 0,
+      "opacity": 1,
+      "dashStyle": null
+     }
+    },
+    "layerId": "layer0",
+    "linkMap": [],
+    "children": []
+   },
+   {
+    "x": 900,
+    "y": 558,
+    "rotation": 0,
+    "id": 52,
+    "uid": "com.gliffy.shape.basic.basic_v1.default.text",
+    "width": 95,
+    "height": 20,
+    "lockAspectRatio": false,
+    "lockShape": false,
+    "order": 43,
+    "graphic": {
+     "type": "Text",
+     "Text": {
+      "tid": null,
+      "valign": "middle",
+      "overflow": "none",
+      "vposition": "none",
+      "hposition": "none",
+      "html": "<p style=\"text-align:left;\"><span style=\"font-family:Arial;font-size:9px;color:#000000;\">New (IdP)</span></p>",
       "paddingLeft": 2,
       "paddingRight": 2,
       "paddingBottom": 2,
@@ -1878,7 +1883,7 @@
     "active": true,
     "locked": false,
     "visible": true,
-    "nodeIndex": 42
+    "nodeIndex": 43
    }
   ],
   "shapeStyles": {},
@@ -1888,7 +1893,7 @@
   "textStyles": {}
  },
  "metadata": {
-  "title": "S2B SAML SSO Logical Architecture (Simple)",
+  "title": "S2B SAML SSO Data Flow Diagram (Simple)",
   "revision": 0,
   "exportBorder": false,
   "loadPosition": "default",
