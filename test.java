@@ -1,151 +1,81 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>S2B Security – Week 43 Status</title>
-<style>
-  body { margin: 0; padding: 20px; background: #f2f2f2; font-family: Calibri, "Segoe UI", Arial, sans-serif; color: #1a1a1a; }
-  .label-internal { font-size: 14px; color: #555; margin-bottom: 8px; }
-  .report { max-width: 1100px; margin: 0 auto; background: #fff; border: 2px solid #1b2a3a; }
-  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  td, th { border: 1px solid #1b2a3a; padding: 5px 8px; font-size: 14px; }
-  .hdr-dark { background: #0f2233; color: #fff; font-weight: bold; text-align: center; font-size: 15px; }
-  .hdr-blue { background: #1f5fa8; color: #fff; font-weight: bold; text-align: center; font-size: 15px; }
-  .center { text-align: center; }
-  .green { background: #70ad47; text-align: center; color: #1a1a1a; }
-  .brand { height: 95px; padding: 10px 20px; border-bottom: 1px solid #1b2a3a; display: flex; justify-content: space-between; align-items: center; }
-  .logo-slot { width: 90px; height: 75px; border: 1px dashed #aaa; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #999; }
-  .logo-slot img { max-width: 100%; max-height: 100%; }
-  ul { margin: 0; padding-left: 22px; }
-  li { margin: 4px 0; }
-  .summary-cell { vertical-align: middle; padding: 14px 20px; }
-  .chart-wrap { padding: 8px; text-align: center; }
-  .updates { padding: 16px 10px; height: 200px; vertical-align: top; font-size: 14px; line-height: 1.5; }
-  .footer-note { max-width: 1100px; margin: 16px auto 0; font-size: 14px; }
-</style>
-</head>
-<body>
+That changes things: the Copilot SDK runs on top of the Copilot CLI, so it won't work for you. LiteLLM (or calling the Copilot API directly from your own script) would technically work, but it imitates VS Code. If your bank blocked the CLI, that route will likely be seen as bypassing the block, so I'd avoid it.
 
-<div class="label-internal">&#128737; Internal</div>
+## What still works with your license
 
-<div class="report">
-  <!-- Brand header: drop your official logo files into the two slots -->
-  <div class="brand">
-    <div class="logo-slot"><!-- <img src="logo-mark.png" alt=""> -->Logo</div>
-    <div class="logo-slot" style="width:220px;"><!-- <img src="logo-wordmark.png" alt=""> -->Wordmark</div>
-  </div>
+**Option A (recommended): use Copilot Chat in VS Code as the agent and chat**
 
-  <!-- Key programs + sprint summary -->
-  <table>
-    <colgroup><col style="width:20%"><col style="width:13.5%"><col style="width:13%"><col style="width:53.5%"></colgroup>
-    <tr>
-      <td class="hdr-dark" colspan="3">S2B Security</td>
-      <td class="hdr-dark">Week 43</td>
-    </tr>
-    <tr>
-      <th class="hdr-dark">Key Programs</th>
-      <th class="hdr-dark">Go Live Planned</th>
-      <th class="hdr-dark">Current Status</th>
-      <th class="hdr-dark">Current Sprint Summary</th>
-    </tr>
-    <tr>
-      <td>QR KSA Metadata phase 1</td>
-      <td class="center">Nov-26</td>
-      <td class="center">SIT in progress</td>
-      <td class="summary-cell" rowspan="4">
-        <ul>
-          <li>QR KSA Metadata phase 1</li>
-          <li>SAML SSO phase 1.</li>
-          <li>DB Shield production enablement.</li>
-          <li>SME email ,SMS Templates and TMX integration</li>
-          <li>Test Automation completion @ 75%.</li>
-        </ul>
-      </td>
-    </tr>
-    <tr>
-      <td>S2B Security SME Email &amp; SMS Templates</td>
-      <td class="center">Nov-26</td>
-      <td class="center">Development in progress</td>
-    </tr>
-    <tr>
-      <td>SAML SSO phase 1</td>
-      <td class="center">Nov-26</td>
-      <td class="center">Testing in progress</td>
-    </tr>
-    <tr>
-      <td>SME Integration ,TMX alert automation</td>
-      <td class="center">Nov-26</td>
-      <td class="center">Development in progress</td>
-    </tr>
-  </table>
+Copilot Chat **Agent mode** already combines agent and chat, and it isn't blocked. You don't need your own LLM layer at all:
+- Your **pods** keep the backend API (no LLM).
+- On the desktop, you build a **Python CLI toolbox**, e.g. `python ops.py kibana-search ...`, which calls the pods.
+- A `.github/copilot-instructions.md` file teaches Copilot to run those commands in the terminal, read the output and investigate.
 
-  <!-- Monthly production release + production services -->
-  <table>
-    <colgroup><col style="width:34%"><col style="width:13%"><col style="width:24%"><col style="width:29%"></colgroup>
-    <tr><td class="hdr-dark" colspan="4">Monthly Production Release (14th Nov 2026)</td></tr>
-    <tr>
-      <td class="hdr-blue" colspan="2">Monthly Production Release (14 Nov 2026)</td>
-      <td class="hdr-blue" colspan="2">Production Services * ( Oct 2026 )</td>
-    </tr>
-    <tr><td class="center">SIT / UAT</td><td class="green">In progress</td><td class="center">Change related Incidents</td><td class="green">NIL</td></tr>
-    <tr><td class="center">Regression, PT Activities</td><td class="green">Yet to start</td><td class="center">PS Incidents breached SLA</td><td class="green">NIL</td></tr>
-    <tr><td class="center">Pre-release Activities</td><td class="green">Yet to start</td><td class="center">Risks due for Closure in 30 Days</td><td class="green">NIL</td></tr>
-    <tr><td class="center">Production Deployment</td><td class="green">14-Nov</td><td class="center">RFI Responses</td><td class="green">No Overdue</td></tr>
-  </table>
+This needs no CLI, no SDK and no MCP, so it's the least likely to hit corporate policy.
 
-  <!-- Sprint status + backlog chart -->
-  <table>
-    <colgroup><col style="width:20%"><col style="width:13.5%"><col style="width:13.5%"><col style="width:53%"></colgroup>
-    <tr>
-      <td class="hdr-dark" colspan="3">Current Sprint (26.10) Status</td>
-      <td class="hdr-dark">Squad Backlog Metrics</td>
-    </tr>
-    <tr>
-      <th class="hdr-blue">Squad Name</th>
-      <th class="hdr-blue">RAG Status</th>
-      <th class="hdr-blue">Remarks</th>
-      <td class="chart-wrap" rowspan="5">
-        <svg viewBox="0 0 440 200" width="100%" style="max-width:440px" font-family="Calibri, Arial, sans-serif">
-          <text x="220" y="18" text-anchor="middle" font-size="12" font-weight="bold" fill="#444">Squad / Story Points</text>
-          <!-- axes -->
-          <line x1="50" y1="160" x2="420" y2="160" stroke="#999"/>
-          <text x="42" y="164" text-anchor="end" font-size="11" fill="#555">0</text>
-          <text x="42" y="117" text-anchor="end" font-size="11" fill="#555">100</text>
-          <text x="42" y="70"  text-anchor="end" font-size="11" fill="#555">200</text>
-          <!-- scale: 200 pts = 94px -->
-          <rect x="80"  y="117.7" width="70" height="42.3" fill="#70ad47"/>
-          <text x="115" y="111" text-anchor="middle" font-size="12" fill="#444">90</text>
-          <rect x="195" y="74"    width="70" height="86"   fill="#70ad47"/>
-          <text x="230" y="67"  text-anchor="middle" font-size="12" fill="#444">183</text>
-          <rect x="310" y="131.3" width="70" height="28.7" fill="#70ad47"/>
-          <text x="345" y="125" text-anchor="middle" font-size="12" fill="#444">61</text>
-          <text x="115" y="180" text-anchor="middle" font-size="12" fill="#444">Go-Getters</text>
-          <text x="230" y="180" text-anchor="middle" font-size="12" fill="#444">Auth-Gaurdians</text>
-          <text x="345" y="180" text-anchor="middle" font-size="12" fill="#444">Star-Sentinals</text>
-        </svg>
-      </td>
-    </tr>
-    <tr><td class="center">Go-Getters</td><td class="green"></td><td></td></tr>
-    <tr><td class="center">Auth-Gaurdians</td><td class="green"></td><td></td></tr>
-    <tr><td class="center">Star-Sentinals</td><td class="green"></td><td></td></tr>
-    <tr><td>&nbsp;</td><td class="green"></td><td></td></tr>
-  </table>
+**Option B: a small VS Code extension using the official Language Model API**
 
-  <!-- Key updates / risks -->
-  <table>
-    <tr><td class="hdr-dark">Key Updates / Risks</td></tr>
-    <tr>
-      <td class="updates">
-        Enable Straight2Bank with passwordless authentication. Passkeys offer phishing-resistant login with fewer steps, higher success rates, and no reliance on SMS or physical tokens. Testing planned with a pilot group in Nov release.<br>
-        DB Shield Production enablement :: In progress ::<br>
-        KSA regulatory requirement for bank document validation. Phase 1 is in progress for QR scanning of document metadata details
-      </td>
-    </tr>
-  </table>
-</div>
+VS Code's `vscode.lm` API lets an extension use your Copilot models officially. You'd add an `@ops` chat participant whose tools call your pods. The trade-offs are that it's TypeScript, not Python, and your company may block installing custom extensions (VSIX).
 
-<p class="footer-note">Please find above weekly status report for this week, summarizing key programs, current progress, key updates/risks .</p>
+**Option C: a company-approved LLM**
 
-</body>
-</html>
+If the bank provides Azure OpenAI or similar, your Python app plus LangGraph works as originally planned. Only the model connection changes.
+
+## Prompt for Option A
+
+Paste this into Copilot Chat in Agent mode, with your project open:
+
+```
+Copilot CLI and the Copilot SDK are blocked in my company, so do NOT use them, and do NOT
+call Copilot/GitHub model APIs from Python. Copilot Chat (Agent mode in VS Code) will be the
+AI agent. My Python code will only be a toolbox that Copilot runs in the terminal.
+
+First analyse my existing codebase (desktop part and the backend running in Kubernetes pods)
+and summarise what exists, what works and what is missing. Propose a plan and wait for my
+approval before changing code.
+
+BUILD THIS
+
+1. Backend in Kubernetes pods (no LLM). Reuse my existing code.
+   REST endpoints: DB read-only query (SELECT/WITH only, checked with sqlglot, row limit,
+   timeout), list/describe tables, Kibana search (always time-bounded), Grafana dashboards /
+   panel query / firing alerts, ADO work items / WIQL search / pipeline runs and logs / PRs,
+   /health and /ready. Credentials from Kubernetes Secrets. Mask secrets/PII in responses.
+   Audit log of every request.
+
+2. Desktop CLI toolbox: ops.py (use Typer), one sub-command per backend endpoint, plus local
+   repo commands (search code, read file, git log, git diff) restricted to REPO_PATH.
+   - Calls the backend over HTTPS with a bearer token read from the OS keyring.
+   - Supports corporate proxy and custom CA bundle from config.
+   - Output is compact, readable text by default, with a --json flag. Truncate long output
+     and say it was truncated.
+   - Clear error messages (e.g. "Kibana timed out, use a smaller time range").
+   - Read-only by default. Any command that creates/updates something in ADO must print what
+     it will do and require a --confirm flag.
+   - `python ops.py --help` and each sub-command's --help must explain arguments with examples,
+     because Copilot will read them to decide what to run.
+
+3. .github/copilot-instructions.md that tells Copilot Agent mode:
+   - "You are an L2 production support assistant. To investigate, run the ops.py commands in
+     the terminal. Run `python ops.py --help` first if unsure of a command."
+   - Investigation order: clarify time range and affected user/service, then Kibana logs,
+     Grafana metrics/alerts, DB data, related code in the repo, related ADO items/pipelines.
+   - Always show the commands run and the evidence found, then a root-cause summary and
+     suggested next steps.
+   - Never use --confirm (write actions) without asking me first.
+   - Never print or echo secrets.
+
+4. .github/prompts/ folder with reusable prompt files:
+   investigate-incident.prompt.md, check-pipeline-failure.prompt.md,
+   find-error-in-code.prompt.md.
+
+5. Tests: pytest for the backend (mocked DB and HTTP, SQL guard rejects writes/DDL/multiple
+   statements) and for ops.py (backend mocked).
+
+WORK IN STEPS and stop after each one so I can test:
+Step 0: analysis + plan. Step 1: backend endpoints. Step 2: ops.py toolbox.
+Step 3: copilot-instructions.md and prompt files. Step 4: tests. Step 5: README.
+List the files you changed in each step and do not rewrite working code without asking.
+```
+
+After it's built, you'd use it by asking in Agent mode something like: *"Login failures for user X since 2pm, investigate."* Copilot will run your `ops.py` commands, read the results and summarise.
+
+One thing to check first: in Agent mode, VS Code asks permission before running terminal commands. Keep that on, or allow only `python ops.py` commands. Don't auto-approve everything.
